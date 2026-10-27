@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "Kitty",
+    "slug": "kitty",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0A0C0F",
+    "android": {
+      "package": "com.khalifa996.kitty",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0A0C0F"
+      }
+    }
+  }
+}

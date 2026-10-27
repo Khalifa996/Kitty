@@ -1,0 +1,121 @@
+name: Android app
+
+on:
+  push:
+    branches: [main]
+    paths: ['mobile/**', '.github/workflows/android.yml']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: mobile
+    env:
+      LOGS: ${{ github.workspace }}/ci-logs
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Prepare
+        run: mkdir -p "$LOGS"
+
+      - name: Set up the Expo project (first run only)
+        id: bootstrap
+        run: |
+          set -o pipefail
+          if [ ! -f package-lock.json ]; then
+            ./scripts/bootstrap.sh 2>&1 | tee "$LOGS/bootstrap.log"
+            git config user.name "kitty-ci"
+            git config user.email "kitty-ci@users.noreply.github.com"
+            git add package.json package-lock.json
+            git commit -m "Set up Expo packages (CI)"
+            git pull --rebase origin main && git push origin HEAD:main
+          else
+            echo "Already set up" | tee "$LOGS/bootstrap.log"
+          fi
+
+      - name: Install
+        id: install
+        run: |
+          set -o pipefail
+          npm ci 2>&1 | tee "$LOGS/install.log"
+          echo "expo $(node -p "require('expo/package.json').version"), react-native $(node -p "require('react-native/package.json').version")" | tee -a "$LOGS/install.log"
+
+      - name: Type check
+        id: typecheck
+        run: |
+          set -o pipefail
+          npx tsc --noEmit 2>&1 | tee "$LOGS/typecheck.log"
+
+      - name: Tests
+        id: tests
+        run: |
+          set -o pipefail
+          npx jest --ci 2>&1 | tee "$LOGS/tests.log"
+
+      - name: Generate the Android project
+        id: prebuild
+        run: |
+          set -o pipefail
+          node -e "const f='app.json',j=require('./'+f);j.expo.version='0.1.${{ github.run_number }}';j.expo.android.versionCode=${{ github.run_number }};require('fs').writeFileSync(f,JSON.stringify(j,null,2))"
+          npx expo prebuild --platform android --no-install 2>&1 | tee "$LOGS/prebuild.log"
+          cp credentials/sideload.keystore android/app/debug.keystore
+
+      - name: Build the APK
+        id: gradle
+        working-directory: mobile/android
+        run: |
+          set -o pipefail
+          ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a 2>&1 | tee "$LOGS/gradle.log"
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/kitty-0.1.${{ github.run_number }}.apk"
+
+      - name: Publish to Releases
+        if: success()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: app-v0.1.${{ github.run_number }}
+          name: Kitty 0.1.${{ github.run_number }}
+          make_latest: true
+          body: |
+            Test build from commit ${{ github.sha }}.
+            On your Android phone: download the APK below, open it and tap Install.
+          files: kitty-0.1.${{ github.run_number }}.apk
+
+      - name: Write report
+        if: always()
+        working-directory: ${{ github.workspace }}
+        run: |
+          r=/tmp/report.md
+          {
+            echo "# Android build ${{ github.run_number }} (${{ github.sha }})"
+            echo "bootstrap=${{ steps.bootstrap.outcome }} install=${{ steps.install.outcome }} typecheck=${{ steps.typecheck.outcome }} tests=${{ steps.tests.outcome }} prebuild=${{ steps.prebuild.outcome }} gradle=${{ steps.gradle.outcome }}"
+            for f in bootstrap install typecheck tests prebuild gradle; do
+              [ -f "ci-logs/$f.log" ] || continue
+              echo; echo "## $f (last 150 lines)"; echo '```'
+              grep -v -E "^\s*$" "ci-logs/$f.log" | tail -n 150
+              echo '```'
+            done
+            if [ -f ci-logs/gradle.log ]; then echo; echo "## gradle errors"; echo '```'; grep -n -E "error:|e: |FAILURE|What went wrong" -A4 ci-logs/gradle.log | head -n 120; echo '```'; fi
+          } > $r
+          mkdir -p /tmp/rep && cd /tmp/rep && cp $r android.md
+          git init -q && git checkout -q -b ci-reports
+          git config user.name "kitty-ci" && git config user.email "kitty-ci@users.noreply.github.com"
+          git add . && git commit -qm "Android build ${{ github.run_number }}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" ci-reports
