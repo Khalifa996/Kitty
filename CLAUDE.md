@@ -50,6 +50,18 @@ Everything is in `index.html` (markup, CSS, JS in one file, no build step). It's
 
 Commit to `main` and push. Pages redeploys in about a minute, and installed apps pick it up the next time they open while online.
 
+## Native app (mobile/)
+
+Expo SDK 58, TypeScript. Being rebuilt from the prototype screen by screen.
+
+- `src/engine/`: the money model as pure functions (`budget.ts`), same data shape as the prototype (`types.ts`) so a prototype backup imports as-is. `today` is always passed in. Tests in `*.test.ts`.
+- `src/parse/bankAlerts.ts`: turns bank notifications into entries. Built from real Revolut, Barclays and Google Wallet alerts; every rule has a test. Duplicate payments (bank + Google Wallet) are merged.
+- `modules/kitty-notifications/`: local Expo module (Kotlin). `KittyNotificationListener` stores alerts from bank apps only in SharedPreferences; JS reads them with `getCaptured()`. Other apps that post money alerts are noted by package name only, never content.
+- Builds run on GitHub Actions (`.github/workflows/android.yml`): install, type check, Jest, prebuild, Gradle, then the APK is published to Releases. A report of each build is pushed to the `ci-reports` branch (`android.md`).
+- Test APKs are signed with `credentials/sideload.keystore` (debug passwords, test builds only).
+- npm is not reachable from Claude's workspace, so run tests locally with `node --experimental-strip-types` and a small shim, and let CI do the real install.
+- Sideloaded apps on Android 13+ need "Allow restricted settings" (App info → ⋮) before notification access can be granted.
+
 ## Next platform
 
 The prototype is the UX lab. Once the core feels right, port to **Expo / React Native** (Mo's stack from Nestly). The plan is in `ROADMAP.md`, phase 3. Install Expo packages with `npx expo install`, and never run `npm audit fix --force` on an Expo project.

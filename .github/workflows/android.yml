@@ -54,6 +54,28 @@ jobs:
             echo "Already set up" | tee "$LOGS/bootstrap.log"
           fi
 
+      - name: Add any new packages from deps.txt
+        id: deps
+        run: |
+          set -o pipefail
+          missing=$(node -e "
+            const p=require('./package.json'), have={...p.dependencies,...p.devDependencies};
+            const want=require('fs').readFileSync('deps.txt','utf8').split(/\s+/).filter(x=>x&&!x.startsWith('#'));
+            console.log(want.filter(w=>!have[w]).join(' '))")
+          if [ -n "$missing" ]; then
+            {
+              npm ci
+              npx expo install $missing
+              git config user.name "kitty-ci"
+              git config user.email "kitty-ci@users.noreply.github.com"
+              git add package.json package-lock.json
+              git commit -m "Add packages: $missing (CI)"
+              git push origin HEAD:main
+            } 2>&1 | tee "$LOGS/deps.log"
+          else
+            echo "No new packages" | tee "$LOGS/deps.log"
+          fi
+
       - name: Install
         id: install
         run: |
@@ -108,8 +130,8 @@ jobs:
           r=/tmp/report.md
           {
             echo "# Android build ${{ github.run_number }} (${{ github.sha }})"
-            echo "bootstrap=${{ steps.bootstrap.outcome }} install=${{ steps.install.outcome }} typecheck=${{ steps.typecheck.outcome }} tests=${{ steps.tests.outcome }} prebuild=${{ steps.prebuild.outcome }} gradle=${{ steps.gradle.outcome }}"
-            for f in bootstrap install typecheck tests prebuild gradle; do
+            echo "bootstrap=${{ steps.bootstrap.outcome }} deps=${{ steps.deps.outcome }} install=${{ steps.install.outcome }} typecheck=${{ steps.typecheck.outcome }} tests=${{ steps.tests.outcome }} prebuild=${{ steps.prebuild.outcome }} gradle=${{ steps.gradle.outcome }}"
+            for f in bootstrap deps install typecheck tests prebuild gradle; do
               [ -f "ci-logs/$f.log" ] || continue
               echo; echo "## $f (last 150 lines)"; echo '```'
               grep -v -E "^\s*$" "ci-logs/$f.log" | tail -n 150

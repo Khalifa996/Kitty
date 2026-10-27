@@ -1,3 +1,4 @@
+/// <reference types="jest" />
 import { parseAlert, parseAll, tidyName, RawAlert } from './bankAlerts';
 
 const REV = 'com.revolut.revolut';

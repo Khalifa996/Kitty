@@ -1,3 +1,4 @@
+/// <reference types="jest" />
 import { billDue, checkinGap, cycleOf, dueDirectDebits, pot, potBalance, safeInfo } from './budget';
 import type { Bill, Settings, State, Tx } from './types';
 

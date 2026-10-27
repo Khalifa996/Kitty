@@ -83,6 +83,7 @@ function Main() {
     );
   }
 
+  const K = KittyNotifications;
   return (
     <SafeAreaView style={s.screen} edges={['top', 'left', 'right']}>
       <FlatList
@@ -109,8 +110,8 @@ function Main() {
                 <Step n="1" t="Tap Allow access, find Kitty in the list and switch it on." />
                 <Step n="2" t={'If Kitty is greyed out: tap Open App info, then the ⋮ menu at the top right, then "Allow restricted settings". Come back and try step 1 again.'} />
                 <View style={s.row}>
-                  <Btn label="Allow access" primary onPress={() => KittyNotifications.openSettings()} />
-                  <Btn label="Open App info" onPress={() => KittyNotifications.openAppInfo()} />
+                  <Btn label="Allow access" primary onPress={() => K.openSettings()} />
+                  <Btn label="Open App info" onPress={() => K.openAppInfo()} />
                 </View>
               </View>
             )}
