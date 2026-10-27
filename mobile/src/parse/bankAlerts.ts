@@ -115,7 +115,7 @@ export function parseAlert(a: RawAlert): ParsedAlert {
 
   // Spending
   if (/\b(spent|paid|payment|purchase|card used|debited|you sent|withdrew|withdrawal)\b/i.test(text) || /^\s*-?£/.test(text)) {
-    let merchant = (text.match(/\b(?:at|with|to)\s+(.+?)(?:\s+(?:from|on|using)\s+your\b|\s+balance\b|\.\s|\.$|$)/i) || [])[1];
+    let merchant: string | undefined = (text.match(/\b(?:at|with|to)\s+(.+?)(?:\s+(?:from|on|using)\s+your\b|\s+balance\b|\.\s|\.$|$)/i) || [])[1];
     if (merchant && /your account|another account/i.test(merchant)) merchant = undefined;
     if (!merchant && !GENERIC_TITLES.test(title) && !AMOUNT.test(title)) merchant = title;
     if (!merchant && /you sent/i.test(text)) merchant = 'Payment sent';

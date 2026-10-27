@@ -21,7 +21,14 @@ Goal: a stranger can use it for a month without help and without hitting a wrong
 - Accessibility pass: screen reader labels, contrast, text size
 - 5 to 10 friends and family testing the prototype, feedback into `BACKLOG.md`
 
-## Phase 3: Native app (Expo / React Native, Dec 2026 to Jan 2027)
+## Phase 2b: Less logging (Oct to Nov 2026)
+- ✅ Balance check-ins in the prototype: one number instead of every spend
+- 🔨 Native capture preview: reads payment alerts from Barclays, Revolut, Monzo, Starling, NatWest and Google Wallet (Android)
+- Next: tap to add a captured payment, then auto-add with an undo
+- Next: share a screenshot of a banking app to log several payments at once (on-device text reading)
+- iPhone: Wallet tap-to-pay automation through Shortcuts
+
+## Phase 3: Native app (Expo / React Native, started Oct 2026)
 - Port the screens one by one; keep the money logic as a separate, unit-tested module (Jest)
 - Local database (expo-sqlite) with migrations
 - Biometric / PIN lock (expo-local-authentication)
