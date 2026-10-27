@@ -36,6 +36,10 @@ describe('Barclays (real alerts, Oct 2026)', () => {
     const p = parseAlert(a(BAR, 'Barclays', "Pers acct - You've spent £1.99 with GOOGLE PLAY APPS from your account ending 1111."));
     expect(p).toMatchObject({ kind: 'spent', amount: 199, merchant: 'Google Play Apps', account: '1111' });
   });
+  it('reads a payment captured on the phone (28 Oct)', () => {
+    const p = parseAlert(a(BAR, 'Barclays', "Pers acct - You've spent £1.00 with ABC TRADE WORK from your account ending 1111."));
+    expect(p).toMatchObject({ kind: 'spent', amount: 100, merchant: 'ABC Trade Work', account: '1111' });
+  });
   it('reads rent paid to a company', () => {
     expect(parseAlert(a(BAR, 'Barclays', "Pers acct - You've spent £1500.00 with ACME LETTINGS LIMITED from your account ending 2222."))).toMatchObject({ kind: 'spent', amount: 150000, merchant: 'Acme Lettings Limited', account: '2222' });
   });
@@ -92,4 +96,5 @@ describe('Other banks (generic wording until we have real samples)', () => {
 it('tidies shouty names', () => {
   expect(tidyName('GOOGLE PLAY APPS.')).toBe('Google Play Apps');
   expect(tidyName('McDonalds')).toBe('McDonalds');
+  expect(tidyName('BP THE GREEN MAN')).toBe('BP The Green Man');
 });

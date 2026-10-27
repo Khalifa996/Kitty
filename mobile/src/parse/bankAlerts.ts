@@ -48,7 +48,12 @@ export function tidyName(s: string): string {
   const t = clean(s).replace(/[.,;:]+$/, '').trim();
   if (!t) return t;
   if (t === t.toUpperCase() && /[A-Z]{3,}/.test(t)) {
-    return t.toLowerCase().replace(/\b([a-z])/g, (m) => m.toUpperCase()).replace(/\b(Ltd|Limited|Plc)\b/g, (m) => m);
+    // Title case, but keep likely initials as they are: a short first word (ABC, BP) or a two-letter word (UK)
+    const small = /^(THE|AND|FOR|LTD|PLC|CO|OF|TO|IN|AT|ON|BY|MY|AN|OR)$/;
+    return t.split(' ').map((w, i) => {
+      const keep = !small.test(w) && ((i === 0 && /^[A-Z]{2,3}$/.test(w)) || /^[A-Z]{2}$/.test(w));
+      return keep ? w : w.charAt(0) + w.slice(1).toLowerCase();
+    }).join(' ');
   }
   return t;
 }
