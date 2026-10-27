@@ -29,6 +29,10 @@ Everything is in `index.html` (markup, CSS, JS in one file, no build step). It's
 - `pot(c)`: money to spend in a cycle = income − bills share − savings. In the first part-way cycle after setup, `settings.opening.pot` replaces it (balance on the day minus bills still to come).
 - `flexNet(list)`: spending that counts against the budget. Excludes bill payments and business items, and nets off refunds.
 - `safeInfo()`: today's allowance, what's safe now, and the new per-day figure from tomorrow.
+- Money in (`IN_CATS[...].fx`): `pay` replaces expected pay, `add` (extra, borrowed, from savings, gift) adds to the cycle's pot via `extraIn()`, `refund` nets off spending, `none` (between my accounts) and `biz` (business) leave the budget alone. Borrowed money can link to a debt (`debtId`) and raises its balance. `matchDebt()` spots borrowing by name.
+- Pots (`S.pots`): `perPay` is set aside every payday (`potsAside(c)`, subtracted in `pot(c)`). Spending with `potId` skips the daily budget; top-ups are `potIn` spends; `potBalance()` = opening + top-ups each cycle + moved in − spent.
+- Direct Debits: bills with `dd` are paid automatically on the due date by `autoPay()` (runs on every render, from `ddFrom` onwards). Marking one unpaid writes `settings.ddSkip` so it isn't re-paid.
+- Categories: base set in `CATS`; custom ones, names, order and hidden list live in settings and are applied by `refreshCats()`. Always use `OUT_CATS` for the visible list.
 - Bills are recurring templates (`type`: `bill` | `sub` | `debt`, optional `biz`, optional `balance`). Paying one creates a transaction with `billId`. `settings.prepaid` marks bills that were due before the person started using Kitty.
 
 ### Rules

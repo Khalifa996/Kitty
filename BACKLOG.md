@@ -7,6 +7,9 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 ## Snags
 | Pri | Found | Snag |
 |---|---|---|
+| P2 | 27 Oct | Log screen in Received mode is tall on small phones (two rows of types plus the debt picker) |
+| P2 | 27 Oct | A pot created mid-cycle takes a full top-up from this cycle. Offer "start from next payday" |
+| P3 | 27 Oct | Closed pots disappear completely. Add a "closed pots" list |
 | P2 | 27 Oct | "Last working day" pay ignores bank holidays (UK employers usually pay the day before) |
 | P2 | 27 Oct | With non-monthly pay, bills track by calendar month. A bill paid early on the 30th counts for the wrong month |
 | P2 | 27 Oct | Debt payoff dates ignore interest. Add an optional interest rate |
@@ -18,7 +21,6 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | Pri | Idea |
 |---|---|
 | P1 | Variable income mode (budget from money received) |
-| P1 | Custom categories |
 | P2 | Bill frequencies other than monthly |
 | P2 | Multiple income sources |
 | P2 | Backup to a file; restore from a file |
@@ -29,6 +31,15 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | P3 | Light theme |
 
 ## Changelog
+**v4, 27 Oct 2026: money in, Direct Debits, pots, categories**
+- Money in has types that do what you'd expect: Pay, Extra, Borrowed, From savings, Refund, Gift, Between my accounts, Business
+- Borrowing is spotted by name (e.g. "Monzo Flex" matches the Monzo Flex debt), can be linked to a debt, and raises its balance
+- Bills paid by Direct Debit tick themselves off on the due date
+- Pots tab: set aside per payday, targets, top-ups, pay from a pot without touching the daily budget
+- Custom categories: add with icon and colour, rename, reorder, hide; "More" on Log when there are lots
+- Activity rows say Bill, Debt repayment, Subscription or Direct Debit instead of repeating the name
+- Money in tile splits pay, borrowed and other
+
 **v3, 27 Oct 2026: for everyone**
 - First-run setup replaces the example month (example data is now optional)
 - Pay frequencies: monthly on a date, last working day, weekly, fortnightly, 4-weekly

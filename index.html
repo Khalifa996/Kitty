@@ -48,7 +48,7 @@ svg.i{width:1em;height:1em;flex:none;display:block}
 #app{position:relative;height:100%;max-width:440px;margin:0 auto;background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
 @media (min-width:600px){#app{box-shadow:0 0 0 1px var(--line)}}
 #screen{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px 16px 20px;-webkit-overflow-scrolling:touch}
-#tabs{display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border-top:1px solid var(--line);padding:6px 4px 8px}
+#tabs{display:grid;grid-template-columns:repeat(5,1fr);background:var(--surface);border-top:1px solid var(--line);padding:6px 4px 8px}
 .tab{background:none;border:0;color:var(--faint);display:flex;flex-direction:column;align-items:center;gap:4px;font:600 11px/1 var(--font-body);padding:6px 0;cursor:pointer}
 .tab .i{font-size:22px}
 .tab.on{color:var(--fg)}
@@ -275,6 +275,23 @@ svg.i{width:1em;height:1em;flex:none;display:block}
 .form label.toggle{flex-direction:row;align-items:center;gap:12px;text-transform:none;letter-spacing:0;font-size:15px;font-weight:700;color:var(--fg);background:var(--surface-2)}
 .form label.toggle input{width:22px;height:22px;padding:0}
 .toggle small{font-weight:500;color:var(--muted);font-size:13px}
+.bbtns{display:flex;gap:16px;flex-wrap:wrap}
+.status.auto{background:var(--surface-2);color:var(--muted);cursor:default}
+.potsel{padding-top:0}
+.catrow{display:grid;grid-template-columns:30px minmax(0,1fr) 34px 34px 34px auto;gap:6px;align-items:center;padding:8px 10px}
+.catrow+.catrow{border-top:1px solid var(--line)}
+.catrow.off{opacity:.45}
+.form .catrow input{height:38px;background:var(--surface-2);font-size:15px}
+.mini{width:34px;height:34px;border:0;border-radius:9px;background:var(--surface-2);color:var(--fg);display:grid;place-items:center;cursor:pointer;font-size:16px;padding:0}
+.picker{display:flex;flex-wrap:wrap;gap:8px}
+.pick{width:44px;height:44px;border:0;border-radius:12px;background:var(--surface-2);color:var(--fg);display:grid;place-items:center;font-size:20px;cursor:pointer}
+.pick.on{background:var(--gold);color:var(--gold-ink)}
+.sw{width:36px;height:36px;border-radius:50%;border:0;background:var(--c);cursor:pointer}
+.sw.on{box-shadow:0 0 0 3px var(--surface),0 0 0 5px var(--fg)}
+.potcard .hv small.of{font-size:15px;color:var(--muted);font-weight:500}
+.potcard .s{display:block;font-size:13px;color:var(--muted);margin-top:6px}
+.potcard .s.over{color:var(--bad)} .potcard .s.good{color:var(--good)}
+svg.i.inl{display:inline-block;vertical-align:-2px;color:#3DD6B0}
 @keyframes up{from{transform:translateY(30px);opacity:0}to{transform:none;opacity:1}}
 #toast{position:absolute;left:16px;right:16px;bottom:80px;z-index:50;background:var(--fg);color:var(--bg);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px;font-weight:700;font-size:14px;box-shadow:0 10px 30px rgba(0,0,0,.5);animation:up .18s ease-out}
 #toast span{flex:1;min-width:0}
@@ -289,6 +306,7 @@ svg.i{width:1em;height:1em;flex:none;display:block}
     <button class="tab" data-act="tab" data-v="log"></button>
     <button class="tab" data-act="tab" data-v="activity"></button>
     <button class="tab" data-act="tab" data-v="bills"></button>
+    <button class="tab" data-act="tab" data-v="pots"></button>
     <button class="tab" data-act="tab" data-v="insights"></button>
   </nav>
   <div id="sheet-wrap" hidden><button class="scrim" data-act="close" aria-label="Close"></button><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
@@ -326,7 +344,23 @@ const P = {
   check:'<path d="M20 6 9 17l-5-5"/>',
   chev:'<path d="m15 18-6-6 6-6"/>',
   plus:'<path d="M5 12h14"/><path d="M12 5v14"/>',
-  info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>'
+  info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  piggy:'<path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2V5z"/><path d="M2 9v1c0 1.1.9 2 2 2h1"/><path d="M16 11h.01"/>',
+  credit:'<rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/>',
+  baby:'<path d="M9 12h.01"/><path d="M15 12h.01"/><path d="M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5"/><path d="M19 6.3a9 9 0 0 1 1.8 3.9 2 2 0 0 1 0 3.6 9 9 0 0 1-17.6 0 2 2 0 0 1 0-3.6A9 9 0 0 1 12 3c2 0 3.5 1.1 3.5 2.5s-.9 2.5-2 2.5c-.8 0-1.5-.4-1.5-1"/>',
+  paw:'<circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="16" r="2"/><path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"/>',
+  plane:'<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>',
+  book:'<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>',
+  coffee:'<path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><path d="M6 2v2"/><path d="M10 2v2"/><path d="M14 2v2"/>',
+  phone:'<rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/>',
+  shirt:'<path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/>',
+  fuel:'<path d="M3 22h12"/><path d="M4 9h10"/><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 4 0V9.83a2 2 0 0 0-.59-1.42L18 5"/>',
+  wrench:'<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
+  up:'<path d="m18 15-6-6-6 6"/>',
+  down:'<path d="m6 9 6 6 6-6"/>',
+  eye:'<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
+  eyeoff:'<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.53 13.53 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><path d="m2 2 20 20"/>',
+  x:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>'
 };
 const ic = n => `<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n]||''}</svg>`;
 
@@ -343,17 +377,35 @@ const CATS = {
   bills:{n:'Bills',i:'receipt',c:'#A78BFA'},
   other:{n:'Other',i:'more',c:'#A0A7B4'}
 };
-const OUT_CATS = Object.keys(CATS);
+const BASE_CATS = Object.keys(CATS), BASE_NAMES = Object.fromEntries(BASE_CATS.map(k => [k, CATS[k].n]));
+let OUT_CATS = [...BASE_CATS];
+const CAT_ICONS = ['utensils','cart','car','fuel','bag','shirt','ticket','coffee','heart','home','wrench','user','baby','paw','plane','book','phone','gift','briefcase','receipt','more'];
+const CAT_COLOURS = ['#FF8A5C','#F2C14E','#8BD45E','#3DD6B0','#4FC3F7','#9DB4FF','#A78BFA','#D59BFF','#FF6F91','#E0B98C','#A0A7B4'];
+// Custom names, order, hidden and added categories live in settings
+function refreshCats(){
+  const st = S.settings, custom = st.customCats || [], order = st.catOrder || [], hidden = new Set(st.hiddenCats || []);
+  for (const k of BASE_CATS) CATS[k].n = (st.catNames||{})[k] || BASE_NAMES[k];
+  for (const c of custom) CATS[c.id] = {n:c.n, i:c.i, c:c.c, custom:true};
+  const all = [...BASE_CATS, ...custom.map(c => c.id)];
+  OUT_CATS = [...order.filter(k => all.includes(k)), ...all.filter(k => !order.includes(k))].filter(k => !hidden.has(k));
+}
+// What each kind of money in does to the budget
 const IN_CATS = {
-  salary:{n:'Salary',i:'wallet',c:'#3DD68C'},
-  side:{n:'Side income',i:'briefcase',c:'#3DD68C'},
-  refund:{n:'Refund',i:'undo',c:'#3DD68C'},
-  transfer:{n:'Transfer',i:'swap',c:'#3DD68C'},
-  gift:{n:'Gift',i:'gift',c:'#3DD68C'}
+  salary:{n:'Pay',i:'wallet',c:'#3DD68C',fx:'pay'},
+  extra:{n:'Extra',i:'plusc',c:'#3DD68C',fx:'add'},
+  borrowed:{n:'Borrowed',i:'credit',c:'#FF9A3D',fx:'add'},
+  savings:{n:'Savings',i:'piggy',c:'#3DD68C',fx:'add'},
+  refund:{n:'Refund',i:'undo',c:'#3DD68C',fx:'refund'},
+  gift:{n:'Gift',i:'gift',c:'#3DD68C',fx:'add'},
+  transfer:{n:'Transfer',i:'swap',c:'#8D95A1',fx:'none'},
+  side:{n:'Business',i:'briefcase',c:'#F2C14E',fx:'biz'}
 };
+const IN_LONG = {salary:'Pay', extra:'Extra income', borrowed:'Borrowed', savings:'From savings', refund:'Refund', gift:'Gift', transfer:'Between my accounts', side:'Business income'};
+const inKeys = () => Object.keys(IN_CATS).filter(k => k!=='side' || bizOn());
+const addsIn = t => t.kind==='in' && !t.biz && (IN_CATS[t.cat]||{}).fx==='add';
 const DEFAULT_SETTINGS = {currency:'GBP', payFreq:'monthly', payday:28, payAnchor:null, income:0, savings:0, sideIncome:false, setupDone:false, dismissed:{}};
 const DEFAULT_LIMITS = {food:14000,groceries:26000,transport:22000,shopping:15000,fun:8000,health:4000,home:8000,personal:6000,bills:3000,other:5000};
-const catOf = t => t.kind==='in' ? (IN_CATS[t.cat]||IN_CATS.transfer) : (CATS[t.cat]||CATS.other);
+const catOf = t => t.potIn ? {n:'Moved to pot',i:'piggy',c:'#3DD6B0'} : t.kind==='in' ? (IN_CATS[t.cat]||IN_CATS.transfer) : (CATS[t.cat]||CATS.other);
 
 /* ---------- Utils ---------- */
 const $ = (s,r=document) => r.querySelector(s);
@@ -462,14 +514,14 @@ function seed(){
     if (!wk && R()<.14) add({kind:'in',cat:'side',sub:'Job',merchant:'Handyman job',amt:between(8000,18000),biz:true},s,15,19);
     (specials[s]||[]).forEach(([o,a,b]) => add(o,s,a,b));
   }
-  return {v:1, settings, bills, tx};
+  return {v:1, settings, bills, tx, pots:[{id:'p1', name:'Christmas', perPay:4000, target:30000, opening:6000, start:prev.start}]};
 }
 
 /* ---------- Storage (this browser only) ---------- */
 const KEY = 'kitty.v1';
 function load(){ try { const s = localStorage.getItem(KEY); return s ? JSON.parse(s) : null; } catch(e) { return null; } }
 function persist(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {} }
-const blank = () => ({v:1, settings:{...DEFAULT_SETTINGS, limits:{...DEFAULT_LIMITS}, dismissed:{}}, bills:[], tx:[]});
+const blank = () => ({v:1, settings:{...DEFAULT_SETTINGS, limits:{...DEFAULT_LIMITS}, dismissed:{}, _v4:true}, bills:[], tx:[], pots:[]});
 function migrate(){
   const st = S.settings, had = S.tx.length || S.bills.length || st.income;
   for (const k in DEFAULT_SETTINGS) if (st[k]===undefined) st[k] = k==='dismissed' ? {} : DEFAULT_SETTINGS[k];
@@ -477,6 +529,16 @@ function migrate(){
   if (st.setupDone===false && had) st.setupDone = true;
   if (!st._v2){ st._v2 = true; if (S.tx.some(t => t.biz) || S.bills.some(b => b.biz)) st.sideIncome = true; }
   S.bills.forEach(b => { if (!b.type) b.type = 'bill'; });
+  if (!S.pots) S.pots = [];
+  if (!st._v4){
+    st._v4 = true;
+    // Side income with business mode off is just extra income
+    S.tx.forEach(t => { if (t.kind==='in' && t.cat==='side' && !t.biz) t.cat = 'extra'; });
+    // Most bills are Direct Debits: tick them off from today onwards
+    if (S.bills.length) st.ddNotice = true;
+    S.bills.forEach(b => { if (b.dd===undefined){ b.dd = true; b.ddFrom = today(); } });
+  }
+  refreshCats();
 }
 var S = load();
 if (!S || S.v!==1) S = blank();
@@ -484,7 +546,8 @@ migrate();
 
 /* ---------- Money maths ---------- */
 const txIn = c => S.tx.filter(t => t.date>=c.start && t.date<=c.end);
-function flexNet(list){ let s=0; for (const t of list){ if (t.biz) continue; if (t.kind==='out' && !t.billId) s+=t.amt; else if (t.kind==='in' && t.cat==='refund') s-=t.amt; } return s; }
+function flexNet(list){ let s=0; for (const t of list){ if (t.biz || t.potId) continue; if (t.kind==='out' && !t.billId) s+=t.amt; else if (t.kind==='in' && t.cat==='refund') s-=t.amt; } return s; }
+const extraIn = list => sum(list.filter(addsIn));
 const fixedTotal = () => sum(S.bills);
 const billsOfType = ty => S.bills.filter(b => (b.type||'bill')===ty);
 const curCycle = () => cycleOf(today());
@@ -493,8 +556,9 @@ const periodWord = () => PERIOD[S.settings.payFreq||'monthly'];
 // Monthly bills are shared across non-monthly paydays
 const billShare = c => isMonthly() ? 1 : c.days*12/365;
 const fixedFor = c => Math.round(fixedTotal()*billShare(c));
-function billWindow(){
-  const t = today(); if (isMonthly()) return cycleOf(t);
+const billWindow = () => billWindowAt(today());
+function billWindowAt(t){
+  if (isMonthly()) return cycleOf(t);
   const d = parse(t), y = d.getFullYear(), m = d.getMonth();
   return {start:ymd(new Date(y,m,1,12)), end:ymd(new Date(y,m,dim(y,m),12)), days:dim(y,m)};
 }
@@ -502,7 +566,20 @@ function billWindow(){
 function incomeFor(c){ const got = sum(txIn(c).filter(t => t.kind==='in' && t.cat==='salary' && !t.biz)); return got>0 ? got : S.settings.income; }
 // First cycle after setup mid-way: budget from the balance the person had on the day
 const openingFor = c => { const o = S.settings.opening; return o && o.start===c.start ? o : null; };
-const pot = (c = curCycle()) => { const o = openingFor(c); return o ? o.pot : incomeFor(c) - fixedFor(c) - S.settings.savings; };
+// Pots are set aside on payday, like savings
+const potsAside = c => sum(S.pots.filter(p => p.start <= c.start && (!p.end || c.start < p.end)), p => p.perPay);
+const openPots = () => S.pots.filter(p => !p.closed);
+function cyclesSince(start){
+  const cur = curCycle().start; let n = 0, s = start;
+  while (s <= cur && n < 600){ n++; s = ymd(addDays(parse(cycleOf(s).end),1)); }
+  return n;
+}
+function potBalance(p){
+  const last = p.end ? ymd(addDays(parse(p.end),-1)) : null;
+  const n = last ? Math.min(cyclesSince(p.start), cyclesSince(p.start) - cyclesSince(p.end) ) : cyclesSince(p.start);
+  return (p.opening||0) + p.perPay*n + sum(S.tx.filter(t => t.potIn===p.id)) - sum(S.tx.filter(t => t.potId===p.id && t.kind==='out')) - sum(S.tx.filter(t => t.potOut===p.id));
+}
+const pot = (c = curCycle()) => { const o = openingFor(c); return (o ? o.pot : incomeFor(c) - fixedFor(c) - S.settings.savings) + extraIn(txIn(c)) - potsAside(c); };
 const savingsFor = c => openingFor(c) ? 0 : S.settings.savings;
 const planDays = c => { const o = openingFor(c); return o ? diffDays(o.date, c.end)+1 : c.days; };
 function safeInfo(){
@@ -518,7 +595,7 @@ function median(a){ if (!a.length) return 0; const s = [...a].sort((x,y) => x-y)
 function catTotals(list){
   const o = {};
   for (const t of list){
-    if (t.biz) continue;
+    if (t.biz || t.potId || t.potIn) continue;
     if (t.kind==='out' && !t.billId) o[t.cat] = (o[t.cat]||0)+t.amt;
     else if (t.kind==='in' && t.cat==='refund'){ const k = t.refundCat||'other'; o[k] = (o[k]||0)-t.amt; }
   }
@@ -526,11 +603,11 @@ function catTotals(list){
 }
 function memory(){
   const m = new Map();
-  const sorted = S.tx.filter(t => t.merchant && !t.billId).sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time));
+  const sorted = S.tx.filter(t => t.merchant && !t.billId && !t.potIn).sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time));
   for (const t of sorted){
     const k = t.kind+':'+t.merchant.trim().toLowerCase();
     const e = m.get(k) || {n:0};
-    Object.assign(e,{name:t.merchant.trim(),kind:t.kind,cat:t.cat,sub:t.sub,biz:!!t.biz,refundCat:t.refundCat});
+    Object.assign(e,{name:t.merchant.trim(),kind:t.kind,cat:t.cat,sub:t.sub,biz:!!t.biz,refundCat:t.refundCat,debtId:t.debtId});
     e.n++; m.set(k,e);
   }
   return m;
@@ -538,28 +615,42 @@ function memory(){
 function suggestCat(){
   const d = new Date(), mins = d.getHours()*60+d.getMinutes(), count = {};
   for (const t of S.tx){
-    if (t.kind!=='out' || t.billId) continue;
+    if (t.kind!=='out' || t.billId || t.potIn || !CATS[t.cat] || !OUT_CATS.includes(t.cat)) continue;
     const [h,mm] = t.time.split(':').map(Number);
     if (Math.abs(h*60+mm-mins) <= 90) count[t.cat] = (count[t.cat]||0)+1;
   }
-  let best = 'food', bn = 2;
+  let best = OUT_CATS.includes('food') ? 'food' : OUT_CATS[0], bn = 2;
   for (const k in count) if (count[k] > bn){ best = k; bn = count[k]; }
   return best;
+}
+
+const normName = s => String(s||'').toLowerCase().replace(/\b(bill|payment|repayment|monthly)\b/g,'').replace(/[^a-z0-9]/g,'');
+function matchDebt(name){
+  const q = normName(name); if (q.length < 4) return null;
+  return billsOfType('debt').find(b => { const n = normName(b.name); return n===q || (q.length>=6 && n.includes(q)) || (n.length>=6 && q.includes(n)); }) || null;
+}
+function borrowSuggestions(){
+  const d = S.settings.dismissed || {};
+  return S.tx.filter(t => t.kind==='in' && !['borrowed','salary','refund','side'].includes(t.cat) && !t.biz && !d['tx:'+t.id] && matchDebt(t.merchant)).slice(-3);
+}
+function borrowBanner(){
+  return borrowSuggestions().map(t => { const b = matchDebt(t.merchant); return `<div class="banner">${ic('credit')}<div><p><b>${esc(t.merchant)}</b> +${fmt(t.amt)} on ${dfmt(t.date)} looks like borrowing from ${esc(b.name)}, not income.</p><div class="bbtns"><button data-act="mark-borrow" data-id="${t.id}">Mark as borrowed</button><button data-act="not-borrow" data-id="${t.id}">It's income</button></div></div></div>`; }).join('');
 }
 
 /* ---------- State ---------- */
 const screen = $('#screen');
 let tab = 'log', actFilter = 'all', actQuery = '';
-const newDraft = (mode='out') => ({mode,amt:'',merchant:'',cat:null,catAuto:false,sub:null,biz:false,dateMode:'today',date:today(),note:'',showNote:false,refundCat:'shopping'});
+const newDraft = (mode='out') => ({mode,amt:'',merchant:'',cat:null,catAuto:false,sub:null,biz:false,dateMode:'today',date:today(),note:'',showNote:false,refundCat:'shopping',debtId:'',potId:'',showPots:false});
 let draft = newDraft();
 const pennies = () => Math.round(parseFloat(draft.amt||'0')*100) || 0;
 
 /* ---------- Render: shell ---------- */
-const TABS = {log:['plusc','Log'], activity:['list','Activity'], bills:['calendar','Bills'], insights:['pie','Insights']};
+const TABS = {log:['plusc','Log'], activity:['list','Activity'], bills:['calendar','Bills'], pots:['piggy','Pots'], insights:['pie','Insights']};
 document.querySelectorAll('.tab').forEach(b => { const [i,n] = TABS[b.dataset.v]; b.innerHTML = ic(i)+n; });
 function render(){
+  refreshCats(); autoPay();
   document.querySelectorAll('.tab').forEach(b => { b.classList.toggle('on', b.dataset.v===tab); b.setAttribute('aria-current', b.dataset.v===tab ? 'page' : 'false'); });
-  ({log:renderLog, activity:renderActivity, bills:renderBills, insights:renderInsights})[tab]();
+  ({log:renderLog, activity:renderActivity, bills:renderBills, pots:renderPots, insights:renderInsights})[tab]();
 }
 
 /* ---------- Log ---------- */
@@ -592,7 +683,15 @@ function updateLog(){
   const spread = pd => pd===null ? 'Last day of the cycle' : pd<0 ? 'Cycle budget used up' : fmtS(pd)+'/day from tomorrow';
   let after;
   if (p>0){
-    if (d.mode==='in') after = d.cat==='refund' ? `<span class="after good">Adds ${fmtS(p)} back</span>` : `<span class="after">Money in. Budget unchanged</span>`;
+    if (d.mode==='in'){
+      const fx = (IN_CATS[d.cat]||{}).fx, newDay = si.allowance + Math.round(p/si.daysLeft);
+      const gotPay = sum(txIn(si.c).filter(t => t.kind==='in' && t.cat==='salary' && !t.biz))>0;
+      after = fx==='add' ? `<span class="after ${d.cat==='borrowed'?'':'good'}">${fmtS(newDay)} daily budget</span>`
+        : fx==='refund' ? `<span class="after good">Adds ${fmtS(p)} back</span>`
+        : fx==='pay' ? `<span class="after">${gotPay ? 'Adds to this cycle\'s pay' : 'Replaces expected '+fmtS(S.settings.income)}</span>`
+        : fx==='biz' ? `<span class="after">Business. Kept separate</span>` : `<span class="after">Budget unchanged</span>`;
+    }
+    else if (d.potId){ const pt = S.pots.find(x => x.id===d.potId), left = pt ? potBalance(pt)-p : 0; after = `<span class="after ${left<0?'bad':''}">${pt?esc(pt.name):'Pot'}: ${fmtS(left)} left</span>`; }
     else if (d.biz) after = `<span class="after">Business. Kept out of your budget</span>`;
     else { const a = si.safe-p; after = a>=0 ? `<span class="after">${fmtS(a)} left today after this</span>` : `<span class="after bad">${spread(perDay(p))}</span>`; }
   } else if (si.safe<0) after = `<span class="after ${si.tomorrow!==null && si.tomorrow<0 ? 'bad' : ''}">${spread(si.tomorrow)}</span>`;
@@ -610,15 +709,22 @@ function updateLog(){
   const exact = q && mem.get(d.mode+':'+q);
   let chips = list.slice(0,8).map(e => {
     const c = d.mode==='in' ? (IN_CATS[e.cat]||IN_CATS.transfer) : (CATS[e.cat]||CATS.other);
-    return `<button class="chip ${exact && exact.name===e.name ? 'on' : ''}" data-act="pick" data-k="${esc(e.name)}"><span class="dot" style="--c:${c.c}"></span>${esc(e.name)}<span class="s">${esc(e.sub||c.n)}</span></button>`;
+    const sub = d.mode==='in' ? (IN_LONG[e.cat]||c.n) : (e.sub||c.n);
+    return `<button class="chip ${exact && exact.name===e.name ? 'on' : ''}" data-act="pick" data-k="${esc(e.name)}"><span class="dot" style="--c:${c.c}"></span>${esc(e.name)}<span class="s">${esc(sub)}</span></button>`;
   }).join('');
   if (q && !exact) chips = `<span class="chip ghost">New place. It'll be remembered</span>` + chips;
   $('#sugg').innerHTML = chips;
 
-  const keys = d.mode==='out' ? OUT_CATS : Object.keys(IN_CATS), src = d.mode==='out' ? CATS : IN_CATS;
-  $('#cats').innerHTML = keys.map(k => `<button class="cat ${k===d.cat?'on':''}" data-act="cat" data-v="${k}" style="--c:${src[k].c}" aria-pressed="${k===d.cat}"><span class="ic">${ic(src[k].i)}</span><span class="lbl">${k==='bills'&&d.mode==='out'?'One-off bill':src[k].n}</span>${k===d.cat && d.catAuto ? '<span class="auto" title="Suggested for this time of day"></span>' : ''}</button>`).join('');
+  let keys = d.mode==='out' ? OUT_CATS : inKeys(), src = d.mode==='out' ? CATS : IN_CATS, more = '';
+  if (d.mode==='out' && keys.length > 10){
+    keys = keys.slice(0,9); if (!keys.includes(d.cat) && CATS[d.cat]) keys[8] = d.cat;
+    more = `<button class="cat" data-act="morecats" style="--c:#A0A7B4"><span class="ic">${ic('more')}</span><span class="lbl">More</span></button>`;
+  }
+  $('#cats').innerHTML = more ? keys.map(k => catBtn(k, src, d)).join('') + more : keys.map(k => catBtn(k, src, d)).join('');
 
   let ex = '';
+  if (d.mode==='in' && d.cat==='borrowed' && billsOfType('debt').length) ex += `<label class="inline">Add to a debt<select id="dl"><option value="">No, just borrowed</option>${billsOfType('debt').map(b => `<option value="${b.id}" ${b.id===d.debtId?'selected':''}>${esc(b.name)}</option>`).join('')}</select></label>`;
+  if (d.mode==='out' && d.showPots){ const ps = openPots(); ex += `<div class="chips potsel"><button class="chip ${!d.potId?'on':''}" data-act="potsel" data-v="">Daily budget</button>${ps.map(pt => `<button class="chip ${d.potId===pt.id?'on':''}" data-act="potsel" data-v="${pt.id}"><span class="dot" style="--c:#3DD6B0"></span>${esc(pt.name)}<span class="s">${fmtS(potBalance(pt))}</span></button>`).join('')}</div>`; }
   if (d.mode==='in' && d.cat==='refund') ex += `<label class="inline">Refund for<select id="rc">${OUT_CATS.map(k => `<option value="${k}" ${k===d.refundCat?'selected':''}>${CATS[k].n}</option>`).join('')}</select></label>`;
   if (d.showNote) ex += `<input id="note-in" class="note" placeholder="Note, e.g. split with Sam" value="${esc(d.note)}" aria-label="Note">`;
   $('#extra').innerHTML = ex; $('#extra').hidden = !ex;
@@ -629,13 +735,18 @@ function updateLog(){
     <button class="pill ${d.dateMode==='yesterday'?'on':''}" data-act="date" data-v="yesterday">Yesterday</button>
     <label class="pill ${d.dateMode==='pick'?'on':''}" aria-label="Pick a date">${ic('calendar')}${pickLabel}<input type="date" id="d-in" value="${d.date}" max="${today()}"></label>
     <span class="sp"></span>
+    ${d.mode==='out' && openPots().length ? `<button class="pill ${d.potId?'on':''}" data-act="pots" aria-label="Pay from a pot">${ic('piggy')}${d.potId ? esc((S.pots.find(x => x.id===d.potId)||{}).name||'') : ''}</button>` : ''}
     <button class="pill ${d.showNote||d.note?'on':''}" data-act="note" aria-label="Add note">${ic('note')}</button>
     ${d.mode==='out' && bizOn() ? `<button class="pill biz ${d.biz?'on':''}" data-act="biz" aria-pressed="${d.biz}">${ic('briefcase')}Business</button>` : ''}`;
 
   const sv = $('#save'); sv.disabled = p<=0; sv.textContent = p>0 ? `Save ${fmt(p)}` : 'Save';
 }
+function catBtn(k, src, d){
+  return `<button class="cat ${k===d.cat?'on':''}" data-act="cat" data-v="${k}" style="--c:${src[k].c}" aria-pressed="${k===d.cat}"><span class="ic">${ic(src[k].i)}</span><span class="lbl">${k==='bills'&&d.mode==='out'?'One-off bill':esc(src[k].n)}</span>${k===d.cat && d.catAuto ? '<span class="auto" title="Suggested for this time of day"></span>' : ''}</button>`;
+}
 function applyMem(m){
   draft.cat = m.cat; draft.sub = m.sub; draft.catAuto = false;
+  if (draft.mode==='in' && m.debtId) draft.debtId = m.debtId;
   if (draft.mode==='out') draft.biz = bizOn() && !!m.biz;
   if (m.refundCat) draft.refundCat = m.refundCat;
 }
@@ -657,6 +768,8 @@ function doSave(){
   const d = draft;
   const t = {id:uid(), kind:d.mode, amt:p, cat:d.cat, sub:d.sub||null, merchant:d.merchant.trim(), note:d.note.trim(), date:d.date, time:d.date===today()?nowHM():'12:00', biz:bizOn() && (d.mode==='out' ? d.biz : d.cat==='side'), billId:null};
   if (t.kind==='in' && t.cat==='refund') t.refundCat = d.refundCat;
+  if (t.kind==='in' && t.cat==='borrowed' && d.debtId) t.debtId = d.debtId;
+  if (t.kind==='out' && d.potId && !t.biz) t.potId = d.potId;
   S.tx.push(t); persist(); buzz();
   draft = newDraft(d.mode);
   render();
@@ -671,6 +784,7 @@ function renderActivity(){
     <header class="hd"><h1>Activity</h1></header>
     <label class="field">${ic('search')}<input id="q" placeholder="Search places, notes, categories" value="${esc(actQuery)}" aria-label="Search"></label>
     <div class="chips filters">${F.map(([k,n]) => `<button class="chip ${actFilter===k?'on':''}" data-act="filter" data-v="${k}">${n}</button>`).join('')}</div>
+    ${borrowBanner() ? `<div class="stack" style="margin-top:12px">${borrowBanner()}</div>` : ''}
     <div id="act-list"></div>`;
   renderActList();
 }
@@ -690,7 +804,13 @@ function renderActList(){
 }
 function rowHtml(t){
   const c = catOf(t);
-  const first = t.kind==='in' && t.cat==='refund' ? 'Refund · '+(CATS[t.refundCat]||CATS.other).n : (t.sub || c.n);
+  const bill = t.billId ? S.bills.find(b => b.id===t.billId) : null, pt = (t.potId||t.potIn) ? S.pots.find(x => x.id===(t.potId||t.potIn)) : null;
+  const debt = t.debtId ? S.bills.find(b => b.id===t.debtId) : null;
+  const first = t.billId ? (bill ? BILL_TYPES[bill.type||'bill'] : 'Bill')+(t.auto ? ' · Direct Debit' : '')
+    : t.potIn ? 'Moved to pot'
+    : t.kind==='in' && t.cat==='refund' ? 'Refund · '+(CATS[t.refundCat]||CATS.other).n
+    : t.kind==='in' ? (IN_LONG[t.cat]||c.n)+(debt ? ' · '+debt.name : '')
+    : (t.sub || c.n)+(t.potId && pt ? ' · from '+pt.name : '');
   const line = [first, t.time, t.note].filter(Boolean).map(esc).join(' · ');
   return `<button class="row" data-act="edit" data-id="${t.id}"><span class="ic" style="--c:${c.c}">${ic(c.i)}</span><span class="mid"><span class="t"><span class="nm">${esc(t.merchant||c.n)}</span>${t.biz?'<span class="tag">Business</span>':''}${t.billId?'<span class="tag bill">Bill</span>':''}</span><span class="s">${line}</span></span><span class="amt ${t.kind==='in'?'in':''}">${t.kind==='in'?'+':''}${fmt(t.amt)}</span></button>`;
 }
@@ -713,7 +833,8 @@ const paidIn = (b,c) => S.tx.find(x => x.billId===b.id && x.date>=c.start && x.d
 function debtLeft(b){
   if (!b.balance) return null;
   const at = b.balanceAt || '';
-  return Math.max(0, b.balance - sum(S.tx.filter(t => t.billId===b.id && (t.date+' '+t.time) > at)));
+  const after = t => (t.date+' '+t.time) > at;
+  return Math.max(0, b.balance - sum(S.tx.filter(t => t.billId===b.id && after(t))) + sum(S.tx.filter(t => t.kind==='in' && t.cat==='borrowed' && t.debtId===b.id && after(t))));
 }
 function debtFree(b, c){
   const left = debtLeft(b); if (left===null) return null;
@@ -725,12 +846,12 @@ function debtFree(b, c){
 function billRow({b,due,p}, t){
   const dd = parse(due), n = diffDays(t,due);
   let sline, scls = '', btn;
-  if (p){ sline = p.pre ? 'Paid before you started' : `Paid ${dfmt(p.date)}`; btn = `<button class="status paid" data-act="bill-unpay" data-v="${b.id}" aria-label="Paid. Tap to undo">${ic('check')}Paid</button>`; }
+  if (p){ sline = p.pre ? 'Paid before you started' : `Paid ${dfmt(p.date)}${p.auto ? ' · Direct Debit' : ''}`; btn = `<button class="status paid" data-act="bill-unpay" data-v="${b.id}" aria-label="Paid. Tap to undo">${ic('check')}Paid</button>`; }
   else {
     const k = n<0 ? 'over' : n<=3 ? 'soon' : 'due';
     sline = n<0 ? `Overdue by ${-n} day${n===-1?'':'s'}` : n===0 ? 'Due today' : n===1 ? 'Due tomorrow' : `Due in ${n} days`;
     scls = k==='due' ? '' : k;
-    btn = `<button class="status ${k}" data-act="bill-pay" data-v="${b.id}">Mark paid</button>`;
+    btn = b.dd && n>0 ? `<span class="status auto">Auto-pays</span>` : `<button class="status ${k}" data-act="bill-pay" data-v="${b.id}">Mark paid</button>`;
   }
   const kind = b.type==='sub' ? 'Subscription · ' : b.type==='debt' ? 'Debt · ' : '';
   return `<div class="brow ${p?'paid':''}"><div class="dbox"><b>${dd.getDate()}</b><span>${dd.toLocaleDateString('en-GB',{month:'short'})}</span></div>
@@ -768,6 +889,7 @@ function renderBills(){
         <div class="bar" style="margin-top:12px"><i style="width:${total?paid/total*100:0}%;--c:var(--good)"></i></div>
         <div class="x">${fmtS(paid)} of ${fmtS(total)} paid. ${monthly ? 'Bills are set aside on payday, so they never eat into your daily budget.' : `Kitty sets aside ${fmtS(fixedFor(pc))} from each pay to cover these, so they never eat into your daily budget.`}</div>
       </div>
+      ${S.settings.ddNotice ? `<div class="banner">${ic('info')}<div><p>Bills now tick themselves off on their due date, because most are paid by Direct Debit. Tap a bill to switch this off if you pay it by hand.</p><button data-act="dd-ok">Got it</button></div></div>` : ''}
       ${suggCard}
       ${items.length ? '' : `<div class="empty">No bills yet. Add rent, council tax and subscriptions so your daily budget is honest.<br><button class="btn primary sm" data-act="bill-add">${ic('plus')}Add a bill</button></div>`}
       ${sect('Due now', dueNow, dueNow.length>1 ? `<button class="glink" data-act="pay-due">Mark all ${dueNow.length} paid</button>` : '')}
@@ -778,6 +900,20 @@ function renderBills(){
     </div>`;
 }
 function syncBiz(b){ S.tx.forEach(t => { if (t.billId===b.id) t.biz = !!b.biz; }); }
+function autoPay(){
+  const t = today(), skip = S.settings.ddSkip || {}, w = billWindow();
+  const wins = [w, billWindowAt(ymd(addDays(parse(w.start),-1)))];
+  let n = 0;
+  for (const b of S.bills){
+    if (!b.dd) continue;
+    for (const win of wins){
+      const due = billDue(b, win);
+      if (due > t || due < (b.ddFrom||'') || skip[b.id+':'+win.start] || paidIn(b, win)) continue;
+      S.tx.push({...payTx(b), date:due, time:'06:00', auto:true}); n++;
+    }
+  }
+  if (n) persist();
+}
 function payTx(b){ return {id:uid(), kind:'out', amt:b.amt, cat:'bills', sub:b.sub||b.name, merchant:b.name, note:'', date:today(), time:nowHM(), biz:!!b.biz, billId:b.id}; }
 function payBill(id){
   const b = S.bills.find(x => x.id===id); if (!b) return;
@@ -795,8 +931,9 @@ function payDue(){
 function unpayBill(id){
   const c = billWindow();
   const gone = S.tx.filter(x => x.billId===id && x.date>=c.start && x.date<=c.end), pre = S.settings.prepaid || {}, had = pre[id];
-  S.tx = S.tx.filter(x => !gone.includes(x)); if (had===c.start) delete pre[id]; persist(); render();
-  toast('Marked unpaid', () => { S.tx.push(...gone); if (had===c.start) pre[id] = had; persist(); render(); });
+  const skip = S.settings.ddSkip || (S.settings.ddSkip = {}), key = id+':'+c.start;
+  S.tx = S.tx.filter(x => !gone.includes(x)); if (had===c.start) delete pre[id]; skip[key] = true; persist(); render();
+  toast('Marked unpaid', () => { S.tx.push(...gone); if (had===c.start) pre[id] = had; delete skip[key]; persist(); render(); });
 }
 function reviewSheet(){
   const sg = billSuggestions(); if (!sg.length) return;
@@ -813,6 +950,79 @@ function reviewSheet(){
       S.settings.dismissed[x.b.id+':'+x.to] = true;
     });
     persist(); closeSheet(); render(); toast(n ? `Updated ${n} bill${n===1?'':'s'}` : 'Left as they were');
+  });
+}
+
+/* ---------- Pots ---------- */
+const POT_IDEAS = ['Christmas','Holiday','Car repairs','Birthdays','Baby','Emergency fund'];
+function renderPots(){
+  const ps = openPots(), aside = sum(ps, p => p.perPay), pw = isMonthly() ? 'payday' : 'payday';
+  const cards = ps.map(p => {
+    const bal = potBalance(p), tg = p.target||0, pct = tg ? Math.max(0,Math.min(1,bal/tg)) : 0;
+    const togo = tg - bal, n = p.perPay>0 && togo>0 ? Math.ceil(togo/p.perPay) : 0;
+    const line = bal<0 ? `<span class="s over">Overdrawn. Your next ${p.perPay ? fmtS(p.perPay)+' ' : ''}top-up goes towards it</span>`
+      : tg && togo<=0 ? '<span class="s good">Target reached</span>'
+      : tg ? `<span class="s">${fmtS(togo)} to go${n ? `, about ${n} payday${n===1?'':'s'}` : ''}</span>` : '';
+    return `<div class="card potcard">
+      <div class="h2">${esc(p.name)}<small>${p.perPay ? fmtS(p.perPay)+' each payday' : 'No regular top-up'}</small></div>
+      <div class="hv ${bal<0?'bad':''}">${fmtS(bal)}${tg ? `<small class="of"> of ${fmtS(tg)}</small>` : ''}</div>
+      ${tg ? `<div class="bar" style="margin-top:10px"><i style="width:${pct*100}%;--c:#3DD6B0"></i></div>` : ''}
+      ${line}
+      <div class="btns" style="margin-top:12px"><button class="btn" data-act="pot-topup" data-v="${p.id}">${ic('plus')}Add money</button><button class="btn" data-act="pot-edit" data-v="${p.id}">Edit</button></div>
+    </div>`;
+  }).join('');
+  screen.innerHTML = `
+    <header class="hd"><div><h1>Pots</h1><div class="sub">Money put aside for things you know are coming</div></div><button class="iconbtn" data-act="pot-new" aria-label="New pot">${ic('plus')}</button></header>
+    <div class="stack">
+      ${ps.length ? `<div class="card"><span class="k">Set aside each ${pw}</span><div class="hv">${fmtS(aside)}</div><div class="x">Taken out on payday like a bill, so spending from a pot never touches your daily budget. When you log a spend, tap ${ic('piggy').replace('class="i"','class="i inl"')} to pay from a pot.</div></div>${cards}`
+      : `<div class="card"><div class="h2">Plan for the big stuff</div><p class="hint" style="font-size:14px;color:var(--fg)">A pot puts a little aside every payday for something you know is coming. When it arrives, you pay from the pot and your daily budget stays as it was.</p>
+         <div class="chips" style="margin:12px 0 0;padding:0">${POT_IDEAS.map(n => `<button class="chip" data-act="pot-new" data-v="${n}">${n}</button>`).join('')}</div>
+         <button class="btn primary wide" style="margin-top:14px" data-act="pot-new">${ic('plus')}New pot</button></div>`}
+    </div>`;
+}
+function potSheet(id, preset){
+  const p = id ? S.pots.find(x => x.id===id) : null, bal = p ? potBalance(p) : 0;
+  openSheet(`<h2>${p ? 'Edit pot' : 'New pot'}</h2>
+    <div class="form">
+      <label>Name<input id="p-n" maxlength="24" value="${esc(p ? p.name : preset||'')}" placeholder="e.g. Christmas"></label>
+      <div class="two"><label>Each payday<input id="p-pp" inputmode="decimal" value="${p ? (p.perPay/100).toFixed(p.perPay%100?2:0) : ''}" placeholder="0"></label>
+      <label>Target (optional)<input id="p-t" inputmode="decimal" value="${p && p.target ? (p.target/100).toFixed(0) : ''}" placeholder="None"></label></div>
+      <label>${p ? 'Balance now' : 'Already saved (optional)'}<input id="p-b" inputmode="decimal" value="${p ? (bal/100).toFixed(2) : ''}" placeholder="0"></label>
+      <p class="hint">${p ? 'Changing the balance corrects it without touching your daily budget.' : `The first ${'top-up'} comes out of this ${isMonthly() ? 'cycle' : periodWord()}'s money, so your daily budget drops a little today.`}</p>
+      <div class="btns">${p ? '<button class="btn danger" id="p-del">Close pot</button>' : ''}<button class="btn primary" id="p-save">${p ? 'Save' : 'Create pot'}</button></div>
+    </div>`);
+  if (p) armButton($('#p-del'), bal>0 ? `Tap again: ${fmtS(bal)} goes back to spending` : 'Tap again to close', () => {
+    const c = curCycle(), b = potBalance(p);
+    p.closed = today(); p.end = ymd(addDays(parse(c.end),1));
+    if (b>0) S.tx.push({id:uid(), kind:'in', amt:b, cat:'savings', sub:'Pot closed', merchant:p.name, note:'', date:today(), time:nowHM(), biz:false, billId:null, potOut:p.id});
+    persist(); closeSheet(); render(); toast(`${p.name} closed`);
+  });
+  $('#p-save').addEventListener('click', () => {
+    const name = $('#p-n').value.trim(), per = num($('#p-pp').value||'0'), tgv = $('#p-t').value.trim(), tg = tgv ? num(tgv) : 0, bv = $('#p-b').value.trim(), b = bv ? num(bv) : 0;
+    if (!name){ $('#p-n').classList.add('err'); $('#p-n').focus(); return; }
+    if (per===null){ $('#p-pp').classList.add('err'); return; }
+    if (tg===null){ $('#p-t').classList.add('err'); return; }
+    if (b===null){ $('#p-b').classList.add('err'); return; }
+    if (p){ Object.assign(p, {name, perPay:per, target:tg||0}); p.opening = (p.opening||0) + (b - potBalance(p)); }
+    else S.pots.push({id:'p'+uid(), name, perPay:per, target:tg||0, opening:b, start:curCycle().start});
+    persist(); closeSheet(); render(); toast(p ? 'Pot updated' : `${name} pot created`);
+  });
+}
+function topUpSheet(id){
+  const p = S.pots.find(x => x.id===id); if (!p) return;
+  const si = safeInfo();
+  openSheet(`<h2>Add to ${esc(p.name)}</h2>
+    <div class="form">
+      <label>Amount<input id="tu-a" inputmode="decimal" placeholder="0"></label>
+      <p class="hint">Comes out of today's spending money. You have ${fmtS(Math.max(0,si.safe))} safe to spend today.</p>
+      <div class="btns"><button class="btn" data-act="close">Cancel</button><button class="btn primary" id="tu-go">Add money</button></div>
+    </div>`);
+  $('#tu-a').focus();
+  $('#tu-go').addEventListener('click', () => {
+    const a = num($('#tu-a').value); if (!a){ $('#tu-a').classList.add('err'); return; }
+    const t = {id:uid(), kind:'out', amt:a, cat:'other', sub:'Moved to pot', merchant:p.name, note:'', date:today(), time:nowHM(), biz:false, billId:null, potIn:p.id};
+    S.tx.push(t); persist(); closeSheet(); render();
+    toast(`${fmt(a)} added to ${p.name}`, () => { S.tx = S.tx.filter(x => x.id!==t.id); persist(); render(); });
   });
 }
 
@@ -838,21 +1048,23 @@ function dailyChart(c){
 }
 function payCard(c, P){
   const first = !!openingFor(c), inc = first ? S.settings.income : incomeFor(c), tgt = S.settings.savings, sh = billShare(c);
-  if (first) P = inc - fixedFor(c) - tgt;
+  const extra = first ? 0 : extraIn(txIn(c)), borrowed = first ? 0 : sum(txIn(c).filter(t => addsIn(t) && t.cat==='borrowed')), whole = inc + extra;
+  if (first) P = inc - fixedFor(c) - tgt - potsAside(c);
   const parts = [
     ['Bills', Math.round(sum(billsOfType('bill'))*sh), '#A78BFA'],
     ['Debt repayments', Math.round(sum(billsOfType('debt'))*sh), 'var(--bad)'],
     ['Subscriptions', Math.round(sum(billsOfType('sub'))*sh), '#4FC3F7'],
-    ['Savings target', tgt, 'var(--gold)']
+    ['Savings target', tgt, 'var(--gold)'],
+    ['Pots', potsAside(c), '#3DD6B0']
   ].filter(x => x[1]>0);
-  const free = Math.max(0,P), pct = v => inc ? Math.round(v/inc*100)+'%' : '';
+  const free = Math.max(0,P), pct = v => whole ? Math.round(v/whole*100)+'%' : '';
   const bar = [...parts, ['Left to spend', free, 'var(--good)']].filter(x => x[1]>0).map(([n,v,col]) => `<i style="flex:${v};--c:${col}" title="${n}"></i>`).join('');
   const rows = parts.map(([n,v,col]) => `<div class="prow"><span class="dot" style="--c:${col}"></span><span class="nm">${n}</span><span class="vv">${fmtS(v)}</span><span class="pc">${pct(v)}</span></div>`).join('');
   const total = P>=0
     ? `<div class="prow total"><span class="dot" style="--c:var(--good)"></span><span class="nm">Left to spend</span><span class="vv">${fmtS(P)}</span><span class="pc">${pct(P)}</span></div>`
     : `<div class="prow total short"><span class="dot" style="--c:var(--bad)"></span><span class="nm">Short by</span><span class="vv">${fmtS(-P)}</span><span class="pc"></span></div>`;
-  return `<div class="card"><div class="h2">Where your pay goes<small>${first ? 'from your next payday' : `${fmtS(inc)} this ${isMonthly() ? 'cycle' : periodWord()}`}</small></div><div class="paybar">${bar}</div>${rows}${total}
-    <div class="x">${P>=0 ? `That's ${fmtS(P/c.days)} a day for food, travel and everything else.${isMonthly() ? '' : ' Monthly bills are shared across your paydays.'}` : `Your fixed costs and savings target are more than your pay this cycle.`}</div></div>`;
+  return `<div class="card"><div class="h2">Where your pay goes<small>${first ? 'from your next payday' : `${fmtS(whole)} in this ${isMonthly() ? 'cycle' : periodWord()}`}</small></div><div class="paybar">${bar}</div>${rows}${total}
+    <div class="x">${P>=0 ? `That's ${fmtS(P/c.days)} a day for food, travel and everything else.${isMonthly() ? '' : ' Monthly bills are shared across your paydays.'}${borrowed ? ` Includes ${fmtS(borrowed)} borrowed.` : ''}` : `Your fixed costs and savings target are more than your pay this cycle.`}</div></div>`;
 }
 function planCard(si, L){
   const c = si.c, tgt = savingsFor(c), flex = flexNet(L), o = openingFor(c);
@@ -878,7 +1090,9 @@ function renderInsights(){
   const hasPrev = txIn(pc).length>0;
   const pcCut = ymd(addDays(parse(pc.start),si.dayN-1));
   const PL = txIn(pc).filter(t => t.date<=pcCut);
-  const received = sum(L.filter(t => t.kind==='in' && t.cat!=='refund' && !t.biz));
+  const payIn = sum(L.filter(t => t.kind==='in' && t.cat==='salary' && !t.biz)), borrowedIn = sum(L.filter(t => addsIn(t) && t.cat==='borrowed')), otherIn = extraIn(L) - borrowedIn;
+  const received = payIn + borrowedIn + otherIn;
+  const inParts = [payIn ? fmtS(payIn)+' pay' : 'expected '+fmtS(S.settings.income), borrowedIn ? fmtS(borrowedIn)+' borrowed' : '', otherIn ? fmtS(otherIn)+' other' : ''].filter(Boolean).join(' · ');
   const fixed = fixedFor(c), paid = sum(L.filter(t => t.billId)), flex = flexNet(L);
   const cur = catTotals(L), prv = catTotals(PL);
   const keys = OUT_CATS.filter(k => (cur[k]||0)>0 || (hasPrev && (prv[k]||0)>0)).sort((a,b) => (cur[b]||0)-(cur[a]||0));
@@ -901,10 +1115,11 @@ function renderInsights(){
     <header class="hd"><div><h1>Insights</h1><div class="sub">${dfmt(c.start)} to ${dfmt(c.end)} · day ${si.dayN} of ${c.days}</div></div><button class="iconbtn" data-act="settings" aria-label="Settings">${ic('sliders')}</button></header>
     <div class="stack">
       ${hasEx ? `<div class="banner">${ic('info')}<div><p>You're looking at example data. When you're ready, set Kitty up with your own pay and bills.</p><button data-act="setup">Start with my own numbers</button></div></div>` : ''}
+      ${borrowBanner()}
       ${planCard(si, L)}
       ${payCard(c, P)}
       <div class="tiles">
-        <div class="tile"><span class="k">Money in</span><div class="v">${fmtS(received)}</div><div class="x">expected ${fmtS(S.settings.income)}</div></div>
+        <div class="tile"><span class="k">Money in</span><div class="v">${fmtS(received)}</div><div class="x">${inParts}</div></div>
         <div class="tile"><span class="k">Bills</span><div class="v">${fmtS(fixed)}</div><div class="x">${isMonthly() ? fmtS(paid)+' paid' : 'set aside'}</div></div>
         <div class="tile"><span class="k">Spent</span><div class="v">${fmtS(flex)}</div><div class="x">of ${fmtS(Math.max(0,P))}</div></div>
       </div>
@@ -939,18 +1154,23 @@ function armButton(btn, label, fn){ let armed = false; btn.addEventListener('cli
 
 function editTx(id){
   const t = S.tx.find(x => x.id===id); if (!t) return;
-  const opts = t.kind==='out' ? OUT_CATS.map(k => [k,CATS[k].n]) : Object.keys(IN_CATS).map(k => [k,IN_CATS[k].n]);
+  const okeys = t.kind==='out' ? [...new Set([...OUT_CATS, t.cat])].filter(k => CATS[k]) : [...new Set([...inKeys(), t.cat])].filter(k => IN_CATS[k]);
+  const opts = okeys.map(k => [k, t.kind==='out' ? CATS[k].n : IN_LONG[k]]);
+  const debts = billsOfType('debt'), pots = S.pots.filter(x => !x.closed || x.id===t.potId);
   openSheet(`<h2>${t.kind==='out'?'Edit spend':'Edit money in'}</h2>
     <div class="form">
       <div class="two"><label>Amount<input id="e-amt" inputmode="decimal" value="${(t.amt/100).toFixed(2)}"></label><label>Date<input type="date" id="e-date" value="${t.date}"></label></div>
       <label>${t.kind==='out'?'Where':'From'}<input id="e-m" value="${esc(t.merchant)}"></label>
       <div class="two"><label>Category<select id="e-cat">${opts.map(([k,n]) => `<option value="${k}" ${k===t.cat?'selected':''}>${n}</option>`).join('')}</select></label><label>Sub-category<input id="e-sub" value="${esc(t.sub||'')}" placeholder="e.g. Petrol"></label></div>
       <label>Note<input id="e-note" value="${esc(t.note||'')}"></label>
+      ${t.kind==='in' && debts.length ? `<label id="e-debt-w" ${t.cat==='borrowed'?'':'hidden'}>Add to a debt<select id="e-debt"><option value="">No, just borrowed</option>${debts.map(b => `<option value="${b.id}" ${b.id===t.debtId?'selected':''}>${esc(b.name)}</option>`).join('')}</select></label>` : ''}
+      ${t.kind==='out' && !t.billId && !t.potIn && pots.length ? `<label>Paid from<select id="e-pot"><option value="">Daily budget</option>${pots.map(x => `<option value="${x.id}" ${x.id===t.potId?'selected':''}>Pot: ${esc(x.name)}</option>`).join('')}</select></label>` : ''}
       ${t.kind==='out' && (bizOn() || t.biz) ? `<button class="pill biz ${t.biz?'on':''}" id="e-biz" type="button" style="align-self:flex-start">${ic('briefcase')}Business expense</button>` : ''}
       ${t.billId ? '<p class="hint">Linked to a recurring bill. Deleting it marks the bill unpaid.</p>' : ''}
       <div class="btns"><button class="btn danger" id="e-del">Delete</button><button class="btn primary" id="e-save">Save</button></div>
     </div>`);
   let biz = !!t.biz;
+  const ec = $('#e-cat'), dw = $('#e-debt-w'); if (dw) ec.addEventListener('change', () => { dw.hidden = ec.value!=='borrowed'; });
   const bz = $('#e-biz'); if (bz) bz.addEventListener('click', () => { biz = !biz; bz.classList.toggle('on',biz); });
   armButton($('#e-del'), 'Tap again to delete', () => {
     const i = S.tx.indexOf(t); S.tx.splice(i,1); persist(); closeSheet(); render();
@@ -960,6 +1180,8 @@ function editTx(id){
     const a = num($('#e-amt').value);
     if (!a){ $('#e-amt').classList.add('err'); $('#e-amt').focus(); return; }
     Object.assign(t, {amt:a, date:$('#e-date').value||t.date, merchant:$('#e-m').value.trim(), cat:$('#e-cat').value, sub:$('#e-sub').value.trim()||null, note:$('#e-note').value.trim(), biz: t.kind==='out' ? biz : t.biz});
+    if (t.kind==='in'){ const dv = $('#e-debt'); t.debtId = t.cat==='borrowed' && dv ? (dv.value||undefined) : undefined; }
+    const pv = $('#e-pot'); if (pv) t.potId = pv.value || undefined;
     persist(); closeSheet(); render(); toast('Updated');
   });
 }
@@ -974,6 +1196,7 @@ function billSheet(id){
       <label>Due on<select id="b-d">${Array.from({length:31},(_,i) => `<option value="${i+1}" ${(b?b.day:1)===i+1?'selected':''}>${ord(i+1)}</option>`).join('')}</select></label></div>
       <label>Type<select id="b-t">${Object.entries(BILL_TYPES).map(([k,n]) => `<option value="${k}" ${k===ty?'selected':''}>${n}</option>`).join('')}</select></label>
       <label id="b-bal-w" ${ty==='debt'?'':'hidden'}>Balance left (optional)<input id="b-bal" inputmode="decimal" value="${curBal ? (curBal/100).toFixed(2) : ''}" placeholder="e.g. 2400.00"></label>
+      <label class="toggle"><input type="checkbox" id="b-dd" ${!b || b.dd ? 'checked' : ''}><span>Direct Debit or standing order<small>Ticks itself off as paid on the due date</small></span></label>
       ${bizOn() || (b && b.biz) ? `<button class="pill biz ${b&&b.biz?'on':''}" id="b-biz" type="button" style="align-self:flex-start" aria-pressed="${!!(b&&b.biz)}">${ic('briefcase')}Business cost</button>` : ''}
       <p class="hint">Repeats monthly and is set aside from your budget on payday. For debts, each payment knocks the balance down.${bizOn() ? ' Business costs also go in your tax-year CSV.' : ''}</p>
       <div class="btns">${b?'<button class="btn danger" id="b-del">Delete</button>':''}<button class="btn primary" id="b-save">${b?'Save':'Add bill'}</button></div>
@@ -990,7 +1213,8 @@ function billSheet(id){
     const bv = $('#b-bal').value.trim();
     if (type==='debt' && bv){ balance = num(bv); if (balance===null){ $('#b-bal').classList.add('err'); $('#b-bal').focus(); return; } }
     const o = {name, amt, day:+$('#b-d').value, type, biz, sub: type==='sub' ? 'Subscription' : type==='debt' ? 'Debt repayment' : name,
-      balance, balanceAt: balance ? today()+' '+nowHM() : null};
+      balance, balanceAt: balance ? today()+' '+nowHM() : null, dd: $('#b-dd').checked};
+    if (o.dd && !(b && b.dd)) o.ddFrom = today();
     if (b){ Object.assign(b,o); syncBiz(b); } else S.bills.push({id:'b'+uid(), ...o});
     persist(); closeSheet(); render(); toast(b ? 'Bill updated' : `${name} added`);
   });
@@ -1008,6 +1232,7 @@ function settingsSheet(){
       <label>Save each payday<input id="s-sav" inputmode="decimal" value="${(st.savings/100).toFixed(0)}"></label></div>
       <p class="hint">Daily budget = take-home pay, minus bills, minus savings, spread over the days until your next payday. Once your pay is logged, the real amount is used.</p>
       <label class="toggle"><input type="checkbox" id="s-side" ${st.sideIncome?'checked':''}><span>Side income or self-employed<small>Adds a Business switch to keep work costs and income out of your personal budget, and a CSV for your tax records.</small></span></label>
+      <button class="btn" type="button" id="s-cats">Edit categories</button>
       <div class="sect">Spending limits per ${periodWord()}</div>
       ${limSum > Pnow*1.05 ? `<p class="hint warnline" id="lim-warn">These add up to ${fmtS(limSum)}, but you have about ${fmtS(Math.max(0,Pnow))} to spend this cycle.</p><button class="btn" id="s-fit" type="button">Scale limits to fit ${fmtS(Math.max(0,Pnow))}</button>` : ''}
       <div class="limits">${OUT_CATS.map(k => `<label class="lim"><span><span class="dot" style="--c:${CATS[k].c}"></span>${k==='bills'?'One-off bills':CATS[k].n}</span><input id="l-${k}" inputmode="decimal" value="${((st.limits[k]||0)/100).toFixed(0)}" aria-label="${CATS[k].n} limit"></label>`).join('')}</div>
@@ -1030,6 +1255,7 @@ function settingsSheet(){
     persist(); closeSheet(); render(); toast('Settings saved');
   });
   wirePayFields('s');
+  $('#s-cats').addEventListener('click', catsSheet);
   const fit = $('#s-fit');
   if (fit) fit.addEventListener('click', () => {
     const vals = OUT_CATS.map(k => num($('#l-'+k).value) || 0), tot = vals.reduce((a,v) => a+v, 0), f = tot ? Math.max(0,Pnow)/tot : 0;
@@ -1053,6 +1279,78 @@ function settingsSheet(){
   $('#s-setup').addEventListener('click', () => { closeSheet(); startSetup(); });
   armButton($('#s-seed'), 'Tap again to replace your data', () => { S = seed(); persist(); closeSheet(); render(); toast('Example month loaded'); });
   armButton($('#s-wipe'), 'Tap again to delete everything', () => { S = blank(); persist(); closeSheet(); tab = 'log'; render(); startSetup(); });
+}
+
+/* ---------- Categories ---------- */
+function moreCatsSheet(){
+  openSheet(`<h2>Pick a category</h2><div class="cats">${OUT_CATS.map(k => catBtn(k, CATS, draft)).join('')}</div>
+    <button class="btn wide" style="margin-top:14px" data-act="editcats">Edit categories</button>`);
+}
+function catsSheet(){
+  const st = S.settings, custom = st.customCats || [], hidden = new Set(st.hiddenCats || []);
+  const all = [...(st.catOrder||[]).filter(k => CATS[k]), ...[...BASE_CATS, ...custom.map(c => c.id)].filter(k => !(st.catOrder||[]).includes(k))];
+  const used = new Set(S.tx.map(t => t.cat));
+  openSheet(`<h2>Categories</h2>
+    <div class="form">
+      <p class="hint">Rename, reorder or hide. The first nine show on the Log screen.</p>
+      <div class="rows" id="cat-rows">${all.map(k => `<div class="catrow ${hidden.has(k)?'off':''}" data-k="${k}">
+        <span class="ic sm" style="--c:${CATS[k].c}">${ic(CATS[k].i)}</span>
+        <input aria-label="Category name" value="${esc(CATS[k].n)}" maxlength="18">
+        <button type="button" class="mini" data-c="up" aria-label="Move up">${ic('up')}</button>
+        <button type="button" class="mini" data-c="down" aria-label="Move down">${ic('down')}</button>
+        <button type="button" class="mini" data-c="hide" aria-label="${hidden.has(k)?'Show':'Hide'}">${ic(hidden.has(k)?'eyeoff':'eye')}</button>
+        ${CATS[k].custom && !used.has(k) ? `<button type="button" class="mini" data-c="del" aria-label="Delete">${ic('x')}</button>` : ''}
+      </div>`).join('')}</div>
+      <button class="btn" type="button" id="cat-add">${ic('plus')}Add a category</button>
+      <div class="btns"><button class="btn" data-act="close">Cancel</button><button class="btn primary" id="cat-save">Save</button></div>
+    </div>`);
+  const box = $('#cat-rows');
+  box.addEventListener('click', e => {
+    const b = e.target.closest('[data-c]'); if (!b) return;
+    const row = b.closest('.catrow'), c = b.dataset.c;
+    if (c==='up' && row.previousElementSibling) box.insertBefore(row, row.previousElementSibling);
+    if (c==='down' && row.nextElementSibling) box.insertBefore(row.nextElementSibling, row);
+    if (c==='hide'){ row.classList.toggle('off'); b.innerHTML = ic(row.classList.contains('off') ? 'eyeoff' : 'eye'); }
+    if (c==='del') row.remove();
+  });
+  const save = () => {
+    const rows = [...box.querySelectorAll('.catrow')], keep = new Set(rows.map(r => r.dataset.k));
+    st.catOrder = rows.map(r => r.dataset.k);
+    st.hiddenCats = rows.filter(r => r.classList.contains('off')).map(r => r.dataset.k);
+    if (rows.length - st.hiddenCats.length < 1){ toast('Keep at least one category showing'); return false; }
+    st.catNames = st.catNames || {};
+    st.customCats = (st.customCats||[]).filter(c => keep.has(c.id));
+    rows.forEach(r => { const k = r.dataset.k, n = r.querySelector('input').value.trim() || CATS[k].n;
+      const cc = st.customCats.find(c => c.id===k); if (cc) cc.n = n; else if (n!==BASE_NAMES[k]) st.catNames[k] = n; else delete st.catNames[k]; });
+    persist(); refreshCats(); return true;
+  };
+  $('#cat-save').addEventListener('click', () => { if (save()){ closeSheet(); render(); toast('Categories saved'); } });
+  $('#cat-add').addEventListener('click', () => { if (save()) newCatSheet(); });
+}
+function newCatSheet(){
+  let icon = 'baby', col = CAT_COLOURS[0];
+  openSheet(`<h2>New category</h2>
+    <div class="form">
+      <label>Name<input id="nc-n" maxlength="18" placeholder="e.g. Baby, Pets, Petrol"></label>
+      <div class="sect" style="margin:0">Icon</div>
+      <div class="picker" id="nc-i">${CAT_ICONS.map(i => `<button type="button" class="pick ${i===icon?'on':''}" data-i="${i}" aria-label="${i}">${ic(i)}</button>`).join('')}</div>
+      <div class="sect" style="margin:0">Colour</div>
+      <div class="picker" id="nc-c">${CAT_COLOURS.map(c => `<button type="button" class="sw ${c===col?'on':''}" data-c="${c}" style="--c:${c}" aria-label="Colour"></button>`).join('')}</div>
+      <div class="btns"><button class="btn" id="nc-back" type="button">Back</button><button class="btn primary" id="nc-save">Add category</button></div>
+    </div>`);
+  $('#nc-i').addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (!b) return; icon = b.dataset.i; $('#nc-i').querySelectorAll('.pick').forEach(x => x.classList.toggle('on', x===b)); });
+  $('#nc-c').addEventListener('click', e => { const b = e.target.closest('[data-c]'); if (!b) return; col = b.dataset.c; $('#nc-c').querySelectorAll('.sw').forEach(x => x.classList.toggle('on', x===b)); });
+  $('#nc-back').addEventListener('click', catsSheet);
+  $('#nc-save').addEventListener('click', () => {
+    const n = $('#nc-n').value.trim(); if (!n){ $('#nc-n').classList.add('err'); $('#nc-n').focus(); return; }
+    const st = S.settings, id = 'c'+uid();
+    st.customCats = [...(st.customCats||[]), {id, n, i:icon, c:col}];
+    st.catOrder = [...(st.catOrder && st.catOrder.length ? st.catOrder : OUT_CATS), id];
+    // New categories go near the front so they show on the Log screen
+    const order = st.catOrder.filter(k => k!==id); order.splice(Math.min(4, order.length), 0, id); st.catOrder = order;
+    st.limits[id] = 0;
+    persist(); refreshCats(); closeSheet(); if (tab==='log'){ draft.cat = id; draft.catAuto = false; } render(); toast(`${n} added`);
+  });
 }
 
 /* ---------- Pay fields (setup + settings) ---------- */
@@ -1193,7 +1491,7 @@ function obRead(validate){
 function finishSetup(){
   if (!obRead(true)) return;
   const st = ob.st, r = obPot();
-  const bills = ob.bills.filter(b => b.name && num(b.amt)).map(b => ({id:'b'+uid(), name:b.name, amt:num(b.amt), day:b.day, type:b.type, biz:false, sub: b.type==='sub' ? 'Subscription' : b.type==='debt' ? 'Debt repayment' : b.name}));
+  const bills = ob.bills.filter(b => b.name && num(b.amt)).map(b => ({id:'b'+uid(), name:b.name, amt:num(b.amt), day:b.day, type:b.type, biz:false, dd:true, ddFrom:today(), sub: b.type==='sub' ? 'Subscription' : b.type==='debt' ? 'Debt repayment' : b.name}));
   const keep = S.settings.setupDone && !S.tx.some(t => t.example);
   S = keep ? S : blank();
   if (keep) S.bills = S.bills.concat(bills.filter(nb => !S.bills.some(b => b.name.toLowerCase()===nb.name.toLowerCase())));
@@ -1246,7 +1544,7 @@ app.addEventListener('click', e => {
     case 'mode': if (draft.mode!==v){ const amt = draft.amt; draft = newDraft(v); draft.amt = amt; renderLog(); } break;
     case 'key': keyIn(v); break;
     case 'save': doSave(); break;
-    case 'cat': draft.cat = v; draft.catAuto = false; draft.sub = null; buzz(); updateLog(); break;
+    case 'cat': draft.cat = v; draft.catAuto = false; draft.catManual = true; draft.sub = null; buzz(); if (!$('#sheet-wrap').hidden) closeSheet(); updateLog(); break;
     case 'pick': { const m = memory().get(draft.mode+':'+b.dataset.k.toLowerCase()); if (m){ draft.merchant = m.name; $('#m-in').value = m.name; applyMem(m); buzz(); updateLog(); } break; }
     case 'date': draft.dateMode = v; draft.date = v==='today' ? today() : yesterday(); updateLog(); break;
     case 'note': draft.showNote = !draft.showNote; updateLog(); if (draft.showNote) $('#note-in').focus(); break;
@@ -1259,6 +1557,16 @@ app.addEventListener('click', e => {
     case 'bill-add': billSheet(null); break;
     case 'bill-review': reviewSheet(); break;
     case 'pay-due': payDue(); break;
+    case 'pot-new': potSheet(null, v); break;
+    case 'pot-edit': potSheet(v); break;
+    case 'pot-topup': topUpSheet(v); break;
+    case 'dd-ok': S.settings.ddNotice = false; persist(); render(); break;
+    case 'morecats': moreCatsSheet(); break;
+    case 'editcats': catsSheet(); break;
+    case 'mark-borrow': { const t = S.tx.find(x => x.id===b.dataset.id), d = t && matchDebt(t.merchant); if (t){ t.cat = 'borrowed'; if (d) t.debtId = d.id; persist(); render(); toast('Marked as borrowed'); } break; }
+    case 'not-borrow': S.settings.dismissed['tx:'+b.dataset.id] = true; persist(); render(); break;
+    case 'pots': draft.showPots = !draft.showPots; updateLog(); break;
+    case 'potsel': draft.potId = v; draft.showPots = false; buzz(); updateLog(); break;
     case 'settings': settingsSheet(); break;
     case 'setup': startSetup(); break;
     case 'csv': copyCsv(); break;
@@ -1273,6 +1581,7 @@ app.addEventListener('input', e => {
     const m = mem.get(draft.mode+':'+q);
     if (m) applyMem(m);
     else if (draft.mode==='in' && draft.cat==='refund'){ const o = mem.get('out:'+q); if (o) draft.refundCat = o.cat; }
+    else if (draft.mode==='in' && !draft.catManual){ const db = matchDebt(q); if (db){ draft.cat = 'borrowed'; draft.debtId = db.id; } }
     updateLog();
   }
   else if (id==='note-in') draft.note = e.target.value;
@@ -1286,6 +1595,7 @@ app.addEventListener('change', e => {
     draft.dateMode = draft.date===today() ? 'today' : draft.date===yesterday() ? 'yesterday' : 'pick';
     updateLog();
   } else if (id==='rc') draft.refundCat = e.target.value;
+  else if (id==='dl') draft.debtId = e.target.value;
 });
 document.addEventListener('keydown', e => {
   if (!$('#setup').hidden) return;
