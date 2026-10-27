@@ -60,7 +60,7 @@ jobs:
           set -o pipefail
           missing=$(node -e "
             const p=require('./package.json'), have={...p.dependencies,...p.devDependencies};
-            const want=require('fs').readFileSync('deps.txt','utf8').split(/\s+/).filter(x=>x&&!x.startsWith('#'));
+            const want=require('fs').readFileSync('deps.txt','utf8').split('\n').map(l=>l.split('#')[0].trim()).filter(Boolean);
             console.log(want.filter(w=>!have[w]).join(' '))")
           if [ -n "$missing" ]; then
             {
