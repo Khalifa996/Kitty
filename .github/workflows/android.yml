@@ -42,11 +42,14 @@ jobs:
           set -o pipefail
           if [ ! -f package-lock.json ]; then
             ./scripts/bootstrap.sh 2>&1 | tee "$LOGS/bootstrap.log"
-            git config user.name "kitty-ci"
-            git config user.email "kitty-ci@users.noreply.github.com"
-            git add package.json package-lock.json
-            git commit -m "Set up Expo packages (CI)"
-            git pull --rebase origin main && git push origin HEAD:main
+            {
+              git config user.name "kitty-ci"
+              git config user.email "kitty-ci@users.noreply.github.com"
+              git status --short | head -20
+              git add package.json package-lock.json
+              git commit -m "Set up Expo packages (CI)"
+              git push origin HEAD:main
+            } 2>&1 | tee -a "$LOGS/bootstrap.log"
           else
             echo "Already set up" | tee "$LOGS/bootstrap.log"
           fi
