@@ -292,6 +292,15 @@ svg.i{width:1em;height:1em;flex:none;display:block}
 .potcard .s{display:block;font-size:13px;color:var(--muted);margin-top:6px}
 .potcard .s.over{color:var(--bad)} .potcard .s.good{color:var(--good)}
 svg.i.inl{display:inline-block;vertical-align:-2px;color:#3DD6B0}
+.nudge{display:flex;align-items:center;gap:10px;width:100%;border:0;border-radius:12px;background:color-mix(in srgb,var(--gold) 12%,var(--surface));color:var(--fg);padding:10px 12px;font:600 13px var(--font-body);text-align:left;cursor:pointer}
+.nudge .i{font-size:18px;color:var(--gold)}
+.nudge span{flex:1;min-width:0}
+.nudge b{color:var(--gold);font-weight:800;white-space:nowrap}
+.acct{display:flex;flex-direction:column;gap:8px;padding:12px 0}
+.acct+.acct{border-top:1px solid var(--line)}
+.acct .rm{align-self:flex-start;color:var(--muted)}
+.lbl2{text-transform:none;letter-spacing:0;font-weight:500;color:var(--faint)}
+.lead2{margin:0;font-size:15px;line-height:1.45}
 @keyframes up{from{transform:translateY(30px);opacity:0}to{transform:none;opacity:1}}
 #toast{position:absolute;left:16px;right:16px;bottom:80px;z-index:50;background:var(--fg);color:var(--bg);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px;font-weight:700;font-size:14px;box-shadow:0 10px 30px rgba(0,0,0,.5);animation:up .18s ease-out}
 #toast span{flex:1;min-width:0}
@@ -375,9 +384,10 @@ const CATS = {
   home:{n:'Home',i:'home',c:'#E0B98C'},
   personal:{n:'Personal',i:'user',c:'#9DB4FF'},
   bills:{n:'Bills',i:'receipt',c:'#A78BFA'},
-  other:{n:'Other',i:'more',c:'#A0A7B4'}
+  other:{n:'Other',i:'more',c:'#A0A7B4'},
+  unlogged:{n:'Not logged',i:'search',c:'#A0A7B4'}
 };
-const BASE_CATS = Object.keys(CATS), BASE_NAMES = Object.fromEntries(BASE_CATS.map(k => [k, CATS[k].n]));
+const BASE_CATS = Object.keys(CATS).filter(k => k!=='unlogged'), BASE_NAMES = Object.fromEntries(BASE_CATS.map(k => [k, CATS[k].n]));
 let OUT_CATS = [...BASE_CATS];
 const CAT_ICONS = ['utensils','cart','car','fuel','bag','shirt','ticket','coffee','heart','home','wrench','user','baby','paw','plane','book','phone','gift','briefcase','receipt','more'];
 const CAT_COLOURS = ['#FF8A5C','#F2C14E','#8BD45E','#3DD6B0','#4FC3F7','#9DB4FF','#A78BFA','#D59BFF','#FF6F91','#E0B98C','#A0A7B4'];
@@ -403,9 +413,9 @@ const IN_CATS = {
 const IN_LONG = {salary:'Pay', extra:'Extra income', borrowed:'Borrowed', savings:'From savings', refund:'Refund', gift:'Gift', transfer:'Between my accounts', side:'Business income'};
 const inKeys = () => Object.keys(IN_CATS).filter(k => k!=='side' || bizOn());
 const addsIn = t => t.kind==='in' && !t.biz && (IN_CATS[t.cat]||{}).fx==='add';
-const DEFAULT_SETTINGS = {currency:'GBP', payFreq:'monthly', payday:28, payAnchor:null, income:0, savings:0, sideIncome:false, setupDone:false, dismissed:{}};
+const DEFAULT_SETTINGS = {currency:'GBP', payFreq:'monthly', payday:28, payAnchor:null, income:0, savings:0, sideIncome:false, setupDone:false, dismissed:{}, checkEvery:3};
 const DEFAULT_LIMITS = {food:14000,groceries:26000,transport:22000,shopping:15000,fun:8000,health:4000,home:8000,personal:6000,bills:3000,other:5000};
-const catOf = t => t.potIn ? {n:'Moved to pot',i:'piggy',c:'#3DD6B0'} : t.kind==='in' ? (IN_CATS[t.cat]||IN_CATS.transfer) : (CATS[t.cat]||CATS.other);
+const catOf = t => t.checkin ? (t.kind==='in' ? {n:'Not logged',i:'search',c:'#3DD68C'} : CATS.unlogged) : t.potIn ? {n:'Moved to pot',i:'piggy',c:'#3DD6B0'} : t.kind==='in' ? (IN_CATS[t.cat]||IN_CATS.transfer) : (CATS[t.cat]||CATS.other);
 
 /* ---------- Utils ---------- */
 const $ = (s,r=document) => r.querySelector(s);
@@ -514,14 +524,14 @@ function seed(){
     if (!wk && R()<.14) add({kind:'in',cat:'side',sub:'Job',merchant:'Handyman job',amt:between(8000,18000),biz:true},s,15,19);
     (specials[s]||[]).forEach(([o,a,b]) => add(o,s,a,b));
   }
-  return {v:1, settings, bills, tx, pots:[{id:'p1', name:'Christmas', perPay:4000, target:30000, opening:6000, start:prev.start}]};
+  return {v:1, settings, bills, tx, accounts:[], checkins:[], pots:[{id:'p1', name:'Christmas', perPay:4000, target:30000, opening:6000, start:prev.start}]};
 }
 
 /* ---------- Storage (this browser only) ---------- */
 const KEY = 'kitty.v1';
 function load(){ try { const s = localStorage.getItem(KEY); return s ? JSON.parse(s) : null; } catch(e) { return null; } }
 function persist(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {} }
-const blank = () => ({v:1, settings:{...DEFAULT_SETTINGS, limits:{...DEFAULT_LIMITS}, dismissed:{}, _v4:true}, bills:[], tx:[], pots:[]});
+const blank = () => ({v:1, settings:{...DEFAULT_SETTINGS, limits:{...DEFAULT_LIMITS}, dismissed:{}, _v4:true}, bills:[], tx:[], pots:[], accounts:[], checkins:[]});
 function migrate(){
   const st = S.settings, had = S.tx.length || S.bills.length || st.income;
   for (const k in DEFAULT_SETTINGS) if (st[k]===undefined) st[k] = k==='dismissed' ? {} : DEFAULT_SETTINGS[k];
@@ -530,6 +540,9 @@ function migrate(){
   if (!st._v2){ st._v2 = true; if (S.tx.some(t => t.biz) || S.bills.some(b => b.biz)) st.sideIncome = true; }
   S.bills.forEach(b => { if (!b.type) b.type = 'bill'; });
   if (!S.pots) S.pots = [];
+  if (!S.accounts) S.accounts = [];
+  if (!S.checkins) S.checkins = [];
+  if (!st.checkEvery) st.checkEvery = 3;
   if (!st._v4){
     st._v4 = true;
     // Side income with business mode off is just extra income
@@ -603,7 +616,7 @@ function catTotals(list){
 }
 function memory(){
   const m = new Map();
-  const sorted = S.tx.filter(t => t.merchant && !t.billId && !t.potIn).sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time));
+  const sorted = S.tx.filter(t => t.merchant && !t.billId && !t.potIn && !t.checkin).sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time));
   for (const t of sorted){
     const k = t.kind+':'+t.merchant.trim().toLowerCase();
     const e = m.get(k) || {n:0};
@@ -637,6 +650,31 @@ function borrowBanner(){
   return borrowSuggestions().map(t => { const b = matchDebt(t.merchant); return `<div class="banner">${ic('credit')}<div><p><b>${esc(t.merchant)}</b> +${fmt(t.amt)} on ${dfmt(t.date)} looks like borrowing from ${esc(b.name)}, not income.</p><div class="bbtns"><button data-act="mark-borrow" data-id="${t.id}">Mark as borrowed</button><button data-act="not-borrow" data-id="${t.id}">It's income</button></div></div></div>`; }).join('');
 }
 
+/* ---------- Balance check-ins ---------- */
+// Kitty knows what you logged; your bank knows what you have. The gap is spending you didn't log.
+const stamp = t => t.date+' '+t.time;
+const lastCheckin = () => S.checkins.length ? S.checkins[S.checkins.length-1] : null;
+const linkedDebts = () => new Set(S.accounts.filter(a => a.type==='credit' && a.debtId).map(a => a.debtId));
+// Money movement Kitty knows about since a moment in time (+ in, - out)
+function loggedSince(at){
+  const linked = linkedDebts(); let d = 0;
+  for (const t of S.tx){
+    if (stamp(t) <= at || t.potIn || t.potOut || t.checkin) continue;
+    if (t.kind==='in'){
+      if (t.cat==='transfer') continue;
+      if (t.cat==='borrowed' && t.debtId && linked.has(t.debtId)) continue;  // card or credit line already in the totals
+      d += t.amt;
+    } else {
+      if (t.billId){ const b = S.bills.find(x => x.id===t.billId); if (b && linked.has(b.id)) continue; } // paying your own card moves money, it isn't spending
+      d -= t.amt;
+    }
+  }
+  return d;
+}
+const netOf = bal => S.accounts.reduce((a,x) => a + (x.type==='credit' ? -(bal[x.id]||0) : (bal[x.id]||0)), 0);
+function daysSinceCheckin(){ const l = lastCheckin(); return l ? diffDays(l.at.slice(0,10), today()) : null; }
+const checkinDue = () => { const n = daysSinceCheckin(), e = S.settings.checkEvery; return e>0 && (n===null || n >= e); };
+
 /* ---------- State ---------- */
 const screen = $('#screen');
 let tab = 'log', actFilter = 'all', actQuery = '';
@@ -660,6 +698,7 @@ function renderLog(){
   screen.innerHTML = `
   <section class="log">
     <div class="strip" id="strip"></div>
+    ${checkinDue() ? `<button class="nudge" data-act="checkin">${ic('wallet')}<span>${lastCheckin() ? `Last balance check ${daysSinceCheckin()===1 ? 'yesterday' : daysSinceCheckin()+' days ago'}` : 'Check your balance to catch anything you forget to log'}</span><b>Check now</b></button>` : ''}
     <div class="seg">
       <button class="${d.mode==='out'?'on':''}" data-act="mode" data-v="out">Spent</button>
       <button class="${d.mode==='in'?'on':''}" data-act="mode" data-v="in">Received</button>
@@ -770,10 +809,18 @@ function doSave(){
   if (t.kind==='in' && t.cat==='refund') t.refundCat = d.refundCat;
   if (t.kind==='in' && t.cat==='borrowed' && d.debtId) t.debtId = d.debtId;
   if (t.kind==='out' && d.potId && !t.biz) t.potId = d.potId;
-  S.tx.push(t); persist(); buzz();
+  S.tx.push(t);
+  // Logged after a check-in for a day before it: it was part of the "not logged" amount
+  const lc = lastCheckin(), adj = lc && lc.adjTx && S.tx.find(x => x.id===lc.adjTx);
+  let took = 0;
+  if (adj && adj.kind==='out' && t.kind==='out' && !t.potId && stamp(t) <= lc.at){ took = Math.min(adj.amt, t.amt); adj.amt -= took; if (!adj.amt) S.tx = S.tx.filter(x => x!==adj); }
+  persist(); buzz();
   draft = newDraft(d.mode);
   render();
-  toast(`Saved ${fmt(p)} · ${t.merchant || catOf(t).n}`, () => { S.tx = S.tx.filter(x => x.id!==t.id); persist(); render(); });
+  toast(`Saved ${fmt(p)} · ${t.merchant || catOf(t).n}${took ? `. Taken off "Not logged"` : ''}`, () => {
+    S.tx = S.tx.filter(x => x.id!==t.id);
+    if (took){ const a2 = S.tx.find(x => x.id===lc.adjTx); if (a2) a2.amt += took; else if (adj){ adj.amt = took; S.tx.push(adj); } }
+    persist(); render(); });
 }
 
 /* ---------- Activity ---------- */
@@ -781,7 +828,7 @@ function dayLabel(s){ if (s===today()) return 'Today'; if (s===yesterday()) retu
 function renderActivity(){
   const F = [['all','All'],['out','Spending'],['in','Money in'],['biz','Business'],['bills','Bills']].filter(f => f[0]!=='biz' || bizOn());
   screen.innerHTML = `
-    <header class="hd"><h1>Activity</h1></header>
+    <header class="hd"><h1>Activity</h1><button class="iconbtn" data-act="checkin" aria-label="Check your balance">${ic('wallet')}</button></header>
     <label class="field">${ic('search')}<input id="q" placeholder="Search places, notes, categories" value="${esc(actQuery)}" aria-label="Search"></label>
     <div class="chips filters">${F.map(([k,n]) => `<button class="chip ${actFilter===k?'on':''}" data-act="filter" data-v="${k}">${n}</button>`).join('')}</div>
     ${borrowBanner() ? `<div class="stack" style="margin-top:12px">${borrowBanner()}</div>` : ''}
@@ -806,7 +853,7 @@ function rowHtml(t){
   const c = catOf(t);
   const bill = t.billId ? S.bills.find(b => b.id===t.billId) : null, pt = (t.potId||t.potIn) ? S.pots.find(x => x.id===(t.potId||t.potIn)) : null;
   const debt = t.debtId ? S.bills.find(b => b.id===t.debtId) : null;
-  const first = t.billId ? (bill ? BILL_TYPES[bill.type||'bill'] : 'Bill')+(t.auto ? ' · Direct Debit' : '')
+  const first = t.checkin ? 'Found at balance check'+(t.since ? ' · since '+dfmt(t.since) : '') : t.billId ? (bill ? BILL_TYPES[bill.type||'bill'] : 'Bill')+(t.auto ? ' · Direct Debit' : '')
     : t.potIn ? 'Moved to pot'
     : t.kind==='in' && t.cat==='refund' ? 'Refund · '+(CATS[t.refundCat]||CATS.other).n
     : t.kind==='in' ? (IN_LONG[t.cat]||c.n)+(debt ? ' · '+debt.name : '')
@@ -1095,7 +1142,7 @@ function renderInsights(){
   const inParts = [payIn ? fmtS(payIn)+' pay' : 'expected '+fmtS(S.settings.income), borrowedIn ? fmtS(borrowedIn)+' borrowed' : '', otherIn ? fmtS(otherIn)+' other' : ''].filter(Boolean).join(' · ');
   const fixed = fixedFor(c), paid = sum(L.filter(t => t.billId)), flex = flexNet(L);
   const cur = catTotals(L), prv = catTotals(PL);
-  const keys = OUT_CATS.filter(k => (cur[k]||0)>0 || (hasPrev && (prv[k]||0)>0)).sort((a,b) => (cur[b]||0)-(cur[a]||0));
+  const keys = [...OUT_CATS, 'unlogged'].filter(k => (cur[k]||0)>0 || (hasPrev && (prv[k]||0)>0)).sort((a,b) => (cur[b]||0)-(cur[a]||0));
   const catRows = keys.map(k => {
     const v = Math.max(0,cur[k]||0), lim = S.settings.limits[k]||0, pct = lim ? v/lim : 0;
     const col = lim && pct>1 ? 'var(--bad)' : lim && pct>.85 ? 'var(--warn)' : CATS[k].c;
@@ -1237,6 +1284,9 @@ function settingsSheet(){
       ${limSum > Pnow*1.05 ? `<p class="hint warnline" id="lim-warn">These add up to ${fmtS(limSum)}, but you have about ${fmtS(Math.max(0,Pnow))} to spend this cycle.</p><button class="btn" id="s-fit" type="button">Scale limits to fit ${fmtS(Math.max(0,Pnow))}</button>` : ''}
       <div class="limits">${OUT_CATS.map(k => `<label class="lim"><span><span class="dot" style="--c:${CATS[k].c}"></span>${k==='bills'?'One-off bills':CATS[k].n}</span><input id="l-${k}" inputmode="decimal" value="${((st.limits[k]||0)/100).toFixed(0)}" aria-label="${CATS[k].n} limit"></label>`).join('')}</div>
       <div class="btns"><button class="btn primary" id="s-save">Save settings</button></div>
+      <div class="sect">Balance checks</div>
+      <div class="two"><label>Remind me<select id="s-ce">${[[1,'Every day'],[3,'Every 3 days'],[7,'Every week'],[0,'Never']].map(([v,n]) => `<option value="${v}" ${+st.checkEvery===v?'selected':''}>${n}</option>`).join('')}</select></label>
+      <button class="btn" type="button" id="s-acc" style="align-self:end;height:44px">Accounts (${S.accounts.length})</button></div>
       <div class="sect">Your data</div>
       <p class="hint">Stored on this phone only. Copy a backup now and then.</p>
       <div class="btns"><button class="btn" id="s-bk">${ic('copy')}Copy backup</button><button class="btn" id="s-rs">Restore</button></div>
@@ -1256,6 +1306,8 @@ function settingsSheet(){
   });
   wirePayFields('s');
   $('#s-cats').addEventListener('click', catsSheet);
+  $('#s-acc').addEventListener('click', () => accountsSheet(false));
+  $('#s-ce').addEventListener('change', e => { st.checkEvery = +e.target.value; persist(); });
   const fit = $('#s-fit');
   if (fit) fit.addEventListener('click', () => {
     const vals = OUT_CATS.map(k => num($('#l-'+k).value) || 0), tot = vals.reduce((a,v) => a+v, 0), f = tot ? Math.max(0,Pnow)/tot : 0;
@@ -1280,6 +1332,102 @@ function settingsSheet(){
   armButton($('#s-seed'), 'Tap again to replace your data', () => { S = seed(); persist(); closeSheet(); render(); toast('Example month loaded'); });
   armButton($('#s-wipe'), 'Tap again to delete everything', () => { S = blank(); persist(); closeSheet(); tab = 'log'; render(); startSetup(); });
 }
+
+/* ---------- Accounts + check-in sheets ---------- */
+function accountsSheet(thenCheckin){
+  const debts = billsOfType('debt');
+  const guess = name => (matchDebt(name)||{}).id || '';
+  const rowHtml = (a,i) => `<div class="acct" data-i="${i}">
+      <div class="two"><label>Name<input class="an" value="${esc(a.name)}" placeholder="e.g. Monzo"></label>
+      <label>Type<select class="at"><option value="current" ${a.type!=='credit'?'selected':''}>Current account</option><option value="credit" ${a.type==='credit'?'selected':''}>Credit card or credit</option></select></label></div>
+      ${debts.length ? `<label class="ad-w" ${a.type==='credit'?'':'hidden'}>Paid off by this bill<select class="ad"><option value="">None</option>${debts.map(b => `<option value="${b.id}" ${b.id===(a.debtId||'')?'selected':''}>${esc(b.name)}</option>`).join('')}</select></label>` : ''}
+      <button type="button" class="link rm">Remove</button>
+    </div>`;
+  const list = S.accounts.length ? S.accounts.map(a => ({...a})) : [{id:'a'+uid(), name:'Main account', type:'current'}];
+  openSheet(`<h2>Your accounts</h2>
+    <div class="form">
+      <p class="hint">Add the accounts you spend from: current accounts and credit cards. Leave savings out. Balances stay on this phone.</p>
+      <div id="acct-list">${list.map(rowHtml).join('')}</div>
+      <button class="btn" type="button" id="acct-add">${ic('plus')}Add an account</button>
+      <div class="btns"><button class="btn" data-act="close">Cancel</button><button class="btn primary" id="acct-save">${thenCheckin ? 'Next' : 'Save'}</button></div>
+    </div>`);
+  const box = $('#acct-list');
+  box.addEventListener('change', e => {
+    const row = e.target.closest('.acct'); if (!row) return;
+    if (e.target.classList.contains('at')){ const w = row.querySelector('.ad-w'); if (w){ w.hidden = e.target.value!=='credit'; if (e.target.value==='credit' && !row.querySelector('.ad').value) row.querySelector('.ad').value = guess(row.querySelector('.an').value); } }
+  });
+  box.addEventListener('input', e => {
+    if (!e.target.classList.contains('an')) return;
+    const row = e.target.closest('.acct'), ad = row.querySelector('.ad'), g = guess(e.target.value);
+    if (g && ad && !ad.value){ row.querySelector('.at').value = 'credit'; row.querySelector('.ad-w').hidden = false; ad.value = g; }
+  });
+  box.addEventListener('click', e => { if (e.target.classList.contains('rm')) e.target.closest('.acct').remove(); });
+  $('#acct-add').addEventListener('click', () => { list.push({id:'a'+uid(), name:'', type:'current'}); box.insertAdjacentHTML('beforeend', rowHtml(list[list.length-1], list.length-1)); box.lastElementChild.querySelector('.an').focus(); });
+  $('#acct-save').addEventListener('click', () => {
+    const rows = [...box.querySelectorAll('.acct')];
+    const out = rows.map(r => { const i = +r.dataset.i; const ad = r.querySelector('.ad'); return {id:list[i].id, name:r.querySelector('.an').value.trim(), type:r.querySelector('.at').value, debtId: ad && r.querySelector('.at').value==='credit' ? (ad.value||null) : null}; });
+    const bad = rows.find((r,i) => !out[i].name); if (bad){ bad.querySelector('.an').classList.add('err'); bad.querySelector('.an').focus(); return; }
+    if (!out.length){ toast('Add at least one account'); return; }
+    const changed = JSON.stringify(out.map(a => [a.id,a.type])) !== JSON.stringify(S.accounts.map(a => [a.id,a.type]));
+    S.accounts = out;
+    // A different set of accounts needs a fresh starting point
+    if (changed && S.checkins.length) S.checkins.push({id:uid(), at:today()+' '+nowHM(), reset:true, bal:null, net:null, moved:0});
+    persist();
+    if (thenCheckin) checkinSheet(); else { closeSheet(); render(); toast('Accounts saved'); }
+  });
+}
+function checkinSheet(){
+  if (!S.accounts.length) return accountsSheet(true);
+  const last = lastCheckin(), base = last && !last.reset ? last : null;
+  openSheet(`<h2>Check your balance</h2>
+    <div class="form">
+      <p class="hint">${base ? `Open your banking app and enter what it says now. Kitty compares it with what you've logged since ${dfmt(base.at.slice(0,10))}.` : `Open your banking app and enter what it says now. This is your starting point. From the next check, Kitty spots anything you didn't log.`}</p>
+      ${S.accounts.map(a => `<label>${esc(a.name)} ${a.type==='credit' ? '<small class="lbl2">amount owed</small>' : '<small class="lbl2">balance</small>'}<input id="cb-${a.id}" inputmode="decimal" placeholder="${a.type==='credit'?'0.00 owed':'0.00'}"></label>`).join('')}
+      ${S.accounts.some(a => a.type!=='credit') ? `<p class="hint">Overdrawn? Put a minus sign in front, like -120.</p>` : ''}
+      ${base ? `<label>Moved to savings since last check (optional)<input id="cb-moved" inputmode="decimal" placeholder="0"></label>` : ''}
+      <div class="btns"><button class="btn" type="button" id="cb-acc">Accounts</button><button class="btn primary" id="cb-go">Check</button></div>
+    </div>`);
+  $('#cb-acc').addEventListener('click', () => accountsSheet(true));
+  $('#sheet').querySelector('input').focus();
+  $('#cb-go').addEventListener('click', () => {
+    const bal = {};
+    for (const a of S.accounts){
+      const el = $('#cb-'+a.id), raw = el.value.trim();
+      if (raw===''){ el.classList.add('err'); el.focus(); return; }
+      const neg = /^\s*[-−]/.test(raw), v = num(raw); if (v===null){ el.classList.add('err'); el.focus(); return; }
+      bal[a.id] = neg ? -v : v;
+    }
+    const moved = base ? (num(($('#cb-moved')||{}).value||'0')||0) : 0;
+    const at = today()+' '+nowHM(), net = netOf(bal);
+    const ci = {id:uid(), at, bal, net, moved};
+    if (!base){ S.checkins.push(ci); persist(); closeSheet(); render(); toast('Starting point saved. Next time Kitty will spot anything you missed'); return; }
+    const expected = base.net + loggedSince(base.at) - moved, gap = expected - net;
+    S.checkins.push(ci);
+    if (Math.abs(gap) < 100){ persist(); closeSheet(); render(); toast('Everything matches what you logged'); return; }
+    if (gap > 0){
+      const t = {id:uid(), kind:'out', amt:gap, cat:'unlogged', sub:'Not logged', merchant:'Not logged', note:'', date:today(), time:nowHM(), biz:false, billId:null, checkin:true, since:base.at.slice(0,10)};
+      S.tx.push(t); ci.adjTx = t.id; persist(); render();
+      const si = safeInfo();
+      openSheet(`<h2>${fmt(gap)} not logged</h2>
+        <div class="form">
+          <p class="lead2">Since ${dfmt(base.at.slice(0,10))} your balance dropped ${fmt(gap)} more than the spending you logged. It's been added as "Not logged" so your budget stays right.</p>
+          <div class="sumcard">${row2('Safe to spend today', fmtS(si.safe), si.safe<0)}${si.tomorrow!==null ? row2('From tomorrow', fmtS(si.tomorrow)+' a day', si.tomorrow<0) : ''}</div>
+          <p class="hint">Remember what it was? Log it with the right date and Kitty takes it off this amount.</p>
+          <div class="btns"><button class="btn" id="ci-undo">Undo check</button><button class="btn primary" data-act="close">Done</button></div>
+        </div>`);
+      $('#ci-undo').addEventListener('click', () => { S.tx = S.tx.filter(x => x.id!==t.id); S.checkins = S.checkins.filter(x => x!==ci); persist(); closeSheet(); render(); toast('Check undone'); });
+    } else {
+      persist(); render();
+      openSheet(`<h2>${fmt(-gap)} more than expected</h2>
+        <div class="form">
+          <p class="lead2">You have ${fmt(-gap)} more than Kitty expected. That happens when money came in that you didn't log, or a bill hasn't gone out yet.</p>
+          <div class="btns"><button class="btn" data-act="close">Leave it</button><button class="btn primary" id="ci-add">Add as extra money</button></div>
+        </div>`);
+      $('#ci-add').addEventListener('click', () => { const t = {id:uid(), kind:'in', amt:-gap, cat:'extra', sub:null, merchant:'Not logged', note:'', date:today(), time:nowHM(), biz:false, billId:null, checkin:true, since:base.at.slice(0,10)}; S.tx.push(t); ci.adjTx = t.id; persist(); closeSheet(); render(); toast(`${fmt(-gap)} added to your spending money`); });
+    }
+  });
+}
+const row2 = (n, v, bad) => `<div class="prow"><span></span><span class="nm">${n}</span><span class="vv" style="color:var(${bad?'--bad':'--good'})">${v}</span><span></span></div>`;
 
 /* ---------- Categories ---------- */
 function moreCatsSheet(){
@@ -1503,6 +1651,7 @@ function finishSetup(){
     const t = today(), w = billWindow(), c = curCycle();
     S.settings.prepaid = {}; S.bills.forEach(b => { if (billDue(b,w) < t) S.settings.prepaid[b.id] = w.start; });
     S.settings.opening = r.mid && balance!=null ? {start:c.start, date:t, pot:r.first} : null;
+    if (balance!=null){ S.accounts = [{id:'a'+uid(), name:'Main account', type:'current'}]; S.checkins = [{id:uid(), at:t+' '+nowHM(), bal:{[S.accounts[0].id]:balance}, net:balance, moved:0}]; }
   }
   persist(); ob = null; $('#setup').hidden = true; $('#setup').innerHTML = '';
   tab = 'log'; draft = newDraft(); render();
@@ -1560,6 +1709,7 @@ app.addEventListener('click', e => {
     case 'pot-new': potSheet(null, v); break;
     case 'pot-edit': potSheet(v); break;
     case 'pot-topup': topUpSheet(v); break;
+    case 'checkin': checkinSheet(); break;
     case 'dd-ok': S.settings.ddNotice = false; persist(); render(); break;
     case 'morecats': moreCatsSheet(); break;
     case 'editcats': catsSheet(); break;
