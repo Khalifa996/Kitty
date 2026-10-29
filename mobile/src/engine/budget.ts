@@ -51,7 +51,7 @@ export function billDue(bill: Pick<Bill, 'day'>, c: Cycle): string {
 
 // ---------- What counts ----------
 const IN_FX: Record<string, 'pay' | 'add' | 'refund' | 'none' | 'biz'> = {
-  salary: 'pay', extra: 'add', borrowed: 'add', savings: 'add', refund: 'refund', gift: 'add', transfer: 'none', side: 'biz',
+  salary: 'pay', extra: 'add', borrowed: 'add', savings: 'add', refund: 'refund', expenses: 'add', gift: 'add', transfer: 'none', side: 'biz',
 };
 export const inEffect = (cat: string) => IN_FX[cat] || 'none';
 export const addsIn = (t: Tx) => t.kind === 'in' && !t.biz && inEffect(t.cat) === 'add';
@@ -60,14 +60,12 @@ export const txIn = (S: State, c: Cycle) => S.tx.filter((t) => t.date >= c.start
 /** Spending that counts against the daily budget. */
 export function flexNet(list: Tx[]): number {
   let s = 0;
-  for (const t of list) {
-    if (t.biz || t.potId) continue;
-    if (t.kind === 'out' && !t.billId) s += t.amt;
-    else if (t.kind === 'in' && t.cat === 'refund') s -= t.amt;
-  }
+  for (const t of list) if (!t.biz && !t.potId && t.kind === 'out' && !t.billId) s += t.amt;
   return s;
 }
 export const extraIn = (list: Tx[]) => sum(list.filter(addsIn), (t) => t.amt);
+/** Refunds are money back, spread over the rest of the cycle rather than counted against one day. */
+export const refundsIn = (list: Tx[]) => sum(list.filter((t) => t.kind === 'in' && t.cat === 'refund' && !t.biz), (t) => t.amt);
 
 // ---------- The pot for a cycle ----------
 export const fixedTotal = (S: State) => sum(S.bills, (b) => b.amt);
@@ -84,7 +82,7 @@ export const potsAside = (S: State, c: Cycle) => sum(S.pots.filter((p) => p.star
 export function pot(S: State, c: Cycle): number {
   const o = openingFor(S, c);
   const base = o ? o.pot : incomeFor(S, c) - fixedFor(S, c) - S.settings.savings;
-  return base + extraIn(txIn(S, c)) - potsAside(S, c);
+  return base + extraIn(txIn(S, c)) + refundsIn(txIn(S, c)) - potsAside(S, c);
 }
 export const savingsFor = (S: State, c: Cycle) => (openingFor(S, c) ? 0 : S.settings.savings);
 export const planDays = (S: State, c: Cycle) => { const o = openingFor(S, c); return o ? diffDays(o.date, c.end) + 1 : c.days; };

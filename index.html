@@ -221,7 +221,7 @@ svg.i{width:1em;height:1em;flex:none;display:block}
 .limits{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .form label.lim{flex-direction:row;align-items:center;justify-content:space-between;gap:8px;background:var(--surface-2);border-radius:10px;padding:0 4px 0 12px;text-transform:none;letter-spacing:0;font-size:13px;color:var(--fg);font-weight:600}
 .form label.lim span{display:flex;align-items:center;gap:7px;min-width:0;overflow:hidden;white-space:nowrap}
-.form label.lim input{width:64px;flex:none;text-align:right;background:none;padding:0 8px;font-family:var(--font-num);font-variant-numeric:tabular-nums}
+.form label.lim input{width:54px;flex:none;text-align:right;background:none;padding:0 8px;font-family:var(--font-num);font-variant-numeric:tabular-nums}
 .btns{display:flex;gap:8px;margin-top:4px}
 .ghd{align-items:center;gap:10px}
 .glink,.link{border:0;background:none;padding:0;color:var(--gold);font:800 12px var(--font-body);cursor:pointer;letter-spacing:0;text-transform:none}
@@ -406,11 +406,12 @@ const IN_CATS = {
   borrowed:{n:'Borrowed',i:'credit',c:'#FF9A3D',fx:'add'},
   savings:{n:'Savings',i:'piggy',c:'#3DD68C',fx:'add'},
   refund:{n:'Refund',i:'undo',c:'#3DD68C',fx:'refund'},
+  expenses:{n:'Expenses',i:'briefcase',c:'#3DD68C',fx:'add'},
   gift:{n:'Gift',i:'gift',c:'#3DD68C',fx:'add'},
   transfer:{n:'Transfer',i:'swap',c:'#8D95A1',fx:'none'},
   side:{n:'Business',i:'briefcase',c:'#F2C14E',fx:'biz'}
 };
-const IN_LONG = {salary:'Pay', extra:'Extra income', borrowed:'Borrowed', savings:'From savings', refund:'Refund', gift:'Gift', transfer:'Between my accounts', side:'Business income'};
+const IN_LONG = {salary:'Pay', extra:'Extra income', borrowed:'Borrowed', savings:'From savings', refund:'Refund', expenses:'Expenses paid back', gift:'Gift', transfer:'Between my accounts', side:'Business income'};
 const inKeys = () => Object.keys(IN_CATS).filter(k => k!=='side' || bizOn());
 const addsIn = t => t.kind==='in' && !t.biz && (IN_CATS[t.cat]||{}).fx==='add';
 const DEFAULT_SETTINGS = {currency:'GBP', payFreq:'monthly', payday:28, payAnchor:null, income:0, savings:0, sideIncome:false, setupDone:false, dismissed:{}, checkEvery:3};
@@ -559,7 +560,9 @@ migrate();
 
 /* ---------- Money maths ---------- */
 const txIn = c => S.tx.filter(t => t.date>=c.start && t.date<=c.end);
-function flexNet(list){ let s=0; for (const t of list){ if (t.biz || t.potId) continue; if (t.kind==='out' && !t.billId) s+=t.amt; else if (t.kind==='in' && t.cat==='refund') s-=t.amt; } return s; }
+function flexNet(list){ let s=0; for (const t of list){ if (t.biz || t.potId) continue; if (t.kind==='out' && !t.billId) s+=t.amt; } return s; }
+// Refunds are money back: spread over the rest of the cycle like any other extra money
+const refundsIn = list => sum(list.filter(t => t.kind==='in' && t.cat==='refund' && !t.biz));
 const extraIn = list => sum(list.filter(addsIn));
 const fixedTotal = () => sum(S.bills);
 const billsOfType = ty => S.bills.filter(b => (b.type||'bill')===ty);
@@ -592,7 +595,7 @@ function potBalance(p){
   const n = last ? Math.min(cyclesSince(p.start), cyclesSince(p.start) - cyclesSince(p.end) ) : cyclesSince(p.start);
   return (p.opening||0) + p.perPay*n + sum(S.tx.filter(t => t.potIn===p.id)) - sum(S.tx.filter(t => t.potId===p.id && t.kind==='out')) - sum(S.tx.filter(t => t.potOut===p.id));
 }
-const pot = (c = curCycle()) => { const o = openingFor(c); return (o ? o.pot : incomeFor(c) - fixedFor(c) - S.settings.savings) + extraIn(txIn(c)) - potsAside(c); };
+const pot = (c = curCycle()) => { const o = openingFor(c); return (o ? o.pot : incomeFor(c) - fixedFor(c) - S.settings.savings) + extraIn(txIn(c)) + refundsIn(txIn(c)) - potsAside(c); };
 const savingsFor = c => openingFor(c) ? 0 : S.settings.savings;
 const planDays = c => { const o = openingFor(c); return o ? diffDays(o.date, c.end)+1 : c.days; };
 function safeInfo(){
@@ -726,7 +729,7 @@ function updateLog(){
       const fx = (IN_CATS[d.cat]||{}).fx, newDay = si.allowance + Math.round(p/si.daysLeft);
       const gotPay = sum(txIn(si.c).filter(t => t.kind==='in' && t.cat==='salary' && !t.biz))>0;
       after = fx==='add' ? `<span class="after ${d.cat==='borrowed'?'':'good'}">${fmtS(newDay)} daily budget</span>`
-        : fx==='refund' ? `<span class="after good">Adds ${fmtS(p)} back</span>`
+        : fx==='refund' ? `<span class="after good">${fmtS(newDay)} daily budget</span>`
         : fx==='pay' ? `<span class="after">${gotPay ? 'Adds to this cycle\'s pay' : 'Replaces expected '+fmtS(S.settings.income)}</span>`
         : fx==='biz' ? `<span class="after">Business. Kept separate</span>` : `<span class="after">Budget unchanged</span>`;
     }
@@ -857,7 +860,7 @@ function rowHtml(t){
     : t.potIn ? 'Moved to pot'
     : t.kind==='in' && t.cat==='refund' ? 'Refund · '+(CATS[t.refundCat]||CATS.other).n
     : t.kind==='in' ? (IN_LONG[t.cat]||c.n)+(debt ? ' · '+debt.name : '')
-    : (t.sub || c.n)+(t.potId && pt ? ' · from '+pt.name : '');
+    : (t.sub || (t.merchant ? c.n : ''))+(t.potId && pt ? ' · from '+pt.name : '');
   const line = [first, t.time, t.note].filter(Boolean).map(esc).join(' · ');
   return `<button class="row" data-act="edit" data-id="${t.id}"><span class="ic" style="--c:${c.c}">${ic(c.i)}</span><span class="mid"><span class="t"><span class="nm">${esc(t.merchant||c.n)}</span>${t.biz?'<span class="tag">Business</span>':''}${t.billId?'<span class="tag bill">Bill</span>':''}</span><span class="s">${line}</span></span><span class="amt ${t.kind==='in'?'in':''}">${t.kind==='in'?'+':''}${fmt(t.amt)}</span></button>`;
 }
@@ -897,7 +900,7 @@ function billRow({b,due,p}, t){
   else {
     const k = n<0 ? 'over' : n<=3 ? 'soon' : 'due';
     sline = n<0 ? `Overdue by ${-n} day${n===-1?'':'s'}` : n===0 ? 'Due today' : n===1 ? 'Due tomorrow' : `Due in ${n} days`;
-    scls = k==='due' ? '' : k;
+    scls = k==='due' || (b.dd && n>0) ? '' : k;
     btn = b.dd && n>0 ? `<span class="status auto">Auto-pays</span>` : `<button class="status ${k}" data-act="bill-pay" data-v="${b.id}">Mark paid</button>`;
   }
   const kind = b.type==='sub' ? 'Subscription · ' : b.type==='debt' ? 'Debt · ' : '';
@@ -1095,7 +1098,7 @@ function dailyChart(c){
 }
 function payCard(c, P){
   const first = !!openingFor(c), inc = first ? S.settings.income : incomeFor(c), tgt = S.settings.savings, sh = billShare(c);
-  const extra = first ? 0 : extraIn(txIn(c)), borrowed = first ? 0 : sum(txIn(c).filter(t => addsIn(t) && t.cat==='borrowed')), whole = inc + extra;
+  const extra = first ? 0 : extraIn(txIn(c)) + refundsIn(txIn(c)), borrowed = first ? 0 : sum(txIn(c).filter(t => addsIn(t) && t.cat==='borrowed')), whole = inc + extra;
   if (first) P = inc - fixedFor(c) - tgt - potsAside(c);
   const parts = [
     ['Bills', Math.round(sum(billsOfType('bill'))*sh), '#A78BFA'],
@@ -1168,7 +1171,7 @@ function renderInsights(){
       <div class="tiles">
         <div class="tile"><span class="k">Money in</span><div class="v">${fmtS(received)}</div><div class="x">${inParts}</div></div>
         <div class="tile"><span class="k">Bills</span><div class="v">${fmtS(fixed)}</div><div class="x">${isMonthly() ? fmtS(paid)+' paid' : 'set aside'}</div></div>
-        <div class="tile"><span class="k">Spent</span><div class="v">${fmtS(flex)}</div><div class="x">of ${fmtS(Math.max(0,P))}</div></div>
+        <div class="tile"><span class="k">Spent</span><div class="v">${fmtS(flex)}</div><div class="x">of ${fmtS(Math.max(0,P))}${refundsIn(L) ? ` · ${fmtS(refundsIn(L))} refunded` : ''}</div></div>
       </div>
       <div class="card"><div class="h2">Day by day<small style="color:var(--gold)">- - ${fmtS(Math.round(P/planDays(c)))} a day plan</small></div>${dailyChart(c)}</div>
       <div class="card"><div class="h2">Where it went<small>${hasPrev ? 'vs same day last cycle' : 'this cycle'}</small></div>${catRows}</div>
@@ -1282,7 +1285,7 @@ function settingsSheet(){
       <button class="btn" type="button" id="s-cats">Edit categories</button>
       <div class="sect">Spending limits per ${periodWord()}</div>
       ${limSum > Pnow*1.05 ? `<p class="hint warnline" id="lim-warn">These add up to ${fmtS(limSum)}, but you have about ${fmtS(Math.max(0,Pnow))} to spend this cycle.</p><button class="btn" id="s-fit" type="button">Scale limits to fit ${fmtS(Math.max(0,Pnow))}</button>` : ''}
-      <div class="limits">${OUT_CATS.map(k => `<label class="lim"><span><span class="dot" style="--c:${CATS[k].c}"></span>${k==='bills'?'One-off bills':CATS[k].n}</span><input id="l-${k}" inputmode="decimal" value="${((st.limits[k]||0)/100).toFixed(0)}" aria-label="${CATS[k].n} limit"></label>`).join('')}</div>
+      <div class="limits">${OUT_CATS.map(k => `<label class="lim"><span><span class="dot" style="--c:${CATS[k].c}"></span>${k==='bills'?'One-off':CATS[k].n}</span><input id="l-${k}" inputmode="decimal" value="${((st.limits[k]||0)/100).toFixed(0)}" aria-label="${CATS[k].n} limit"></label>`).join('')}</div>
       <div class="btns"><button class="btn primary" id="s-save">Save settings</button></div>
       <div class="sect">Balance checks</div>
       <div class="two"><label>Remind me<select id="s-ce">${[[1,'Every day'],[3,'Every 3 days'],[7,'Every week'],[0,'Never']].map(([v,n]) => `<option value="${v}" ${+st.checkEvery===v?'selected':''}>${n}</option>`).join('')}</select></label>

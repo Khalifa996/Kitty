@@ -7,6 +7,7 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 ## Snags
 | Pri | Found | Snag |
 |---|---|---|
+| P2 | 29 Oct | Work expenses: mark a spend as "I'll get this back" so it stays off the daily budget until the reimbursement arrives |
 | P2 | 28 Oct | Payments to your own accounts or business (e.g. a business account) show as spending. Let people mark a payee as "one of my accounts" so future ones count as transfers |
 | P2 | 27 Oct | Log screen in Received mode is tall on small phones (two rows of types plus the debt picker) |
 | P2 | 27 Oct | A pot created mid-cycle takes a full top-up from this cycle. Offer "start from next payday" |
@@ -32,6 +33,12 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | P3 | Light theme |
 
 ## Changelog
+**v6, 29 Oct 2026: money back (from real-world use)**
+- Refunds are spread over the rest of the cycle instead of all landing on one day (a £225 refund made "safe today" jump from £39 to £256)
+- New money-in type: Expenses paid back (work reimbursements)
+- Spent no longer goes negative; refunds shown under it
+- Direct Debits coming up aren't shown as warnings; Activity doesn't repeat the category when there's no shop name; limit labels fit
+
 **App 0.1.x, 29 Oct 2026: alert reader fixes from 37 real alerts**
 - Barclays "You've been paid" is money in, not spending
 - Money moved between your own banks is paired up and treated as a transfer, even when the alerts arrive minutes apart

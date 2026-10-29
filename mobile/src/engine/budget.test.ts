@@ -59,6 +59,21 @@ describe('day one of a tight month', () => {
   });
 });
 
+describe('money back', () => {
+  // A £225 work reimbursement on day 3 used to make "safe to spend today" jump by £225
+  const S = state({ tx: [tx({ kind: 'in', cat: 'salary', amt: 300000, date: '2026-10-27' })] });
+  it('spreads a refund over the rest of the cycle', () => {
+    const S2 = { ...S, tx: [...S.tx, tx({ kind: 'in', cat: 'refund', amt: 22500, refundCat: 'shopping', date: '2026-10-29' })] };
+    const before = safeInfo(S, '2026-10-29'), after = safeInfo(S2, '2026-10-29');
+    expect(after.safe - before.safe).toBe(Math.round(22500 / 29));
+    expect(after.todaySpent).toBe(0);
+  });
+  it('treats expenses paid back like extra money', () => {
+    const S2 = { ...S, tx: [...S.tx, tx({ kind: 'in', cat: 'expenses', amt: 22500, date: '2026-10-29' })] };
+    expect(pot(S2, cycleOf('2026-10-29', S2.settings)) - pot(S, cycleOf('2026-10-29', S.settings))).toBe(22500);
+  });
+});
+
 describe('bills', () => {
   it('finds the due date inside the cycle', () => {
     const c = cycleOf('2026-10-27', settings());
