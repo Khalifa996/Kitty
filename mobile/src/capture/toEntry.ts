@@ -14,10 +14,22 @@ export function guessCategory(S: State, merchant?: string): string | null {
   for (const t of S.tx) {
     if (t.kind !== 'out' || t.billId || t.checkin || !t.merchant) continue;
     const n = norm(t.merchant);
-    if (n === m || (first.length >= 4 && n.startsWith(first))) best = t.cat;
+    if (n === m || (first.length >= 4 && n.startsWith(first)) || (n.length >= 4 && m.startsWith(n)) || (m.length >= 4 && n.startsWith(m))) best = t.cat;
   }
   return best;
 }
+
+// Common UK shops, for people who haven't logged them before. History always wins over this list.
+const KNOWN: [RegExp, string][] = [
+  [/\b(tesco|sainsbury|asda|aldi|lidl|co-?op|morrisons|waitrose|iceland|ocado|m&s food|marks.*spencer.*food|farmfoods|budgens|spar|londis|nisa|one stop|costcutter)\b/i, 'groceries'],
+  [/\b(pret|greggs|costa|starbucks|caff?e|cafe|coffee|nando|mcdonald|kfc|burger king|subway|wagamama|pizza|deliveroo|just ?eat|uber ?eats|domino|leon|itsu|wasabi|restaurant|grill|kitchen)\b/i, 'food'],
+  [/\b(tfl|transport for london|trainline|national rail|lner|avanti|gwr|uber|bolt|addison lee|voi|lime|santander cycles|shell|bp|esso|texaco|jet|petrol|fuel|service station|parking|ringgo|paybyphone|dart charge|congestion|ulez)\b/i, 'transport'],
+  [/\b(amazon|argos|ebay|asos|primark|next|zara|h&m|uniqlo|currys|john lewis|tk ?maxx|sports direct|jd sports|shein|temu|aliexpress|apple\.com|google play)\b/i, 'shopping'],
+  [/\b(boots|superdrug|pharmacy|chemist|dentist|optician|specsavers|vision express|holland.*barrett|nhs)\b/i, 'health'],
+  [/\b(odeon|vue|cineworld|picturehouse|cinema|hollywood bowl|bowl|ticketmaster|see tickets|pub|bar|wetherspoon|spotify|netflix|disney|steam|playstation|xbox)\b/i, 'fun'],
+  [/\b(screwfix|toolstation|b&q|wickes|homebase|ikea|dunelm|the range|wilko|robert dyas|b&m|home bargains)\b/i, 'home'],
+];
+export const knownCategory = (merchant?: string) => (merchant ? KNOWN.find(([rx]) => rx.test(merchant))?.[1] ?? null : null);
 
 /** What this payer was logged as last time (money in). */
 function guessIncome(S: State, merchant?: string): string | null {
@@ -69,7 +81,7 @@ export function suggest(S: State, p: ParsedAlert, id: string): Suggestion {
     return { action: 'add', guessed: !seen && !work && !sold && cat === 'extra', tx: { ...base, kind: 'in', cat, sub: work ? 'Job' : sold ? 'Sold something' : null, biz: cat === 'side' } };
   }
 
-  const cat = guessCategory(S, p.merchant);
+  const cat = guessCategory(S, p.merchant) || knownCategory(p.merchant);
   return { action: 'add', guessed: !cat, tx: { ...base, kind: 'out', cat: cat || 'other', sub: null } };
 }
 

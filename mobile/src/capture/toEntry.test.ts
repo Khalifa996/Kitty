@@ -1,5 +1,5 @@
 /// <reference types="jest" />
-import { alreadyLogged, guessCategory, suggest } from './toEntry';
+import { alreadyLogged, guessCategory, knownCategory, suggest } from './toEntry';
 import { blankState } from '../engine/migrate';
 import type { ParsedAlert } from '../parse/bankAlerts';
 import type { State } from '../engine/types';
@@ -78,4 +78,21 @@ it('spots a payment already logged by hand', () => {
   S.tx.push({ id: 'h', kind: 'out', amt: 830, cat: 'groceries', merchant: 'Tesco', note: '', date: '2026-10-27', time: '12:40', biz: false, billId: null });
   expect(alreadyLogged(S, alert({ amount: 830, merchant: 'Tesco' }))?.id).toBe('h');
   expect(alreadyLogged(S, alert({ amount: 999, merchant: 'Tesco' }))).toBeUndefined();
+});
+
+it('knows common UK shops for new users', () => {
+  expect(knownCategory('Co-op')).toBe('groceries');
+  expect(knownCategory('Caffe Darte')).toBe('food');
+  expect(knownCategory('Transport for London')).toBe('transport');
+  expect(knownCategory('Amazon.co.uk')).toBe('shopping');
+  expect(knownCategory('Hollywood Bowl Derby')).toBe('fun');
+  expect(knownCategory('Screwfix')).toBe('home');
+  expect(knownCategory('Acme Ltd')).toBeNull();
+});
+
+it('prefers your own history over the built-in list', () => {
+  const S = withHistory();
+  S.tx.push({ id: 'z', kind: 'out', amt: 500, cat: 'home', merchant: 'Amazon', note: '', date: '2026-10-20', time: '10:00', biz: false, billId: null });
+  const s = suggest(S, alert({ amount: 1825, merchant: 'Amazon.co.uk' }), 'n13');
+  expect(s.action === 'add' && s.tx.cat).toBe('home');
 });
