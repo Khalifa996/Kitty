@@ -23,8 +23,10 @@ Goal: a stranger can use it for a month without help and without hitting a wrong
 
 ## Phase 2b: Less logging (Oct to Nov 2026)
 - ✅ Balance check-ins in the prototype: one number instead of every spend
-- 🔨 Native capture preview: reads payment alerts from Barclays, Revolut, Monzo, Starling, NatWest and Google Wallet (Android)
-- Next: tap to add a captured payment, then auto-add with an undo
+- ✅ Android app reads payment alerts from Barclays, Revolut, Monzo, Starling, NatWest and Google Wallet
+- ✅ App 0.2: Review screen, one tap to add a captured payment (category from your history or a list of common UK shops)
+- Next: Bills, Pots and Insights screens in the app, then setup for new users
+- Later: add captured payments automatically, with an undo
 - Next: share a screenshot of a banking app to log several payments at once (on-device text reading)
 - iPhone: Wallet tap-to-pay automation through Shortcuts
 

@@ -7,6 +7,10 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 ## Snags
 | Pri | Found | Snag |
 |---|---|---|
+| P1 | 29 Oct | App: Bills, Pots, Insights, balance check-ins and Settings screens still only in the web app |
+| P1 | 29 Oct | App: first-run setup for new users (only import from the web app so far) |
+| P2 | 29 Oct | App: edit an entry (only delete so far); notes; Business switch; pay from a pot |
+| P3 | 29 Oct | App: category icons (dots for now) |
 | P2 | 29 Oct | Work expenses: mark a spend as "I'll get this back" so it stays off the daily budget until the reimbursement arrives |
 | P2 | 28 Oct | Payments to your own accounts or business (e.g. a business account) show as spending. Let people mark a payee as "one of my accounts" so future ones count as transfers |
 | P2 | 27 Oct | Log screen in Received mode is tall on small phones (two rows of types plus the debt picker) |
@@ -33,6 +37,12 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | P3 | Light theme |
 
 ## Changelog
+**App 0.2 (build 0.1.10), 29 Oct 2026: tap to add**
+- Log, Review, Activity and More screens; data saved on the phone; import a backup from the web app
+- Review: payments from bank alerts with the category filled in, one tap to add or mark a bill paid, add all, skip; spots ones already logged by hand
+- Built-in list of common UK shops for people with no history; Amazon matches Amazon.co.uk
+- Every build is screenshotted in CI with made-up data
+
 **v6, 29 Oct 2026: money back (from real-world use)**
 - Refunds are spread over the rest of the cycle instead of all landing on one day (a £225 refund made "safe today" jump from £39 to £256)
 - New money-in type: Expenses paid back (work reimbursements)
