@@ -41,7 +41,7 @@ describe('Barclays (real alerts, Oct 2026)', () => {
     expect(p).toMatchObject({ kind: 'spent', amount: 100, merchant: 'ABC Trade Work', account: '1111' });
   });
   it('reads rent paid to a company', () => {
-    expect(parseAlert(a(BAR, 'Barclays', "Pers acct - You've spent £1500.00 with ACME LETTINGS LIMITED from your account ending 2222."))).toMatchObject({ kind: 'spent', amount: 150000, merchant: 'Acme Lettings Limited', account: '2222' });
+    expect(parseAlert(a(BAR, 'Barclays', "Pers acct - You've spent £1250.00 with ACME LETTINGS LIMITED from your account ending 2222."))).toMatchObject({ kind: 'spent', amount: 125000, merchant: 'Acme Lettings Limited', account: '2222' });
   });
   it('reads a payment with no shop name and says so', () => {
     const p = parseAlert(a(BAR, 'Barclays', "Pers acct - You've spent £106.40 from your account ending 1111."));
@@ -79,9 +79,6 @@ describe('Google Wallet', () => {
 });
 
 describe('Other banks (generic wording until we have real samples)', () => {
-  it('Monzo style', () => {
-    expect(parseAlert(a('co.uk.getmondo', 'Pret A Manger', '£4.50'))).toMatchObject({ kind: 'spent', amount: 450, merchant: 'Pret A Manger' });
-  });
   it('Starling style', () => {
     expect(parseAlert(a('com.starlingbank.android', 'Starling Bank', 'You spent £12.40 at Sainsburys'))).toMatchObject({ kind: 'spent', amount: 1240, merchant: 'Sainsburys' });
   });
@@ -89,7 +86,52 @@ describe('Other banks (generic wording until we have real samples)', () => {
     expect(parseAlert(a('com.rbs.mobile.android.natwest', 'NatWest', 'Refund of £20.00 from AMAZON'))).toMatchObject({ kind: 'received', refund: true, amount: 2000, merchant: 'Amazon' });
   });
   it('handles thousands separators', () => {
-    expect(parseAlert(a(BAR, 'Barclays', "You've spent £1,500.00 with ACME LETTINGS from your account ending 2222.")).amount).toBe(150000);
+    expect(parseAlert(a(BAR, 'Barclays', "You've spent £1,250.00 with ACME LETTINGS from your account ending 2222.")).amount).toBe(125000);
+  });
+});
+
+describe('real alerts, 27 to 29 Oct (names changed)', () => {
+  const MON = 'co.uk.getmondo';
+  it('reads Barclays money in, not as spending', () => {
+    expect(parseAlert(a(BAR, 'Barclays', "Pers acct - You've been paid £225.76 to your account ending 1111. This credit may take up to 24 hours to show."))).toMatchObject({ kind: 'received', amount: 22576 });
+  });
+  it('reads Revolut money in, with the amount in the title', () => {
+    expect(parseAlert(a(REV, 'You received £85.58', 'Payment received from Airtasker Uk Limited. Tap for details'))).toMatchObject({ kind: 'received', amount: 8558, merchant: 'Airtasker' });
+    expect(parseAlert(a(REV, 'You received £190', 'Payment received from Mangopay S.a.. Tap for details'))).toMatchObject({ kind: 'received', amount: 19000, merchant: 'Vinted' });
+  });
+  it('reads Monzo, which puts everything in the title', () => {
+    expect(parseAlert(a(MON, '🍏 £1 at Co-op', ''))).toMatchObject({ kind: 'spent', amount: 100, merchant: 'Co-op' });
+    expect(parseAlert(a(MON, '🤸🏽 £495.50 Monzo Flex payment made', 'You made your monthly payment'))).toMatchObject({ kind: 'bill', amount: 49550, merchant: 'Monzo Flex', reason: 'Repayment' });
+  });
+  it('drops the Google Wallet copy of a Monzo payment', () => {
+    const out = parseAll([a(MON, '🍏 £1 at Co-op', '', 1000), a(GW, 'WELCOME', '£1.00 with Monzo Mastercard ••1234', 6000)]);
+    expect(out.map((p) => p.kind)).toEqual(['spent', 'ignore']);
+  });
+  it('cleans card terminal names', () => {
+    expect(parseAlert(a(GW, 'SumUp  *CAFFE DARTE LTD', '£12.45 with Revolut Visa ••1234')).merchant).toBe('Caffe Darte Ltd');
+  });
+  it('pairs money moved between your own banks, even minutes apart', () => {
+    const m = 60 * 1000;
+    const out = parseAll([
+      a(REV, 'You received £180', 'Payment received from Smith J A. Tap for details', 0),
+      a(REV, 'Transfer sent ✅', 'You sent £35 to Jane Ann Smith. It will arrive in seconds', 1 * m),
+      a(BAR, 'Barclays', "Pers acct - You've been paid £35.00 to your account ending 1111. This credit may take up to 24 hours to show.", 2 * m),
+      a(BAR, 'Barclays', 'Pers acct - You sent £180.00 from your account ending 1111.', 2 * m),
+      a(REV, 'You received £50', 'Payment received from Smith J A. Tap for details', 3 * m),
+      a(BAR, 'Barclays', 'Pers acct - You sent £50.00 from your account ending 1111.', 7 * m),
+    ]);
+    expect(out.map((p) => p.kind)).toEqual(['transfer', 'transfer', 'transfer', 'transfer', 'transfer', 'transfer']);
+    expect(out[3].reason).toBe('Moved to your Revolut');
+  });
+  it('keeps a payment to someone else as spending', () => {
+    const out = parseAll([a(REV, 'Transfer sent ✅', 'You sent £35 to Jane Ann Smith. It will arrive in seconds', 0)]);
+    expect(out[0]).toMatchObject({ kind: 'spent', merchant: 'Jane Ann Smith', sent: true });
+  });
+  it('skips adverts, declined cards and account notices', () => {
+    expect(parseAlert(a(REV, 'Get Make for less', 'Open a Pro account for free and save over £1,700 on digital freelancer tools. T&Cs apply')).reason).toBe('Advert');
+    expect(parseAlert(a(REV, "Alex couldn't use their card ❌", "Your kid doesn't have enough balance to complete the transaction")).reason).toBe('Declined payment');
+    expect(parseAlert(a(REV, 'New device log-in ➡️', 'Alex logged into a new device. If you suspect this isn\'t them, log them out.')).reason).toBe('Account notice');
+    expect(parseAlert(a(REV, 'Verify a payment', 'You’re making an online card payment of £57 to Hollywood Bowl. Tap to verify')).kind).toBe('ignore');
   });
 });
 

@@ -7,7 +7,7 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 ## Snags
 | Pri | Found | Snag |
 |---|---|---|
-| P2 | 28 Oct | Payments to your own accounts or business (e.g. ABC Trade Work) show as spending. Let people mark a payee as "one of my accounts" so future ones count as transfers |
+| P2 | 28 Oct | Payments to your own accounts or business (e.g. a business account) show as spending. Let people mark a payee as "one of my accounts" so future ones count as transfers |
 | P2 | 27 Oct | Log screen in Received mode is tall on small phones (two rows of types plus the debt picker) |
 | P2 | 27 Oct | A pot created mid-cycle takes a full top-up from this cycle. Offer "start from next payday" |
 | P3 | 27 Oct | Closed pots disappear completely. Add a "closed pots" list |
@@ -32,6 +32,12 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | P3 | Light theme |
 
 ## Changelog
+**App 0.1.x, 29 Oct 2026: alert reader fixes from 37 real alerts**
+- Barclays "You've been paid" is money in, not spending
+- Money moved between your own banks is paired up and treated as a transfer, even when the alerts arrive minutes apart
+- Monzo alerts (everything in the title) are read; Monzo Flex repayments match the debt by name
+- Adverts, declined cards and account notices are skipped; card terminal prefixes (SumUp *) removed; Mangopay shows as Vinted
+
 **v4, 27 Oct 2026: money in, Direct Debits, pots, categories**
 - Money in has types that do what you'd expect: Pay, Extra, Borrowed, From savings, Refund, Gift, Between my accounts, Business
 - Borrowing is spotted by name (e.g. "Monzo Flex" matches the Monzo Flex debt), can be linked to a debt, and raises its balance

@@ -15,6 +15,8 @@ export type ParsedAlert = {
   balance?: number;     // pennies, when the alert shows it
   account?: string;     // last four digits
   refund?: boolean;
+  sent?: boolean;       // money you sent to someone (may be one of your own accounts)
+  pairedWith?: string;  // key of the other half of a move between your own accounts
   reason?: string;      // why it was ignored, or a note for the person
   duplicateOf?: string; // key of the alert this one repeats
 };
@@ -43,9 +45,22 @@ export function clean(s: string): string {
     .trim();
 }
 
+// Card terminal prefixes that hide the real shop name
+const PREFIX = /^(sumup|sq|zettle|iz|ztl|paypal|pp|sp|stripe|crv|lsp)\s*\*\s*/i;
+// Payment companies that pay out on behalf of a platform people know
+const PAYERS: [RegExp, string][] = [
+  [/mangopay/i, 'Vinted'],
+  [/airtasker/i, 'Airtasker'],
+  [/mybuilder/i, 'MyBuilder'],
+  [/checkatrade/i, 'Checkatrade'],
+  [/hmrc/i, 'HMRC'],
+  [/\bdwp\b|universal credit/i, 'DWP'],
+];
+
 /** "GOOGLE PLAY APPS" → "Google Play Apps". Leaves mixed case alone. */
 export function tidyName(s: string): string {
-  const t = clean(s).replace(/[.,;:]+$/, '').trim();
+  for (const [rx, name] of PAYERS) if (rx.test(s || '')) return name;
+  const t = clean(s).replace(PREFIX, '').replace(/[.,;:]+$/, '').trim();
   if (!t) return t;
   if (t === t.toUpperCase() && /[A-Z]{3,}/.test(t)) {
     // Title case, but keep likely initials as they are: a short first word (ABC, BP) or a two-letter word (UK)
@@ -67,7 +82,9 @@ const IGNORE: [RegExp, string][] = [
   [/overdrawn|interest charges/i, 'Account warning'],
   [/statement is (ready|available)/i, 'Statement notice'],
   [/\b(log(ged)? ?in|sign(ed)? in)\b/i, 'Sign-in notice'],
-  [/declined/i, 'Declined payment'],
+  [/declined|couldn'?t use (their|your) card|doesn'?t have enough balance/i, 'Declined payment'],
+  [/new device|log-?in\b|logged in(to)?\b|added (their|your) card to/i, 'Account notice'],
+  [/t&cs apply|terms apply|save over|open an? \w+ account|refer a friend|cashback offer|exclusive offer/i, 'Advert'],
 ];
 
 const GENERIC_TITLES = /^(revolut|barclays|barclaycard|monzo|starling( bank)?|natwest|payment|card payment|new notification|google wallet)$/i;
@@ -86,6 +103,12 @@ export function parseAlert(a: RawAlert): ParsedAlert {
     return { ...base, reason: `${title}'s card, not yours`, merchant: tidyName((text.match(/\bat\s+(.+?)(?:\s+balance|$)/i) || [])[1] || '') };
   }
 
+  // Monzo puts the whole alert in the title: "£1 at Co-op", "£20 from Sam", "£495.50 Monzo Flex payment made"
+  const tAt = title.match(new RegExp('^' + MONEY + '\\s+at\\s+(.+)$', 'i'));
+  const tFrom = title.match(new RegExp('^' + MONEY + '\\s+from\\s+(.+)$', 'i'));
+  if (tAt && !text.match(AMOUNT)) return { ...base, kind: 'spent', amount: toPennies(tAt[1]), merchant: tidyName(tAt[2]) };
+  if (tFrom && !text.match(AMOUNT)) return { ...base, kind: 'received', amount: toPennies(tFrom[1]), merchant: tidyName(tFrom[2]) };
+
   const am = text.match(AMOUNT) || title.match(AMOUNT);
   if (!am) return { ...base, reason: 'No amount found' };
   const amount = toPennies(am[1]);
@@ -95,6 +118,12 @@ export function parseAlert(a: RawAlert): ParsedAlert {
 
   // Direct Debits: match these to bills rather than logging a new spend
   if (/direct debit (was )?(paid|collected)|direct debit of/i.test(text)) return { ...out, kind: 'bill', reason: 'Direct Debit' };
+
+  // Paying off credit: match it to the debt bill
+  const repay = all.match(new RegExp(MONEY + '\\s+(.+?)\\s+(?:re)?payment\\s+(?:made|taken|received)', 'i'));
+  if (repay || /made your (monthly )?(re)?payment|repayment (was )?(made|taken|collected)/i.test(all)) {
+    return { ...out, kind: 'bill', merchant: repay ? tidyName(repay[2]) : undefined, reason: 'Repayment' };
+  }
 
   // Moving money between your own accounts
   if (/transferred .* to another account|to your (own|other) account|between your accounts|to (your )?savings/i.test(text)) {
@@ -107,12 +136,12 @@ export function parseAlert(a: RawAlert): ParsedAlert {
   if (/\brefund/i.test(all)) {
     return { ...out, kind: 'received', refund: true, merchant: tidyName(fromName || (!GENERIC_TITLES.test(title) ? title : '') || 'Refund') };
   }
-  if (sentYou || /\b(received|paid in|credited|money in|you've got|deposit(ed)?|incoming)\b/i.test(text)) {
+  if (sentYou || /\b(received|paid in|been paid|credited|money in|you've got|deposit(ed)?|incoming)\b/i.test(text) || /^you received\b/i.test(title)) {
     const who = sentYou ? sentYou[1] : fromName && !/your account/i.test(fromName) ? fromName : !GENERIC_TITLES.test(title) ? title : '';
     return { ...out, kind: 'received', merchant: tidyName(who || 'Money in') };
   }
 
-  // Google Wallet: title is the shop, text is "£8.30 with Revolut Visa ••3333"
+  // Google Wallet: title is the shop, text is "£8.30 with Revolut Visa ••1234"
   if (bank === 'Google Wallet') {
     const card = (text.match(/with\s+(.+?)(?:\s*(?:••|\*\*)\s?\d{4})?$/i) || [])[1];
     return { ...out, kind: 'spent', merchant: tidyName(title), reason: card ? `Paid with ${clean(card)}` : undefined };
@@ -123,9 +152,11 @@ export function parseAlert(a: RawAlert): ParsedAlert {
     let merchant: string | undefined = (text.match(/\b(?:at|with|to)\s+(.+?)(?:\s+(?:from|on|using)\s+your\b|\s+balance\b|\.\s|\.$|$)/i) || [])[1];
     if (merchant && /your account|another account/i.test(merchant)) merchant = undefined;
     if (!merchant && !GENERIC_TITLES.test(title) && !AMOUNT.test(title)) merchant = title;
-    if (!merchant && /you sent/i.test(text)) merchant = 'Payment sent';
+    const sent = /\byou sent\b|transfer sent/i.test(all);
+    if (merchant && sent) merchant = merchant.replace(/\.\s.*$/, '');
+    if (!merchant && sent) merchant = 'Payment sent';
     if (!merchant && /withdr/i.test(text)) merchant = 'Cash';
-    return { ...out, kind: 'spent', merchant: merchant ? tidyName(merchant) : undefined, reason: merchant ? undefined : 'Shop not named in the alert' };
+    return { ...out, kind: 'spent', sent: sent || undefined, merchant: merchant ? tidyName(merchant) : undefined, reason: merchant ? undefined : 'Shop not named in the alert' };
   }
 
   return { ...out, reason: 'Not sure what this one is' };
@@ -144,4 +175,24 @@ export function markDuplicates(list: ParsedAlert[], windowMs = 10 * 60 * 1000): 
   });
 }
 
-export const parseAll = (raw: RawAlert[]) => markDuplicates(raw.map(parseAlert));
+/**
+ * Money sent from one of your banks that lands in another of your banks within a few minutes
+ * is a move between your own accounts, not spending or income. Banks can be minutes apart.
+ */
+export function markTransfers(list: ParsedAlert[], windowMs = 15 * 60 * 1000): ParsedAlert[] {
+  const out = list.map((p) => ({ ...p }));
+  const used = new Set<string>();
+  const sends = out.filter((p) => p.kind === 'spent' && p.sent).sort((a, b) => a.time - b.time);
+  for (const s of sends) {
+    const r = out
+      .filter((q) => q.kind === 'received' && !q.refund && !used.has(q.key) && q.bank !== s.bank && q.amount === s.amount && Math.abs(q.time - s.time) <= windowMs)
+      .sort((a, b) => Math.abs(a.time - s.time) - Math.abs(b.time - s.time))[0];
+    if (!r) continue;
+    used.add(r.key);
+    s.kind = 'transfer'; s.pairedWith = r.key; s.reason = `Moved to your ${r.bank}`;
+    r.kind = 'transfer'; r.pairedWith = s.key; r.reason = `Moved from your ${s.bank}`;
+  }
+  return out;
+}
+
+export const parseAll = (raw: RawAlert[]) => markTransfers(markDuplicates(raw.map(parseAlert)));

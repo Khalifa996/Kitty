@@ -11,13 +11,13 @@ let n = 0;
 const tx = (o: Partial<Tx>): Tx => ({ id: `t${n++}`, kind: 'out', amt: 0, cat: 'other', merchant: '', note: '', date: '2026-10-27', time: '12:00', biz: false, billId: null, ...o });
 const bill = (name: string, amt: number, day: number, o: Partial<Bill> = {}): Bill => ({ id: name, name, amt, day, type: 'bill', ...o });
 
-// A tight month: £2,787.23 of bills, paid 27 Oct, a £106.40 cot on day one
+// A real month: £2,787.23 of bills, paid 27 Oct, a £106.40 cot on day one
 const moBills: Bill[] = [
-  bill('Rent', 150000, 28), bill('Monzo Flex', 50000, 27, { type: 'debt' }), bill('Barclaycard', 13000, 27, { type: 'debt' }),
+  bill('Rent', 150000, 28), bill('Flex credit', 50000, 27, { type: 'debt' }), bill('Credit card', 13000, 27, { type: 'debt' }),
   bill('Council tax', 14800, 1), bill('EE', 7800, 28), bill('Monzo int', 8000, 28, { type: 'debt' }), bill('British Gas', 6500, 1),
   bill('Gym', 5999, 1, { type: 'sub' }), bill('Paypal', 5000, 28, { type: 'debt' }), bill('Car insurance', 4700, 27), bill('E.on', 4300, 27),
-  bill('Revolut/Plum', 2000, 3, { type: 'sub' }), bill('Claude Pro', 1800, 4, { type: 'sub' }), bill('RAC', 1600, 9, { type: 'sub' }),
-  bill('YouTube', 1299, 28, { type: 'sub' }), bill('Simply Business', 1126, 27, { type: 'sub' }), bill('Netflix', 799, 7, { type: 'sub' }),
+  bill('Bank fees', 2000, 3, { type: 'sub' }), bill('Software', 1800, 4, { type: 'sub' }), bill('RAC', 1600, 9, { type: 'sub' }),
+  bill('YouTube', 1299, 28, { type: 'sub' }), bill('Insurance', 1126, 27, { type: 'sub' }), bill('Netflix', 799, 7, { type: 'sub' }),
 ];
 
 describe('pay cycles', () => {
@@ -48,7 +48,7 @@ describe('day one of a tight month', () => {
     expect(si.tomorrow).toBe(741);
   });
   it('borrowing adds to the money to spend', () => {
-    const S2 = { ...S, tx: [...S.tx, tx({ kind: 'in', cat: 'borrowed', amt: 50000, merchant: 'Monzo Flex' })] };
+    const S2 = { ...S, tx: [...S.tx, tx({ kind: 'in', cat: 'borrowed', amt: 50000, merchant: 'Flex credit' })] };
     expect(pot(S2, cycleOf('2026-10-27', S2.settings))).toBe(32877 + 50000);
   });
   it('moving the cot into a pot takes it off the daily budget', () => {
@@ -92,7 +92,7 @@ describe('starting part-way through a cycle', () => {
 });
 
 describe('balance check-ins', () => {
-  const accounts = [{ id: 'a', name: 'Barclays', type: 'current' as const }, { id: 'c', name: 'Barclaycard', type: 'credit' as const, debtId: 'card' }];
+  const accounts = [{ id: 'a', name: 'Barclays', type: 'current' as const }, { id: 'c', name: 'Credit card', type: 'credit' as const, debtId: 'card' }];
   const base = { id: 'ci1', at: '2026-10-25 09:00', bal: { a: 90000, c: 20000 }, net: 70000, moved: 0 };
   it('finds spending that was not logged', () => {
     const S = state({ accounts, checkins: [base], tx: [tx({ amt: 1000, date: '2026-10-26' })] });

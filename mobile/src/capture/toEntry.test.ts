@@ -10,7 +10,7 @@ const withHistory = (): State => {
   const S = blankState();
   S.settings.payday = 27; S.settings.income = 360000;
   S.tx.push({ id: 'a', kind: 'out', amt: 2630, cat: 'groceries', merchant: 'Tesco', note: '', date: '2026-10-20', time: '10:00', biz: false, billId: null });
-  S.bills.push({ id: 'rent', name: 'Rent', amt: 150000, day: 28, type: 'bill' }, { id: 'sb', name: 'Simply Business', amt: 1126, day: 27, type: 'sub' });
+  S.bills.push({ id: 'rent', name: 'Rent', amt: 125000, day: 28, type: 'bill' }, { id: 'sb', name: 'Insurance', amt: 1126, day: 27, type: 'sub' });
   return S;
 };
 
@@ -28,7 +28,7 @@ it('adds a card payment with the remembered category', () => {
 });
 
 it('marks a bill paid when the amount matches', () => {
-  const s = suggest(withHistory(), alert({ amount: 150000, merchant: 'Acme Lettings Limited', bank: 'Barclays' }), 'n2');
+  const s = suggest(withHistory(), alert({ amount: 125000, merchant: 'Acme Lettings Limited', bank: 'Barclays' }), 'n2');
   expect(s).toMatchObject({ action: 'pay-bill', billName: 'Rent' });
 });
 
@@ -44,4 +44,25 @@ it('treats a payment close to normal pay as pay', () => {
 it('skips transfers and ignored alerts', () => {
   expect(suggest(withHistory(), alert({ kind: 'transfer', amount: 3000 }), 'n5').action).toBe('skip');
   expect(suggest(withHistory(), alert({ kind: 'ignore', reason: "Alex's card, not yours" }), 'n6')).toMatchObject({ action: 'skip', reason: "Alex's card, not yours" });
+});
+
+it('matches a repayment to its debt by name when the amount differs', () => {
+  const S = withHistory();
+  S.bills.push({ id: 'flex', name: 'Monzo Flex Bill', amt: 50000, day: 27, type: 'debt' });
+  expect(suggest(S, alert({ kind: 'bill', amount: 49550, merchant: 'Monzo Flex', bank: 'Monzo', reason: 'Repayment' }), 'n7')).toMatchObject({ action: 'pay-bill', billId: 'flex', tx: { amt: 49550 } });
+});
+
+it('treats platform payouts sensibly', () => {
+  const S = withHistory();
+  const work = suggest(S, alert({ kind: 'received', amount: 8558, merchant: 'Airtasker' }), 'n8');
+  expect(work.action === 'add' && work.tx.cat).toBe('extra');
+  S.settings.sideIncome = true;
+  const biz = suggest(S, alert({ kind: 'received', amount: 8558, merchant: 'Airtasker' }), 'n9');
+  expect(biz.action === 'add' && [biz.tx.cat, biz.tx.biz]).toEqual(['side', true]);
+  const sold = suggest(S, alert({ kind: 'received', amount: 19000, merchant: 'Vinted' }), 'n10');
+  expect(sold.action === 'add' && sold.tx.sub).toBe('Sold something');
+});
+
+it('skips moves between your own accounts', () => {
+  expect(suggest(withHistory(), alert({ kind: 'transfer', amount: 18000, reason: 'Moved from your Barclays' }), 'n11')).toMatchObject({ action: 'skip', reason: 'Moved from your Barclays' });
 });
