@@ -29,6 +29,8 @@ export const T = {
 
 const SYMBOLS: Record<string, string> = { GBP: '£', EUR: '€', USD: '$', CAD: '$', AUD: '$', NZD: '$', IEP: '€', ZAR: 'R', INR: '₹', NGN: '₦', AED: 'AED ' };
 
+export const symbol = (currency = 'GBP') => SYMBOLS[currency] || '£';
+
 /** Pennies to "£1,234.56". */
 export function money(p: number, currency = 'GBP', dp = 2): string {
   const v = Math.abs(p) / 100;

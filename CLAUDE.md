@@ -58,6 +58,9 @@ Expo SDK 58, TypeScript. Being rebuilt from the prototype screen by screen.
 - `src/engine/`: the money model as pure functions (`budget.ts`), same data shape as the prototype (`types.ts`) so a prototype backup imports as-is. `today` is always passed in. Tests in `*.test.ts`.
 - `src/parse/bankAlerts.ts`: turns bank notifications into entries. Built from real Revolut, Barclays and Google Wallet alerts; every rule has a test. Duplicate payments (bank + Google Wallet) are merged.
 - `modules/kitty-notifications/`: local Expo module (Kotlin). `KittyNotificationListener` stores alerts from bank apps only in SharedPreferences; JS reads them with `getCaptured()`. Other apps that post money alerts are noted by package name only, never content.
+- Screens (0.2): `src/screens/` Log (keypad), Review (captured alerts → one tap to add), Activity, More (import a web-app backup, alert access, backups). State lives in `src/store/KittyState.tsx` (one JSON document, saved with `expo-sqlite/kv-store` on the phone, `localStorage` in the browser preview). Direct Debits are ticked off when the app opens.
+- Every build also exports a browser version and screenshots each screen with made-up sample data (`scripts/shots.mjs`, `sample-state.json`, `sample-alerts.json`). The pictures land on the `ci-reports` branch under `shots/`. Check them before telling Mo a build is ready.
+- New packages: add them to `deps.txt`; CI installs matching versions with `npx expo install` and commits the lock file.
 - Builds run on GitHub Actions (`.github/workflows/android.yml`): install, type check, Jest, prebuild, Gradle, then the APK is published to Releases. A report of each build is pushed to the `ci-reports` branch (`android.md`).
 - Test APKs are signed with `credentials/sideload.keystore` (debug passwords, test builds only).
 - npm is not reachable from Claude's workspace, so run tests locally with `node --experimental-strip-types` and a small shim, and let CI do the real install.

@@ -29,3 +29,18 @@ export function categories(st: Settings): Cat[] {
 }
 
 export const catName = (st: Settings, id: string) => categories(st).find((c) => c.id === id)?.n || BASE_CATS.find((c) => c.id === id)?.n || 'Other';
+
+/** Kinds of money in, and what each does to the budget (matches the web app). */
+export const IN_TYPES: (Cat & { long: string })[] = [
+  { id: 'salary', n: 'Pay', long: 'Pay', c: '#3DD68C' },
+  { id: 'extra', n: 'Extra', long: 'Extra income', c: '#3DD68C' },
+  { id: 'borrowed', n: 'Borrowed', long: 'Borrowed', c: '#FF9A3D' },
+  { id: 'savings', n: 'Savings', long: 'From savings', c: '#3DD68C' },
+  { id: 'refund', n: 'Refund', long: 'Refund', c: '#3DD68C' },
+  { id: 'expenses', n: 'Expenses', long: 'Expenses paid back', c: '#3DD68C' },
+  { id: 'gift', n: 'Gift', long: 'Gift', c: '#3DD68C' },
+  { id: 'transfer', n: 'Transfer', long: 'Between my accounts', c: '#8D95A1' },
+  { id: 'side', n: 'Business', long: 'Business income', c: '#F2C14E' },
+];
+export const inTypes = (st: Settings) => IN_TYPES.filter((t) => t.id !== 'side' || st.sideIncome);
+export const inName = (id: string) => IN_TYPES.find((t) => t.id === id)?.long || 'Money in';

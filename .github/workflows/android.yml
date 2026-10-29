@@ -95,6 +95,16 @@ jobs:
           set -o pipefail
           npx jest --ci 2>&1 | tee "$LOGS/tests.log"
 
+      - name: Screenshots of the browser build
+        id: shots
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          npx expo export --platform web --output-dir /tmp/web 2>&1 | tail -n 40 | tee "$LOGS/web.log"
+          mkdir -p /tmp/pw && cd /tmp/pw && npm init -y >/dev/null && npm i playwright@1.49.1 >/dev/null 2>&1 && npx playwright install --with-deps chromium >/dev/null 2>&1
+          cp "$GITHUB_WORKSPACE/mobile/scripts/shots.mjs" "$GITHUB_WORKSPACE/mobile/scripts/sample-"*.json /tmp/pw/
+          node /tmp/pw/shots.mjs /tmp/web "$LOGS/shots" 2>&1 | tee -a "$LOGS/web.log"
+
       - name: Generate the Android project
         id: prebuild
         run: |
@@ -130,8 +140,8 @@ jobs:
           r=/tmp/report.md
           {
             echo "# Android build ${{ github.run_number }} (${{ github.sha }})"
-            echo "bootstrap=${{ steps.bootstrap.outcome }} deps=${{ steps.deps.outcome }} install=${{ steps.install.outcome }} typecheck=${{ steps.typecheck.outcome }} tests=${{ steps.tests.outcome }} prebuild=${{ steps.prebuild.outcome }} gradle=${{ steps.gradle.outcome }}"
-            for f in bootstrap deps install typecheck tests prebuild gradle; do
+            echo "bootstrap=${{ steps.bootstrap.outcome }} deps=${{ steps.deps.outcome }} install=${{ steps.install.outcome }} typecheck=${{ steps.typecheck.outcome }} tests=${{ steps.tests.outcome }} shots=${{ steps.shots.outcome }} prebuild=${{ steps.prebuild.outcome }} gradle=${{ steps.gradle.outcome }}"
+            for f in bootstrap deps install typecheck tests web prebuild gradle; do
               [ -f "ci-logs/$f.log" ] || continue
               echo; echo "## $f (last 150 lines)"; echo '```'
               grep -v -E "^\s*$" "ci-logs/$f.log" | tail -n 150
@@ -140,6 +150,7 @@ jobs:
             if [ -f ci-logs/gradle.log ]; then echo; echo "## gradle errors"; echo '```'; grep -n -E "error:|e: |FAILURE|What went wrong" -A4 ci-logs/gradle.log | head -n 120; echo '```'; fi
           } > $r
           mkdir -p /tmp/rep && cd /tmp/rep && cp $r android.md
+          if [ -d "$GITHUB_WORKSPACE/ci-logs/shots" ]; then cp -r "$GITHUB_WORKSPACE/ci-logs/shots" shots; fi
           git init -q && git checkout -q -b ci-reports
           git config user.name "kitty-ci" && git config user.email "kitty-ci@users.noreply.github.com"
           git add . && git commit -qm "Android build ${{ github.run_number }}"

@@ -1,2 +1,5 @@
 # Extra packages for the app, one per line. CI installs matching versions with `npx expo install`.
 expo-sqlite
+react-dom
+react-native-web
+@expo/metro-runtime

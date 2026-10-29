@@ -1,5 +1,5 @@
 /// <reference types="jest" />
-import { guessCategory, suggest } from './toEntry';
+import { alreadyLogged, guessCategory, suggest } from './toEntry';
 import { blankState } from '../engine/migrate';
 import type { ParsedAlert } from '../parse/bankAlerts';
 import type { State } from '../engine/types';
@@ -65,4 +65,17 @@ it('treats platform payouts sensibly', () => {
 
 it('skips moves between your own accounts', () => {
   expect(suggest(withHistory(), alert({ kind: 'transfer', amount: 18000, reason: 'Moved from your Barclays' }), 'n11')).toMatchObject({ action: 'skip', reason: 'Moved from your Barclays' });
+});
+
+it('does not pay a bill twice when a Direct Debit already ticked it off', () => {
+  const S = withHistory();
+  S.tx.push({ id: 'dd', kind: 'out', amt: 1126, cat: 'bills', merchant: 'Insurance', note: '', date: '2026-10-27', time: '06:00', biz: false, billId: 'sb', auto: true });
+  expect(suggest(S, alert({ kind: 'bill', amount: 1126, bank: 'Barclays' }), 'n12')).toMatchObject({ action: 'skip', reason: 'Insurance is already ticked off as paid' });
+});
+
+it('spots a payment already logged by hand', () => {
+  const S = withHistory();
+  S.tx.push({ id: 'h', kind: 'out', amt: 830, cat: 'groceries', merchant: 'Tesco', note: '', date: '2026-10-27', time: '12:40', biz: false, billId: null });
+  expect(alreadyLogged(S, alert({ amount: 830, merchant: 'Tesco' }))?.id).toBe('h');
+  expect(alreadyLogged(S, alert({ amount: 999, merchant: 'Tesco' }))).toBeUndefined();
 });

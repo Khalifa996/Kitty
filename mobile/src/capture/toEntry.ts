@@ -47,10 +47,14 @@ export function suggest(S: State, p: ParsedAlert, id: string): Suggestion {
   const unpaid = S.bills.filter((b) => b.amt === p.amount && !S.tx.some((t) => t.billId === b.id && t.date >= win.start && t.date <= win.end));
   const open = S.bills.filter((b) => !S.tx.some((t) => t.billId === b.id && t.date >= win.start && t.date <= win.end));
   // Repayments can differ from the usual amount (Monzo Flex £495.50 against a £500 bill), so match on the name too
+  const nameMatch = (b: { name: string }) => { const n = norm(b.name), q = norm(p.merchant || ''); return q.length >= 4 && (n.includes(q) || q.includes(n)); };
+  const byNameAll = p.merchant ? S.bills.find(nameMatch) : undefined;
   const byName = p.merchant ? open.find((b) => { const n = norm(b.name), q = norm(p.merchant as string); return q.length >= 4 && (n.includes(q) || q.includes(n)); }) : undefined;
   if (p.kind === 'bill' || (p.kind === 'spent' && unpaid.length)) {
     const b = unpaid.sort((x, y) => Math.abs(billDue(x, win).localeCompare(date)) - Math.abs(billDue(y, win).localeCompare(date)))[0] || (p.kind === 'bill' ? byName : undefined);
     if (b) return { action: 'pay-bill', billId: b.id, billName: b.name, tx: { ...base, kind: 'out', cat: 'bills', sub: b.sub || b.name, merchant: b.name, billId: b.id, biz: !!b.biz } };
+    const alreadyPaid = S.bills.find((b) => (b.amt === p.amount || b === byNameAll) && S.tx.some((t) => t.billId === b.id && t.date >= win.start && t.date <= win.end));
+    if (p.kind === 'bill' && alreadyPaid) return { action: 'skip', reason: `${alreadyPaid.name} is already ticked off as paid` };
     if (p.kind === 'bill') return { action: 'skip', reason: p.reason === 'Repayment' ? `Repayment to ${p.merchant || 'a lender'} that matches no bill. Add it on the Bills screen` : 'Direct Debit that matches no bill. Add it on the Bills screen' };
   }
 
@@ -67,4 +71,12 @@ export function suggest(S: State, p: ParsedAlert, id: string): Suggestion {
 
   const cat = guessCategory(S, p.merchant);
   return { action: 'add', guessed: !cat, tx: { ...base, kind: 'out', cat: cat || 'other', sub: null } };
+}
+
+/** Something with the same amount was already logged by hand around the same day. */
+export function alreadyLogged(S: State, p: ParsedAlert): Tx | undefined {
+  if (!p.amount || (p.kind !== 'spent' && p.kind !== 'received')) return undefined;
+  const kind = p.kind === 'spent' ? 'out' : 'in', day = ymd(new Date(p.time));
+  const near = (d: string) => Math.abs(new Date(d + 'T12:00:00').getTime() - new Date(day + 'T12:00:00').getTime()) <= 864e5;
+  return S.tx.find((t) => t.kind === kind && t.amt === p.amount && !t.billId && t.source !== 'alert' && near(t.date));
 }
