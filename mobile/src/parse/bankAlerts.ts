@@ -50,6 +50,8 @@ const PREFIX = /^(sumup|sq|zettle|iz|ztl|paypal|pp|sp|stripe|crv|lsp)\s*\*\s*/i;
 // Payment companies that pay out on behalf of a platform people know
 const PAYERS: [RegExp, string][] = [
   [/mangopay/i, 'Vinted'],
+  [/uber\s*\*?\s*eats/i, 'Uber Eats'],
+  [/\bubr\b|uber\.com|^uber\s*\*/i, 'Uber'],
   [/airtasker/i, 'Airtasker'],
   [/mybuilder/i, 'MyBuilder'],
   [/checkatrade/i, 'Checkatrade'],

@@ -140,3 +140,9 @@ it('tidies shouty names', () => {
   expect(tidyName('McDonalds')).toBe('McDonalds');
   expect(tidyName('BP THE GREEN MAN')).toBe('BP The Green Man');
 });
+
+it('tidies Uber card descriptions', () => {
+  expect(tidyName('Ubr* Pending.uber.com')).toBe('Uber');
+  expect(tidyName('UBER *TRIP')).toBe('Uber');
+  expect(tidyName('UBER * EATS')).toBe('Uber Eats');
+});
