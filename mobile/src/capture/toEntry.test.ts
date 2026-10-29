@@ -115,27 +115,27 @@ it('corrects a Direct Debit Kitty ticked off with the usual amount', () => {
   const S = withHistory();
   S.bills.push({ id: 'flex', name: 'Monzo Flex Bill', amt: 50000, day: 27, type: 'debt', dd: true });
   S.tx.push({ id: 'ddf', kind: 'out', amt: 50000, cat: 'bills', merchant: 'Monzo Flex Bill', note: '', date: '2026-10-27', time: '06:00', biz: false, billId: 'flex', auto: true });
-  const s = suggest(S, alert({ kind: 'bill', amount: 49550, merchant: 'Monzo Flex', bank: 'Monzo', reason: 'Repayment' }), 'n15');
-  expect(s).toMatchObject({ action: 'pay-bill', billId: 'flex', tx: { amt: 49550 }, replaces: { id: 'ddf' } });
+  const s = suggest(S, alert({ kind: 'bill', amount: 48120, merchant: 'Monzo Flex', bank: 'Monzo', reason: 'Repayment' }), 'n15');
+  expect(s).toMatchObject({ action: 'pay-bill', billId: 'flex', tx: { amt: 48120 }, replaces: { id: 'ddf' } });
 });
 
 it('offers a Direct Debit that matches no bill instead of hiding it', () => {
-  const s = suggest(withHistory(), alert({ kind: 'bill', amount: 5576, bank: 'Barclays', reason: 'Direct Debit' }), 'n16');
-  expect(s).toMatchObject({ action: 'add', guessed: true, hint: 'Direct Debit that matches none of your bills', tx: { kind: 'out', cat: 'bills', amt: 5576 } });
+  const s = suggest(withHistory(), alert({ kind: 'bill', amount: 6120, bank: 'Barclays', reason: 'Direct Debit' }), 'n16');
+  expect(s).toMatchObject({ action: 'add', guessed: true, hint: 'Direct Debit that matches none of your bills', tx: { kind: 'out', cat: 'bills', amt: 6120 } });
 });
 
 it('spots a round figure logged by hand for the exact bank amount', () => {
   const S = withHistory();
-  S.tx.push({ id: 'r', kind: 'in', amt: 22500, cat: 'expenses', merchant: 'Trip', note: '', date: '2026-10-27', time: '09:00', biz: false, billId: null });
-  expect(alreadyLogged(S, alert({ kind: 'received', amount: 22576 }))?.id).toBe('r');
+  S.tx.push({ id: 'r', kind: 'in', amt: 18000, cat: 'expenses', merchant: 'Trip', note: '', date: '2026-10-27', time: '09:00', biz: false, billId: null });
+  expect(alreadyLogged(S, alert({ kind: 'received', amount: 18045 }))?.id).toBe('r');
   expect(alreadyLogged(S, alert({ kind: 'received', amount: 30000 }))).toBeUndefined();
 });
 
 it('treats card reader payouts as business takings when side income is on', () => {
   const S = withHistory();
-  const off = suggest(S, alert({ kind: 'received', amount: 5057, merchant: 'Stripe Payments Uk Ltd' }), 'n17');
+  const off = suggest(S, alert({ kind: 'received', amount: 4210, merchant: 'Stripe Payments Uk Ltd' }), 'n17');
   expect(off.action === 'add' && [off.tx.cat, off.guessed]).toEqual(['extra', true]);
   S.settings.sideIncome = true;
-  const on = suggest(S, alert({ kind: 'received', amount: 5057, merchant: 'Stripe Payments Uk Ltd' }), 'n18');
+  const on = suggest(S, alert({ kind: 'received', amount: 4210, merchant: 'Stripe Payments Uk Ltd' }), 'n18');
   expect(on.action === 'add' && [on.tx.cat, on.tx.biz, on.guessed]).toEqual(['side', true, true]);
 });

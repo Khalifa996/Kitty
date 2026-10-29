@@ -38,9 +38,9 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 
 ## Changelog
 **App 0.3, 29 Oct 2026: fewer double counts (from the first day of real use)**
-- A round figure logged by hand (£225) is matched to the bank's exact amount (£225.76). "Same one" keeps your entry and corrects the amount; "Add anyway" if they really are two payments
+- A round figure logged by hand (£20) is matched to the bank's exact amount (£20.45). "Same one" keeps your entry and corrects the amount; "Add anyway" if they really are two payments
 - A card payment for a bill Kitty already ticked off (YouTube by card, then the Direct Debit day) is skipped instead of counted twice
-- A repayment that differs from the usual amount corrects the Direct Debit Kitty ticked off (Monzo Flex £495.50, not £500)
+- A repayment that differs from the usual amount corrects the Direct Debit Kitty ticked off (a few pounds under the usual amount, say)
 - Direct Debits that match none of your bills are offered as a One-off bill instead of hidden
 - Card reader payouts (Stripe, SumUp, Square, Zettle) count as business takings when side income is on
 - Activity: tap an entry to change its name, amount or category; rows show the bank instead of "From bank alert"; deleting a Direct Debit doesn't bring it back
