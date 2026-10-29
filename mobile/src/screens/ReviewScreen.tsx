@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { alreadyLogged, suggest, type Suggestion } from '../capture/toEntry';
 import { keysFor, type Capture } from '../capture/useCapture';
-import { categories, inName, inTypes } from '../engine/cats';
+import { catName, categories, inName, inTypes } from '../engine/cats';
 import type { Tx } from '../engine/types';
 import type { ParsedAlert } from '../parse/bankAlerts';
 import { useKitty } from '../store/KittyState';
@@ -49,12 +49,33 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
   const add = (list: Item[]) => {
     const txs = list.map(txFor).filter((t): t is Tx => !!t);
     if (!txs.length) return;
-    update((d) => { d.tx.push(...txs); });
+    // A Direct Debit Kitty ticked off with the usual amount is swapped for the bank's real figure
+    const old = list.flatMap((i) => (i.sug.action === 'pay-bill' && i.sug.replaces ? [i.sug.replaces] : []));
+    const oldIds = new Set(old.map((t) => t.id));
+    update((d) => { d.tx = d.tx.filter((t) => !oldIds.has(t.id)); d.tx.push(...txs); });
     cap.done(list.flatMap((i) => keysFor(i.p, cap.parsed)));
-    onDone(txs.length === 1 ? `Added ${money(txs[0].amt, cur)}${txs[0].merchant ? ' · ' + txs[0].merchant : ''}` : `Added ${txs.length} payments`,
-      () => update((d) => { const ids = new Set(txs.map((t) => t.id)); d.tx = d.tx.filter((t) => !ids.has(t.id)); }));
+    onDone(txs.length === 1 ? `${old.length ? 'Updated' : 'Added'} ${money(txs[0].amt, cur)}${txs[0].merchant ? ' · ' + txs[0].merchant : ''}` : `Added ${txs.length} payments`,
+      () => update((d) => { const ids = new Set(txs.map((t) => t.id)); d.tx = d.tx.filter((t) => !ids.has(t.id)); d.tx.push(...old); }));
   };
   const skip = (i: Item) => { cap.done(keysFor(i.p, cap.parsed)); onDone('Skipped'); };
+  /** The alert is something already logged by hand: keep that entry, with the bank's exact amount and the shop's name. */
+  const same = (i: Item) => {
+    const was = i.dup as Tx;
+    update((d) => {
+      const t = d.tx.find((x) => x.id === was.id);
+      if (!t) return;
+      t.amt = i.p.amount || t.amt;
+      if (!t.merchant && i.p.merchant) t.merchant = i.p.merchant;
+      t.bank = i.p.bank;
+    });
+    cap.done(keysFor(i.p, cap.parsed));
+    onDone(was.amt === i.p.amount ? 'Kept the one you logged' : `Updated to ${money(i.p.amount || 0, cur)}`,
+      () => update((d) => { d.tx = d.tx.map((x) => (x.id === was.id ? was : x)); }));
+  };
+  const clearSkipped = () => { cap.done(skipped.flatMap((i) => keysFor(i.p, cap.parsed))); setShowSkipped(false); };
+  const notices = skipped.filter((i) => i.p.kind === 'ignore' && !i.p.amount);
+  const skippedPay = skipped.filter((i) => !notices.includes(i));
+  const dupText = (t: Tx) => `${t.merchant || (t.kind === 'in' ? inName(t.cat) : catName(S.settings, t.cat))}, ${money(t.amt, cur)}, ${when(new Date(t.date + 'T' + (t.time || '12:00')).getTime())}`;
 
   if (!S.settings.setupDone) {
     return (
@@ -106,14 +127,21 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
               </View>
               <Text style={[s.amt, isIn && { color: C.good }]}>{isIn ? '+' : ''}{money(t.amt, cur)}</Text>
             </View>
-            {i.dup && <Text style={[s.hint, { color: C.warn }]}>Looks like you already logged this ({i.dup.merchant || 'no name'}, {money(i.dup.amt, cur)}).</Text>}
+            {i.dup && <Text style={[s.hint, { color: C.warn }]}>Looks like you already logged this: {dupText(i.dup)}.</Text>}
+            {i.sug.action === 'add' && i.sug.hint && <Text style={s.hint}>{i.sug.hint}.</Text>}
+            {i.sug.action === 'pay-bill' && i.sug.replaces && <Text style={s.hint}>Kitty ticked this off as {money(i.sug.replaces.amt, cur)} on the day. Your bank says {money(t.amt, cur)}.</Text>}
             <View style={s.row}>
               {i.sug.action === 'pay-bill'
                 ? <View style={s.tag}><Dot colour={C.bill} /><Text style={s.tagT}>{label}</Text></View>
                 : <Chip label={guessed ? `${label}?` : label} colour={c?.c || C.muted} onPress={() => setPicking(i)} />}
               <View style={{ flex: 1 }} />
-              <Btn label="Skip" small onPress={() => skip(i)} />
-              <Btn label={i.sug.action === 'pay-bill' ? 'Mark paid' : 'Add'} small primary={!i.dup} onPress={() => add([i])} />
+              {i.dup ? <>
+                <Btn label="Add anyway" small onPress={() => add([i])} />
+                <Btn label="Same one" small primary onPress={() => same(i)} />
+              </> : <>
+                <Btn label="Skip" small onPress={() => skip(i)} />
+                <Btn label={i.sug.action === 'pay-bill' ? (i.sug.replaces ? 'Update' : 'Mark paid') : 'Add'} small primary onPress={() => add([i])} />
+              </>}
             </View>
           </Card>
         );
@@ -121,10 +149,22 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
 
       {skipped.length > 0 && (
         <View style={{ gap: 8 }}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Show skipped" onPress={() => setShowSkipped(!showSkipped)}>
-            <Label>{showSkipped ? 'Hide' : 'Show'} {skipped.length} skipped automatically</Label>
-          </Pressable>
-          {showSkipped && skipped.map((i) => (
+          <View style={s.row}>
+            <Pressable style={{ flex: 1, paddingVertical: 8 }} accessibilityRole="button" accessibilityLabel="Show skipped" onPress={() => setShowSkipped(!showSkipped)}>
+              <Label>{showSkipped ? 'Hide' : 'Show'} {skipped.length} skipped automatically</Label>
+            </Pressable>
+            {showSkipped && <Btn label="Clear all" small onPress={clearSkipped} />}
+          </View>
+          {showSkipped && notices.length > 0 && (
+            <View style={s.skipRow}>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={[s.name, { fontSize: 14, color: C.muted }]}>{notices.length} bank notice{notices.length === 1 ? '' : 's'}</Text>
+                <Text style={s.meta} numberOfLines={2}>{[...new Set(notices.map((i) => i.sug.action === 'skip' ? i.sug.reason : ''))].filter(Boolean).join(' · ')}</Text>
+              </View>
+              <Btn label="Clear" small onPress={() => cap.done(notices.flatMap((i) => keysFor(i.p, cap.parsed)))} />
+            </View>
+          )}
+          {showSkipped && skippedPay.map((i) => (
             <View key={i.p.key} style={s.skipRow}>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={[s.name, { fontSize: 14, color: C.muted }]} numberOfLines={1}>{i.p.merchant || i.p.bank}{i.p.amount ? ` · ${money(i.p.amount, cur)}` : ''}</Text>

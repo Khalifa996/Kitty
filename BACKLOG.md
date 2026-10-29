@@ -9,7 +9,7 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 |---|---|---|
 | P1 | 29 Oct | App: Bills, Pots, Insights, balance check-ins and Settings screens still only in the web app |
 | P1 | 29 Oct | App: first-run setup for new users (only import from the web app so far) |
-| P2 | 29 Oct | App: edit an entry (only delete so far); notes; Business switch; pay from a pot |
+| P2 | 29 Oct | App: change an entry's date; notes; Business switch; pay from a pot |
 | P3 | 29 Oct | App: category icons (dots for now) |
 | P2 | 29 Oct | Work expenses: mark a spend as "I'll get this back" so it stays off the daily budget until the reimbursement arrives |
 | P2 | 28 Oct | Payments to your own accounts or business (e.g. a business account) show as spending. Let people mark a payee as "one of my accounts" so future ones count as transfers |
@@ -37,6 +37,15 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | P3 | Light theme |
 
 ## Changelog
+**App 0.3, 29 Oct 2026: fewer double counts (from the first day of real use)**
+- A round figure logged by hand (£225) is matched to the bank's exact amount (£225.76). "Same one" keeps your entry and corrects the amount; "Add anyway" if they really are two payments
+- A card payment for a bill Kitty already ticked off (YouTube by card, then the Direct Debit day) is skipped instead of counted twice
+- A repayment that differs from the usual amount corrects the Direct Debit Kitty ticked off (Monzo Flex £495.50, not £500)
+- Direct Debits that match none of your bills are offered as a One-off bill instead of hidden
+- Card reader payouts (Stripe, SumUp, Square, Zettle) count as business takings when side income is on
+- Activity: tap an entry to change its name, amount or category; rows show the bank instead of "From bank alert"; deleting a Direct Debit doesn't bring it back
+- Review: bank notices grouped into one line; Clear all
+
 **App 0.2 (build 0.1.10), 29 Oct 2026: tap to add**
 - Log, Review, Activity and More screens; data saved on the phone; import a backup from the web app
 - Review: payments from bank alerts with the category filled in, one tap to add or mark a bill paid, add all, skip; spots ones already logged by hand

@@ -61,6 +61,7 @@ export type Tx = {
   since?: string;
   example?: boolean;
   source?: string; // e.g. 'alert' when captured from a bank notification
+  bank?: string;   // which bank's alert it came from
 };
 
 export type Pot = { id: string; name: string; perPay: number; target: number; opening: number; start: string; end?: string; closed?: string };

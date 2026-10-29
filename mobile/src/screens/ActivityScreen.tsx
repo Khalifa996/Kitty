@@ -1,10 +1,11 @@
 // Everything logged, newest first, grouped by day.
 import { useMemo, useState } from 'react';
-import { Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
+import { Pressable, SectionList, StyleSheet, Text, TextInput, View } from 'react-native';
+import { billWindowAt } from '../engine/budget';
 import { categories, catName, inName, inTypes } from '../engine/cats';
 import type { Tx } from '../engine/types';
 import { useKitty } from '../store/KittyState';
-import { Btn, Dot, Sheet } from '../ui/kit';
+import { Btn, Chip, Dot, Label, Sheet } from '../ui/kit';
 import { C, money } from '../ui/theme';
 
 const dayLabel = (d: string) => {
@@ -18,7 +19,9 @@ const dayLabel = (d: string) => {
 export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => void) => void }) {
   const { S, update } = useKitty();
   const [open, setOpen] = useState<Tx | null>(null);
+  const [form, setForm] = useState({ name: '', amt: '', cat: '' });
   const cur = S.settings.currency;
+  const openTx = (t: Tx) => { setOpen(t); setForm({ name: t.merchant, amt: (t.amt / 100).toFixed(2), cat: t.cat }); };
 
   const sections = useMemo(() => {
     const list = [...S.tx].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).slice(0, 400);
@@ -36,17 +39,41 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
   const sub = (t: Tx) => {
     const bill = t.billId ? S.bills.find((b) => b.id === t.billId) : null;
     const first = t.checkin ? 'Found at balance check'
-      : bill ? ({ bill: 'Bill', sub: 'Subscription', debt: 'Debt repayment' }[bill.type] + (t.auto ? ' · Direct Debit' : ''))
+      : bill ? (t.auto ? 'Direct Debit' : { bill: 'Bill', sub: 'Subscription', debt: 'Debt repayment' }[bill.type])
       : t.kind === 'in' ? inName(t.cat)
       : (t.sub || (t.merchant ? catName(S.settings, t.cat) : ''));
-    return [first, t.time, t.source === 'alert' ? 'From bank alert' : '', t.note].filter(Boolean).join(' · ');
+    return [first, t.time, t.bank, t.note].filter(Boolean).join(' · ');
   };
 
   const del = (t: Tx) => {
-    update((d) => { d.tx = d.tx.filter((x) => x.id !== t.id); });
+    // A Direct Debit Kitty ticked off would come back the next time the app opens, so remember it was removed
+    const skipKey = t.auto && t.billId ? `${t.billId}:${billWindowAt(t.date, S.settings).start}` : null;
+    update((d) => {
+      d.tx = d.tx.filter((x) => x.id !== t.id);
+      if (skipKey) d.settings.ddSkip = { ...(d.settings.ddSkip || {}), [skipKey]: true };
+    });
     setOpen(null);
-    onDone('Deleted', () => update((d) => { d.tx.push(t); }));
+    onDone('Deleted', () => update((d) => {
+      d.tx.push(t);
+      if (skipKey && d.settings.ddSkip) delete d.settings.ddSkip[skipKey];
+    }));
   };
+
+  const pennies = Math.round(parseFloat(form.amt.replace(/[^0-9.]/g, '')) * 100);
+  const save = () => {
+    if (!open || !(pennies > 0)) return;
+    const was = open;
+    update((d) => {
+      const t = d.tx.find((x) => x.id === was.id);
+      if (!t) return;
+      t.merchant = form.name.trim();
+      t.amt = pennies;
+      if (!t.billId && form.cat) { t.cat = form.cat; t.biz = t.kind === 'in' ? form.cat === 'side' : t.biz; }
+    });
+    setOpen(null);
+    onDone('Saved', () => update((d) => { d.tx = d.tx.map((x) => (x.id === was.id ? was : x)); }));
+  };
+  const pickList = open && !open.billId && !open.checkin ? (open.kind === 'in' ? inTypes(S.settings) : categories(S.settings)) : [];
 
   return (
     <View style={{ flex: 1 }}>
@@ -64,7 +91,7 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
           </View>
         )}
         renderItem={({ item: t, index, section }) => (
-          <Pressable accessibilityRole="button" accessibilityLabel={`${t.merchant || catName(S.settings, t.cat)} ${money(t.amt, cur)}`} onPress={() => setOpen(t)}
+          <Pressable accessibilityRole="button" accessibilityLabel={`${t.merchant || catName(S.settings, t.cat)} ${money(t.amt, cur)}`} onPress={() => openTx(t)}
             style={({ pressed }) => [s.row, index === 0 && s.first, index === section.data.length - 1 && s.last, index > 0 && s.sep, pressed && { backgroundColor: C.surface2 }]}>
             <View style={[s.ic, { backgroundColor: colour(t) + '29' }]}><Dot colour={colour(t)} /></View>
             <View style={{ flex: 1, minWidth: 0 }}>
@@ -76,9 +103,21 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
         )}
       />
       <Sheet open={!!open} onClose={() => setOpen(null)} title={open ? (open.merchant || 'Entry') : ''}>
-        {open && <Text style={s.hint}>{money(open.amt, cur)} · {dayLabel(open.date)} {open.time} · {sub(open)}</Text>}
-        <Text style={s.hint}>Editing comes with the next build. For now you can delete and log it again.</Text>
-        {open && <Btn label="Delete" danger onPress={() => del(open)} />}
+        {open && <Text style={s.hint}>{dayLabel(open.date)} {open.time} · {sub(open)}</Text>}
+        <Label>{open?.kind === 'in' ? 'From' : 'Where'}</Label>
+        <TextInput value={form.name} onChangeText={(name) => setForm({ ...form, name })} placeholder="Name" placeholderTextColor={C.faint} style={s.field} accessibilityLabel="Name" />
+        <Label>Amount</Label>
+        <TextInput value={form.amt} onChangeText={(amt) => setForm({ ...form, amt })} keyboardType="decimal-pad" style={s.field} accessibilityLabel="Amount" selectTextOnFocus />
+        {pickList.length > 0 && <>
+          <Label>{open?.kind === 'in' ? 'Type' : 'Category'}</Label>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {pickList.map((c) => <Chip key={c.id} label={'long' in c ? (c as { long: string }).long : c.n} colour={c.c} on={form.cat === c.id} onPress={() => setForm({ ...form, cat: c.id })} />)}
+          </View>
+        </>}
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          {open && <Btn label="Delete" danger onPress={() => del(open)} />}
+          <Btn label="Save" primary style={{ flex: 1 }} disabled={!(pennies > 0)} onPress={save} />
+        </View>
       </Sheet>
     </View>
   );
@@ -87,6 +126,7 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
 const s = StyleSheet.create({
   h1: { color: C.fg, fontSize: 26, fontWeight: '700', marginBottom: 6 },
   hint: { color: C.muted, fontSize: 13.5, lineHeight: 19 },
+  field: { backgroundColor: C.surface2, borderRadius: 12, height: 44, paddingHorizontal: 12, color: C.fg, fontSize: 16 },
   ghd: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 4, paddingTop: 16, paddingBottom: 7 },
   ghdT: { color: C.muted, fontSize: 11, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase' },
   ghdN: { color: C.muted, fontSize: 12, fontVariant: ['tabular-nums'] },
