@@ -37,7 +37,7 @@ Everything is in `index.html` (markup, CSS, JS in one file, no build step). It's
 
 ### Rules
 
-- **This repo is public.** Never commit real names, account numbers, amounts tied to a person, or raw alert dumps. Change names and digits before turning a real alert into a test.
+- **This repo is public.** Never commit real names, account numbers, amounts tied to a person, or raw alert dumps. Change names and digits before turning a real alert into a test. Commit as `Mo <Khalifa996@users.noreply.github.com>`, never a personal email. (History was scrubbed on 29 Oct 2026.)
 - **Never break existing data.** Add new fields with defaults in `migrate()`. Test against a copy of real data before shipping.
 - Business features only show when `settings.sideIncome` is on (`bizOn()`).
 - Keep the dark design tokens in `:root`. No new colours outside the token set.

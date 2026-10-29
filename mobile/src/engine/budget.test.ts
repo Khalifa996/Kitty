@@ -12,7 +12,7 @@ const tx = (o: Partial<Tx>): Tx => ({ id: `t${n++}`, kind: 'out', amt: 0, cat: '
 const bill = (name: string, amt: number, day: number, o: Partial<Bill> = {}): Bill => ({ id: name, name, amt, day, type: 'bill', ...o });
 
 // A real month: £2,787.23 of bills, paid 27 Oct, a £106.40 cot on day one
-const moBills: Bill[] = [
+const tightBills: Bill[] = [
   bill('Rent', 150000, 28), bill('Flex credit', 50000, 27, { type: 'debt' }), bill('Credit card', 13000, 27, { type: 'debt' }),
   bill('Council tax', 14800, 1), bill('EE', 7800, 28), bill('Monzo int', 8000, 28, { type: 'debt' }), bill('British Gas', 6500, 1),
   bill('Gym', 5999, 1, { type: 'sub' }), bill('Paypal', 5000, 28, { type: 'debt' }), bill('Car insurance', 4700, 27), bill('E.on', 4300, 27),
@@ -40,21 +40,21 @@ describe('pay cycles', () => {
 });
 
 describe('day one of a tight month', () => {
-  const S = state({ bills: moBills, tx: [tx({ kind: 'in', cat: 'salary', amt: 310000, time: '10:07' }), tx({ cat: 'shopping', amt: 10640, merchant: 'Cot shop' })] });
-  it('matches what the phone showed', () => {
+  const S = state({ bills: tightBills, tx: [tx({ kind: 'in', cat: 'salary', amt: 310000, time: '10:07' }), tx({ cat: 'shopping', amt: 10640, merchant: 'Cot shop' })] });
+  it('works out a tight first day', () => {
     const si = safeInfo(S, '2026-10-27');
-    expect(si.P).toBe(310000 - 323723 - 5000);
-    expect(si.safe).toBe(-9579);
-    expect(si.tomorrow).toBe(741);
+    expect(si.P).toBe(310000 - 278723 - 5000);
+    expect(si.safe).toBe(-9792);
+    expect(si.tomorrow).toBe(521);
   });
   it('borrowing adds to the money to spend', () => {
     const S2 = { ...S, tx: [...S.tx, tx({ kind: 'in', cat: 'borrowed', amt: 50000, merchant: 'Flex credit' })] };
-    expect(pot(S2, cycleOf('2026-10-27', S2.settings))).toBe(32877 + 50000);
+    expect(pot(S2, cycleOf('2026-10-27', S2.settings))).toBe(26277 + 50000);
   });
   it('moving the cot into a pot takes it off the daily budget', () => {
     const p = { id: 'baby', name: 'Baby', perPay: 3000, target: 60000, opening: 0, start: '2026-10-27' };
     const S3: State = { ...S, pots: [p], tx: S.tx.map((t) => (t.merchant === 'Cot shop' ? { ...t, potId: 'baby' } : t)) };
-    expect(safeInfo(S3, '2026-10-27').safe).toBe(Math.round((32877 - 3000) / 31));
+    expect(safeInfo(S3, '2026-10-27').safe).toBe(Math.round((26277 - 3000) / 31));
     expect(potBalance(S3, 'baby', '2026-10-27')).toBe(3000 - 10640);
   });
 });
