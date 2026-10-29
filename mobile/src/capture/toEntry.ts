@@ -118,5 +118,10 @@ export function alreadyLogged(S: State, p: ParsedAlert): Tx | undefined {
   const near = (d: string) => Math.abs(new Date(d + 'T12:00:00').getTime() - new Date(day + 'T12:00:00').getTime()) <= 864e5;
   const close = (a: number) => Math.abs(a - amt) <= Math.max(100, Math.round(amt * 0.02));
   const hand = S.tx.filter((t) => t.kind === kind && !t.billId && t.source !== 'alert' && !t.checkin && near(t.date) && close(t.amt));
-  return hand.find((t) => t.amt === amt) || hand.sort((a, b) => Math.abs(a.amt - amt) - Math.abs(b.amt - amt))[0];
+  const exact = hand.find((t) => t.amt === amt);
+  if (exact) return exact;
+  // A near amount only counts if nothing says it's a different place (Boots £12.56 is not Caffe Darte £12.45)
+  const cat = kind === 'out' ? guessCategory(S, p.merchant) || knownCategory(p.merchant) : null;
+  const fits = (t: Tx) => !p.merchant || !t.merchant || sameName(t.merchant, p.merchant) || (!!cat && cat === t.cat);
+  return hand.filter(fits).sort((a, b) => Math.abs(a.amt - amt) - Math.abs(b.amt - amt))[0];
 }

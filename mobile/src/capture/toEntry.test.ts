@@ -129,6 +129,9 @@ it('spots a round figure logged by hand for the exact bank amount', () => {
   S.tx.push({ id: 'r', kind: 'in', amt: 18000, cat: 'expenses', merchant: 'Trip', note: '', date: '2026-10-27', time: '09:00', biz: false, billId: null });
   expect(alreadyLogged(S, alert({ kind: 'received', amount: 18045 }))?.id).toBe('r');
   expect(alreadyLogged(S, alert({ kind: 'received', amount: 30000 }))).toBeUndefined();
+  S.tx.push({ id: 'b', kind: 'out', amt: 1256, cat: 'health', merchant: 'Boots', note: '', date: '2026-10-27', time: '09:00', biz: false, billId: null });
+  expect(alreadyLogged(S, alert({ amount: 1245, merchant: 'Caffe Darte' }))).toBeUndefined();
+  expect(alreadyLogged(S, alert({ amount: 1245, merchant: 'Boots UK' }))?.id).toBe('b');
 });
 
 it('treats card reader payouts as business takings when side income is on', () => {
