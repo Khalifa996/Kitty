@@ -3,3 +3,4 @@ expo-sqlite
 react-dom
 react-native-web
 @expo/metro-runtime
+react-native-svg

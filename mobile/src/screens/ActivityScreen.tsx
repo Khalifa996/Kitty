@@ -5,7 +5,8 @@ import { billWindowAt } from '../engine/budget';
 import { categories, catName, inName, inTypes } from '../engine/cats';
 import type { Tx } from '../engine/types';
 import { useKitty } from '../store/KittyState';
-import { Btn, Chip, Dot, Label, Sheet } from '../ui/kit';
+import { Btn, CatIcon, Chip, Label, Sheet } from '../ui/kit';
+import { SwipeRow } from '../ui/SwipeRow';
 import { C, money } from '../ui/theme';
 
 const dayLabel = (d: string) => {
@@ -35,6 +36,7 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
     return out;
   }, [S.tx]);
 
+  const icon = (t: Tx) => t.checkin ? 'search' : t.billId ? 'receipt' : t.kind === 'in' ? (inTypes(S.settings).find((x) => x.id === t.cat)?.i || 'wallet') : (categories(S.settings).find((c) => c.id === t.cat)?.i || 'more');
   const colour = (t: Tx) => t.billId ? C.bill : t.kind === 'in' ? (inTypes(S.settings).find((x) => x.id === t.cat)?.c || C.good) : (categories(S.settings).find((c) => c.id === t.cat)?.c || C.muted);
   const sub = (t: Tx) => {
     const bill = t.billId ? S.bills.find((b) => b.id === t.billId) : null;
@@ -82,7 +84,7 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
         keyExtractor={(t) => t.id}
         stickySectionHeadersEnabled={false}
         contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
-        ListHeaderComponent={<Text style={s.h1}>Activity</Text>}
+        ListHeaderComponent={<View style={{ marginBottom: 6 }}><Text style={s.h1}>Activity</Text>{S.tx.length > 0 && <Text style={s.hint}>Swipe left to delete, right to edit</Text>}</View>}
         ListEmptyComponent={<Text style={s.hint}>Nothing logged yet.</Text>}
         renderSectionHeader={({ section }) => (
           <View style={s.ghd}>
@@ -91,19 +93,21 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
           </View>
         )}
         renderItem={({ item: t, index, section }) => (
+          <SwipeRow onDelete={() => del(t)} onEdit={() => openTx(t)} style={[index === 0 && s.first, index === section.data.length - 1 && s.last]}>
           <Pressable accessibilityRole="button" accessibilityLabel={`${t.merchant || catName(S.settings, t.cat)} ${money(t.amt, cur)}`} onPress={() => openTx(t)}
-            style={({ pressed }) => [s.row, index === 0 && s.first, index === section.data.length - 1 && s.last, index > 0 && s.sep, pressed && { backgroundColor: C.surface2 }]}>
-            <View style={[s.ic, { backgroundColor: colour(t) + '29' }]}><Dot colour={colour(t)} /></View>
+            style={({ pressed }) => [s.row, index > 0 && s.sep, pressed && { backgroundColor: C.surface2 }]}>
+            <CatIcon icon={icon(t)} colour={colour(t)} />
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={s.name} numberOfLines={1}>{t.merchant || (t.kind === 'in' ? inName(t.cat) : catName(S.settings, t.cat))}</Text>
               <Text style={s.meta} numberOfLines={1}>{sub(t)}</Text>
             </View>
             <Text style={[s.amt, t.kind === 'in' && { color: C.good }]}>{t.kind === 'in' ? '+' : ''}{money(t.amt, cur)}</Text>
           </Pressable>
+          </SwipeRow>
         )}
       />
       <Sheet open={!!open} onClose={() => setOpen(null)} title={open ? (open.merchant || 'Entry') : ''}>
-        {open && <Text style={s.hint}>{dayLabel(open.date)} {open.time} · {sub(open)}</Text>}
+        {open && <Text style={s.hint}>{dayLabel(open.date)} · {sub(open)}</Text>}
         <Label>{open?.kind === 'in' ? 'From' : 'Where'}</Label>
         <TextInput value={form.name} onChangeText={(name) => setForm({ ...form, name })} placeholder="Name" placeholderTextColor={C.faint} style={s.field} accessibilityLabel="Name" />
         <Label>Amount</Label>
@@ -111,7 +115,7 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
         {pickList.length > 0 && <>
           <Label>{open?.kind === 'in' ? 'Type' : 'Category'}</Label>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {pickList.map((c) => <Chip key={c.id} label={'long' in c ? (c as { long: string }).long : c.n} colour={c.c} on={form.cat === c.id} onPress={() => setForm({ ...form, cat: c.id })} />)}
+            {pickList.map((c) => <Chip key={c.id} label={'long' in c ? (c as { long: string }).long : c.n} colour={c.c} icon={c.i} on={form.cat === c.id} onPress={() => setForm({ ...form, cat: c.id })} />)}
           </View>
         </>}
         <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -124,7 +128,7 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
 }
 
 const s = StyleSheet.create({
-  h1: { color: C.fg, fontSize: 26, fontWeight: '700', marginBottom: 6 },
+  h1: { color: C.fg, fontSize: 26, fontWeight: '700', marginBottom: 2 },
   hint: { color: C.muted, fontSize: 13.5, lineHeight: 19 },
   field: { backgroundColor: C.surface2, borderRadius: 12, height: 44, paddingHorizontal: 12, color: C.fg, fontSize: 16 },
   ghd: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 4, paddingTop: 16, paddingBottom: 7 },
@@ -134,7 +138,6 @@ const s = StyleSheet.create({
   first: { borderTopLeftRadius: 16, borderTopRightRadius: 16 },
   last: { borderBottomLeftRadius: 16, borderBottomRightRadius: 16 },
   sep: { borderTopWidth: 1, borderTopColor: C.line },
-  ic: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   name: { color: C.fg, fontSize: 15, fontWeight: '700' },
   meta: { color: C.muted, fontSize: 12.5, marginTop: 2 },
   amt: { color: C.fg, fontSize: 15, fontWeight: '700', fontVariant: ['tabular-nums'] },

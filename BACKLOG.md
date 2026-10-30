@@ -10,7 +10,6 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | P1 | 29 Oct | App: Bills, Pots, Insights, balance check-ins and Settings screens still only in the web app |
 | P1 | 29 Oct | App: first-run setup for new users (only import from the web app so far) |
 | P2 | 29 Oct | App: change an entry's date; notes; Business switch; pay from a pot |
-| P3 | 29 Oct | App: category icons (dots for now) |
 | P2 | 29 Oct | Work expenses: mark a spend as "I'll get this back" so it stays off the daily budget until the reimbursement arrives |
 | P2 | 28 Oct | Payments to your own accounts or business (e.g. a business account) show as spending. Let people mark a payee as "one of my accounts" so future ones count as transfers |
 | P2 | 27 Oct | Log screen in Received mode is tall on small phones (two rows of types plus the debt picker) |
@@ -37,6 +36,13 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | P3 | Light theme |
 
 ## Changelog
+**App 0.4, 30 Oct 2026: icons, swipe, one-screen Log**
+- Icons are back: categories, money-in types, Activity rows and the tab bar use the same line icons as the web app
+- Log fits on one screen: Spent/Received and Today/Yesterday share a row, and the keypad takes whatever height is left, so Save is always in view
+- Activity: swipe left to delete (with undo), swipe right to edit
+- Edit sheet moves up above the keyboard, so you can see what you're typing
+- Alerts: Uber card descriptions tidied; contactless limit warnings and wallet tips skipped
+
 **App 0.3, 29 Oct 2026: fewer double counts (from the first day of real use)**
 - A round figure logged by hand (£20) is matched to the bank's exact amount (£20.45). "Same one" keeps your entry and corrects the amount; "Add anyway" if they really are two payments
 - A card payment for a bill Kitty already ticked off (YouTube by card, then the Direct Debit day) is skipped instead of counted twice

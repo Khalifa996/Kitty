@@ -146,3 +146,8 @@ it('tidies Uber card descriptions', () => {
   expect(tidyName('UBER *TRIP')).toBe('Uber');
   expect(tidyName('UBER * EATS')).toBe('Uber Eats');
 });
+
+it('skips card limit notices and wallet tips', () => {
+  expect(parseAlert({ key: 'c', pkg: 'com.revolut.revolut', title: 'Contactless limit ⚠️', text: 'Approaching limit. Tap to reset it now, or use Chip & PIN to reset it on your next payment', time: 1 })).toMatchObject({ kind: 'ignore', reason: 'Card limit notice' });
+  expect(parseAlert({ key: 'w', pkg: 'com.google.android.apps.walletnfcrel', title: 'Shop more securely', text: 'Create a virtual card number for Mastercard ••1111 in a few steps', time: 1 })).toMatchObject({ kind: 'ignore', reason: 'Advert' });
+});

@@ -1,6 +1,8 @@
 // Small building blocks shared by every screen.
-import type { ReactNode } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Keyboard, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, type StyleProp, type ViewStyle } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Icon } from './Icon';
 import { C, R } from './theme';
 
 export function Btn({ label, onPress, primary, danger, small, style, disabled }: {
@@ -33,11 +35,20 @@ export function Dot({ colour }: { colour: string }) {
   return <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colour }} />;
 }
 
-export function Chip({ label, on, colour, onPress }: { label: string; on?: boolean; colour?: string; onPress: () => void }) {
+/** A category's icon on a tinted circle. */
+export function CatIcon({ icon, colour, size = 36, on }: { icon: string; colour: string; size?: number; on?: boolean }) {
+  return (
+    <View style={{ width: size, height: size, borderRadius: size / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? colour : colour + '26' }}>
+      <Icon name={icon} size={Math.round(size * 0.5)} colour={on ? C.bg : colour} />
+    </View>
+  );
+}
+
+export function Chip({ label, on, colour, icon, onPress }: { label: string; on?: boolean; colour?: string; icon?: string; onPress: () => void }) {
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress}
       style={({ pressed }) => [k.chip, on && { backgroundColor: C.fg }, pressed && { opacity: 0.7 }]}>
-      {colour ? <Dot colour={colour} /> : null}
+      {icon && colour ? <Icon name={icon} size={15} colour={on ? C.bg : colour} /> : colour ? <Dot colour={colour} /> : null}
       <Text style={[k.chipT, on && { color: C.bg }]} numberOfLines={1}>{label}</Text>
     </Pressable>
   );
@@ -45,10 +56,19 @@ export function Chip({ label, on, colour, onPress }: { label: string; on?: boole
 
 /** A panel that slides up from the bottom. */
 export function Sheet({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
+  // Lift the sheet above the keyboard, so the field being typed in stays visible
+  const [kb, setKb] = useState(0);
+  const { height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', (e) => setKb(e.endCoordinates.height));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKb(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
   return (
-    <Modal visible={open} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={open} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
       <Pressable style={k.scrim} onPress={onClose} accessibilityLabel="Close" />
-      <View style={k.sheet}>
+      <View style={[k.sheet, { paddingBottom: kb || insets.bottom, maxHeight: Math.max(240, height * 0.9 - insets.top) }]}>
         <View style={k.grab} />
         <Text style={k.sheetT}>{title}</Text>
         <ScrollView contentContainerStyle={{ gap: 12, paddingBottom: 24 }} keyboardShouldPersistTaps="handled">{children}</ScrollView>
@@ -66,7 +86,7 @@ export const k = StyleSheet.create({
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.surface, borderRadius: R.pill, paddingHorizontal: 12, height: 34, maxWidth: 220 },
   chipT: { color: C.fg, fontWeight: '700', fontSize: 13 },
   scrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' },
-  sheet: { backgroundColor: C.surface, borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingHorizontal: 16, paddingTop: 10, maxHeight: '88%' },
+  sheet: { backgroundColor: C.surface, borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingHorizontal: 16, paddingTop: 10 },
   grab: { width: 40, height: 4, borderRadius: 2, backgroundColor: C.line, alignSelf: 'center', marginBottom: 14 },
   sheetT: { color: C.fg, fontSize: 20, fontWeight: '700', marginBottom: 12 },
 });

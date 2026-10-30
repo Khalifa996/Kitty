@@ -10,14 +10,15 @@ import { LogScreen } from './src/screens/LogScreen';
 import { MoreScreen } from './src/screens/MoreScreen';
 import { ReviewScreen } from './src/screens/ReviewScreen';
 import { KittyProvider, useKitty } from './src/store/KittyState';
+import { Icon } from './src/ui/Icon';
 import { C } from './src/ui/theme';
 
 type Tab = 'log' | 'review' | 'activity' | 'more';
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'log', label: 'Log' },
-  { id: 'review', label: 'Review' },
-  { id: 'activity', label: 'Activity' },
-  { id: 'more', label: 'More' },
+const TABS: { id: Tab; label: string; icon: string }[] = [
+  { id: 'log', label: 'Log', icon: 'plusc' },
+  { id: 'review', label: 'Review', icon: 'inbox' },
+  { id: 'activity', label: 'Activity', icon: 'list' },
+  { id: 'more', label: 'More', icon: 'sliders' },
 ];
 
 export default function App() {
@@ -71,7 +72,7 @@ function Shell() {
         {TABS.map((t) => (
           <Pressable key={t.id} accessibilityRole="tab" accessibilityLabel={`${t.label} tab`} accessibilityState={{ selected: tab === t.id }} onPress={() => setTab(t.id)} style={s.tab}>
             <View style={s.tabTop}>
-              <View style={[s.tabMark, tab === t.id && { backgroundColor: C.gold }]} />
+              <Icon name={t.icon} size={22} colour={tab === t.id ? C.gold : C.faint} />
               {t.id === 'review' && pending > 0 && <Text style={s.badge}>{pending > 99 ? '99+' : pending}</Text>}
             </View>
             <Text style={[s.tabT, tab === t.id && { color: C.fg }]}>{t.label}</Text>
@@ -85,10 +86,9 @@ function Shell() {
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.bg },
   tabs: { flexDirection: 'row', backgroundColor: C.surface, borderTopWidth: 1, borderTopColor: C.line, paddingTop: 6 },
-  tab: { flex: 1, alignItems: 'center', gap: 5, paddingVertical: 6 },
-  tabTop: { height: 18, flexDirection: 'row', alignItems: 'center', gap: 4 },
-  tabMark: { width: 18, height: 4, borderRadius: 2, backgroundColor: C.surface2 },
-  badge: { color: C.goldInk, backgroundColor: C.gold, borderRadius: 9, minWidth: 18, height: 18, lineHeight: 18, textAlign: 'center', fontSize: 11, fontWeight: '800', paddingHorizontal: 5, overflow: 'hidden' },
+  tab: { flex: 1, alignItems: 'center', gap: 3, paddingVertical: 4 },
+  tabTop: { height: 24, width: 24, alignItems: 'center', justifyContent: 'center' },
+  badge: { position: 'absolute', top: -6, left: 14, color: C.goldInk, backgroundColor: C.gold, borderRadius: 9, minWidth: 18, height: 18, lineHeight: 18, textAlign: 'center', fontSize: 11, fontWeight: '800', paddingHorizontal: 5, overflow: 'hidden' },
   tabT: { color: C.faint, fontSize: 12, fontWeight: '700' },
   toast: { position: 'absolute', left: 16, right: 16, bottom: 86, backgroundColor: C.fg, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
   toastT: { flex: 1, color: C.bg, fontWeight: '700', fontSize: 14 },

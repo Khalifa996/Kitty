@@ -6,7 +6,8 @@ import { categories, inTypes } from '../engine/cats';
 import { addDays, hm, ymd } from '../engine/dates';
 import type { Tx } from '../engine/types';
 import { uid, useKitty } from '../store/KittyState';
-import { Btn, Chip, Dot } from '../ui/kit';
+import { Btn, CatIcon, Chip } from '../ui/kit';
+import { Icon } from '../ui/Icon';
 import { SafeStrip } from '../ui/SafeStrip';
 import { C, moneyS, money, symbol } from '../ui/theme';
 
@@ -77,67 +78,79 @@ export function LogScreen({ onSaved }: { onSaved: (msg: string, undo: () => void
   };
 
   const [ip, dp] = amt.split('.');
+  const rows = [KEYS.slice(0, 3), KEYS.slice(3, 6), KEYS.slice(6, 9), KEYS.slice(9)];
   return (
+    // Fits one screen: the keypad takes whatever height is left, so Save is always in view
     <ScrollView contentContainerStyle={s.wrap} keyboardShouldPersistTaps="handled">
       <SafeStrip extraLine={line} />
-      <View style={s.seg}>
-        {(['out', 'in'] as const).map((m) => (
-          <Pressable key={m} accessibilityRole="button" accessibilityLabel={m === 'out' ? 'Spent' : 'Received'} onPress={() => { setMode(m); setCat(null); }} style={[s.segB, mode === m && s.segOn]}>
-            <Text style={[s.segT, mode === m && { color: C.fg }]}>{m === 'out' ? 'Spent' : 'Received'}</Text>
-          </Pressable>
-        ))}
+      <View style={s.toggles}>
+        <View style={s.seg}>
+          {(['out', 'in'] as const).map((m) => (
+            <Pressable key={m} accessibilityRole="button" accessibilityLabel={m === 'out' ? 'Spent' : 'Received'} accessibilityState={{ selected: mode === m }} onPress={() => { setMode(m); setCat(null); }} style={[s.segB, mode === m && s.segOn]}>
+              <Text style={[s.segT, mode === m && { color: C.fg }]}>{m === 'out' ? 'Spent' : 'Received'}</Text>
+            </Pressable>
+          ))}
+        </View>
+        <View style={s.seg}>
+          {(['today', 'yesterday'] as const).map((w) => (
+            <Pressable key={w} accessibilityRole="button" accessibilityLabel={w === 'today' ? 'Today' : 'Yesterday'} accessibilityState={{ selected: when === w }} onPress={() => setWhen(w)} style={[s.segB, when === w && s.segOn]}>
+              <Text style={[s.segT, when === w && { color: C.fg }]}>{w === 'today' ? 'Today' : 'Yesterday'}</Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
-      <Text style={[s.amount, mode === 'in' && { color: C.good }]} accessibilityLiveRegion="polite">
+      <Text style={[s.amount, mode === 'in' && { color: C.good }]} accessibilityLiveRegion="polite" numberOfLines={1} adjustsFontSizeToFit>
         <Text style={s.cur}>{symbol(cur).trim()} </Text>
         {amt ? `${Number(ip || 0).toLocaleString('en-GB')}${dp !== undefined ? '.' + dp : ''}` : <Text style={{ color: C.faint }}>0</Text>}
       </Text>
       <TextInput value={merchant} onChangeText={typed} placeholder={mode === 'out' ? 'Where? e.g. Lidl' : 'From? e.g. Salary'} placeholderTextColor={C.faint}
         style={s.field} accessibilityLabel="Where" returnKeyType="done" />
       {sugg.length > 0 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }} keyboardShouldPersistTaps="handled">
-          {sugg.map((e) => <Chip key={e.name} label={e.name} on={norm(e.name) === q} colour={cats.find((c) => c.id === e.cat)?.c || C.muted} onPress={() => pick(e.name, e.cat)} />)}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 6 }} keyboardShouldPersistTaps="handled">
+          {sugg.map((e) => { const c = cats.find((x) => x.id === e.cat); return <Chip key={e.name} label={e.name} on={norm(e.name) === q} colour={c?.c || C.muted} icon={c?.i} onPress={() => pick(e.name, e.cat)} />; })}
         </ScrollView>
       )}
       <View style={s.cats}>
         {cats.slice(0, 10).map((c) => (
           <Pressable key={c.id} accessibilityRole="button" accessibilityLabel={c.n} accessibilityState={{ selected: c.id === chosen }} onPress={() => setCat(c.id)} style={[s.cat, c.id === chosen && s.catOn]}>
-            <View style={[s.catDot, { backgroundColor: c.id === chosen ? c.c : C.surface2 }]}><Dot colour={c.id === chosen ? C.bg : c.c} /></View>
+            <CatIcon icon={c.i} colour={c.c} size={34} on={c.id === chosen} />
             <Text style={[s.catT, c.id === chosen && { color: C.fg }]} numberOfLines={1}>{c.n}</Text>
           </Pressable>
         ))}
       </View>
-      <View style={{ flexDirection: 'row', gap: 6 }}>
-        <Chip label="Today" on={when === 'today'} onPress={() => setWhen('today')} />
-        <Chip label="Yesterday" on={when === 'yesterday'} onPress={() => setWhen('yesterday')} />
-      </View>
       <View style={s.keys}>
-        {KEYS.map((v) => (
-          <Pressable key={v} accessibilityRole="button" accessibilityLabel={v === 'del' ? 'Delete digit' : v === '.' ? 'Decimal point' : v} onPress={() => key(v)}
-            style={({ pressed }) => [s.key, pressed && { backgroundColor: C.surface2 }]}>
-            <Text style={s.keyT}>{v === 'del' ? '⌫' : v}</Text>
-          </Pressable>
+        {rows.map((r, i) => (
+          <View key={i} style={s.keyRow}>
+            {r.map((v) => (
+              <Pressable key={v} accessibilityRole="button" accessibilityLabel={v === 'del' ? 'Delete digit' : v === '.' ? 'Decimal point' : v} onPress={() => key(v)}
+                style={({ pressed }) => [s.key, pressed && { backgroundColor: C.surface2 }]}>
+                {v === 'del' ? <Icon name="back" size={24} colour={C.fg} /> : <Text style={s.keyT}>{v}</Text>}
+              </Pressable>
+            ))}
+          </View>
         ))}
       </View>
-      <Btn label={p > 0 ? `Save ${money(p, cur)}` : 'Save'} primary={p > 0} disabled={p <= 0} onPress={save} style={{ height: 52 }} />
+      <Btn label={p > 0 ? `Save ${money(p, cur)}` : 'Save'} primary={p > 0} disabled={p <= 0} onPress={save} style={{ height: 50 }} />
     </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
-  wrap: { padding: 16, gap: 10 },
-  seg: { flexDirection: 'row', alignSelf: 'center', backgroundColor: C.surface, borderRadius: 999, padding: 3 },
-  segB: { paddingHorizontal: 18, paddingVertical: 7, borderRadius: 999 },
+  wrap: { flexGrow: 1, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 12, gap: 8 },
+  toggles: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
+  seg: { flexDirection: 'row', backgroundColor: C.surface, borderRadius: 999, padding: 3 },
+  segB: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
   segOn: { backgroundColor: C.surface2 },
   segT: { color: C.muted, fontWeight: '700', fontSize: 13 },
-  amount: { color: C.fg, fontSize: 48, fontWeight: '700', textAlign: 'center', fontVariant: ['tabular-nums'] },
-  cur: { fontSize: 24, color: C.muted },
+  amount: { color: C.fg, fontSize: 42, fontWeight: '700', textAlign: 'center', fontVariant: ['tabular-nums'] },
+  cur: { fontSize: 22, color: C.muted },
   field: { backgroundColor: C.surface, borderRadius: 12, height: 44, paddingHorizontal: 12, color: C.fg, fontSize: 16 },
-  cats: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 4 },
-  cat: { width: '20%', alignItems: 'center', gap: 4, paddingVertical: 5, borderRadius: 12 },
+  cats: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 2 },
+  cat: { width: '20%', alignItems: 'center', gap: 3, paddingVertical: 4, borderRadius: 12 },
   catOn: { backgroundColor: C.surface },
-  catDot: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
   catT: { color: C.muted, fontSize: 11, fontWeight: '700', paddingHorizontal: 2 },
-  keys: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  key: { width: '31.5%', flexGrow: 1, height: 52, borderRadius: 14, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
+  keys: { flex: 1, minHeight: 176, gap: 6, justifyContent: 'flex-end' },
+  keyRow: { flex: 1, maxHeight: 64, flexDirection: 'row', gap: 6 },
+  key: { flex: 1, minHeight: 40, borderRadius: 14, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
   keyT: { color: C.fg, fontSize: 24, fontWeight: '500' },
 });

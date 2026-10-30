@@ -7,7 +7,8 @@ import { catName, categories, inName, inTypes } from '../engine/cats';
 import type { Tx } from '../engine/types';
 import type { ParsedAlert } from '../parse/bankAlerts';
 import { useKitty } from '../store/KittyState';
-import { Btn, Card, Chip, Dot, Label, Sheet } from '../ui/kit';
+import { Btn, Card, Chip, Label, Sheet } from '../ui/kit';
+import { Icon } from '../ui/Icon';
 import { C, money } from '../ui/theme';
 
 type Item = { p: ParsedAlert; sug: Suggestion; dup?: Tx };
@@ -132,8 +133,8 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
             {i.sug.action === 'pay-bill' && i.sug.replaces && <Text style={s.hint}>Kitty ticked this off as {money(i.sug.replaces.amt, cur)} on the day. Your bank says {money(t.amt, cur)}.</Text>}
             <View style={s.row}>
               {i.sug.action === 'pay-bill'
-                ? <View style={s.tag}><Dot colour={C.bill} /><Text style={s.tagT}>{label}</Text></View>
-                : <Chip label={guessed ? `${label}?` : label} colour={c?.c || C.muted} onPress={() => setPicking(i)} />}
+                ? <View style={s.tag}><Icon name="receipt" size={15} colour={C.bill} /><Text style={s.tagT}>{label}</Text></View>
+                : <Chip label={guessed ? `${label}?` : label} colour={c?.c || C.muted} icon={c?.i} onPress={() => setPicking(i)} />}
               <View style={{ flex: 1 }} />
               {i.dup ? <>
                 <Btn label="Add anyway" small onPress={() => add([i])} />
@@ -179,7 +180,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
       <Sheet open={!!picking} onClose={() => setPicking(null)} title="Pick a category">
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {picking && (picking.sug.action !== 'skip' && picking.sug.tx.kind === 'in' ? inTypes(S.settings) : categories(S.settings)).map((c) => (
-            <Chip key={c.id} label={'long' in c ? (c as { long: string }).long : c.n} colour={c.c} on={txFor(picking)?.cat === c.id}
+            <Chip key={c.id} label={'long' in c ? (c as { long: string }).long : c.n} colour={c.c} icon={c.i} on={txFor(picking)?.cat === c.id}
               onPress={() => { setCats({ ...cats, [picking.p.key]: c.id }); setPicking(null); }} />
           ))}
         </View>

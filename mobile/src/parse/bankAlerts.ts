@@ -86,7 +86,8 @@ const IGNORE: [RegExp, string][] = [
   [/\b(log(ged)? ?in|sign(ed)? in)\b/i, 'Sign-in notice'],
   [/declined|couldn'?t use (their|your) card|doesn'?t have enough balance/i, 'Declined payment'],
   [/new device|log-?in\b|logged in(to)?\b|added (their|your) card to/i, 'Account notice'],
-  [/t&cs apply|terms apply|save over|open an? \w+ account|refer a friend|cashback offer|exclusive offer/i, 'Advert'],
+  [/contactless limit|approaching (your|the)? ?limit/i, 'Card limit notice'],
+  [/t&cs apply|terms apply|save over|open an? \w+ account|refer a friend|cashback offer|exclusive offer|virtual card number|shop more securely/i, 'Advert'],
 ];
 
 const GENERIC_TITLES = /^(revolut|barclays|barclaycard|monzo|starling( bank)?|natwest|payment|card payment|new notification|google wallet)$/i;
