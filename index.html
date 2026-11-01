@@ -560,7 +560,7 @@ migrate();
 
 /* ---------- Money maths ---------- */
 const txIn = c => S.tx.filter(t => t.date>=c.start && t.date<=c.end);
-function flexNet(list){ let s=0; for (const t of list){ if (t.biz || t.potId) continue; if (t.kind==='out' && !t.billId) s+=t.amt; } return s; }
+function flexNet(list){ let s=0; for (const t of list){ if (t.biz || t.potId || t.fromSide) continue; if (t.kind==='out' && !t.billId) s+=t.amt; } return s; }
 // Refunds are money back: spread over the rest of the cycle like any other extra money
 const refundsIn = list => sum(list.filter(t => t.kind==='in' && t.cat==='refund' && !t.biz));
 const extraIn = list => sum(list.filter(addsIn));

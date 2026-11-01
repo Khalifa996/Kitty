@@ -11,6 +11,7 @@ export type Settings = {
   income: number;
   savings: number;
   sideIncome: boolean;
+  sideTaxRate?: number; // percent of side profit to keep back for tax (default 20)
   setupDone: boolean;
   checkEvery: number;
   limits: Record<string, number>;
@@ -62,6 +63,7 @@ export type Tx = {
   example?: boolean;
   source?: string; // e.g. 'alert' when captured from a bank notification
   bank?: string;   // which bank's alert it came from
+  fromSide?: boolean; // personal spending paid from side income: off the daily budget, not a business cost
 };
 
 export type Pot = { id: string; name: string; perPay: number; target: number; opening: number; start: string; end?: string; closed?: string };

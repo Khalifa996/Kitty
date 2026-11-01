@@ -60,7 +60,7 @@ export const txIn = (S: State, c: Cycle) => S.tx.filter((t) => t.date >= c.start
 /** Spending that counts against the daily budget. */
 export function flexNet(list: Tx[]): number {
   let s = 0;
-  for (const t of list) if (!t.biz && !t.potId && t.kind === 'out' && !t.billId) s += t.amt;
+  for (const t of list) if (!t.biz && !t.potId && !t.fromSide && t.kind === 'out' && !t.billId) s += t.amt;
   return s;
 }
 export const extraIn = (list: Tx[]) => sum(list.filter(addsIn), (t) => t.amt);
@@ -182,7 +182,7 @@ export type CycleSummary = {
 /** Money in and out for one pay cycle, for the overview. Days after `today` are left out. */
 export function cycleSummary(S: State, c: Cycle, today: string): CycleSummary {
   const L = txIn(S, c), ins = L.filter((t) => t.kind === 'in');
-  const flex = L.filter((t) => t.kind === 'out' && !t.biz && !t.potId && !t.billId);
+  const flex = L.filter((t) => t.kind === 'out' && !t.biz && !t.potId && !t.fromSide && !t.billId);
   const by = new Map<string, number>();
   for (const t of flex) by.set(t.cat, (by.get(t.cat) || 0) + t.amt);
   const days: CycleSummary['days'] = [];
@@ -201,4 +201,24 @@ export function cycleSummary(S: State, c: Cycle, today: string): CycleSummary {
     byCat: [...by].map(([cat, amt]) => ({ cat, amt })).sort((a, b) => b.amt - a.amt),
     days,
   };
+}
+
+// ---------- Side income ----------
+/** UK tax years start on 6 April; other currencies use the calendar year. */
+export function taxYearStart(today: string, currency = 'GBP'): string {
+  const [y, m, d] = today.split('-').map(Number);
+  if (currency !== 'GBP') return `${y}-01-01`;
+  return `${m > 4 || (m === 4 && d >= 6) ? y : y - 1}-04-06`;
+}
+
+export type SideSummary = { income: number; costs: number; profit: number; tax: number; rate: number; drawn: number; left: number };
+
+/** Side income between two dates: what came in, business costs, tax to keep back, what you paid out of it for yourself. */
+export function sideSummary(S: State, from: string, to: string): SideSummary {
+  const L = S.tx.filter((t) => t.date >= from && t.date <= to);
+  const income = sum(L.filter((t) => t.kind === 'in' && t.biz), (t) => t.amt);
+  const costs = sum(L.filter((t) => t.kind === 'out' && t.biz), (t) => t.amt);
+  const drawn = sum(L.filter((t) => t.kind === 'out' && t.fromSide && !t.biz), (t) => t.amt);
+  const rate = S.settings.sideTaxRate ?? 20, profit = income - costs, tax = Math.max(0, Math.round((profit * rate) / 100));
+  return { income, costs, profit, tax, rate, drawn, left: profit - tax - drawn };
 }

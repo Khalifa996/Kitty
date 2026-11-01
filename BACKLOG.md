@@ -38,6 +38,10 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | P3 | Light theme |
 
 ## Changelog
+**App 0.6 (in progress), 1 Nov 2026: side income without the guesswork**
+- Spending can be marked "Paid from side income": off the daily budget, not a business cost (web app too)
+- Insights, when side income is on: this pay month's side income, costs and money paid out; profit this tax year, how much to keep for tax (20%, 26% or 40%), and a warning when more has been paid out than is left after tax
+
 **App 0.5, 1 Nov 2026: nothing hidden, looking back**
 - Alerts Kitty can't read but that have an amount go to the top of Review with the bank's own words: Spent, Received or Skip
 - Cash withdrawals ask: already gone (add it) or cash to spend (log what you buy)

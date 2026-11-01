@@ -20,9 +20,9 @@ const dayLabel = (d: string) => {
 export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => void) => void }) {
   const { S, update } = useKitty();
   const [open, setOpen] = useState<Tx | null>(null);
-  const [form, setForm] = useState({ name: '', amt: '', cat: '', all: true });
+  const [form, setForm] = useState({ name: '', amt: '', cat: '', all: true, side: false });
   const cur = S.settings.currency;
-  const openTx = (t: Tx) => { setOpen(t); setForm({ name: t.merchant, amt: (t.amt / 100).toFixed(2), cat: t.cat, all: true }); };
+  const openTx = (t: Tx) => { setOpen(t); setForm({ name: t.merchant, amt: (t.amt / 100).toFixed(2), cat: t.cat, all: true, side: !!t.fromSide }); };
 
   const sections = useMemo(() => {
     const list = [...S.tx].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).slice(0, 400);
@@ -44,7 +44,7 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
       : bill ? (t.auto ? 'Direct Debit' : { bill: 'Bill', sub: 'Subscription', debt: 'Debt repayment' }[bill.type])
       : t.kind === 'in' ? inName(t.cat)
       : (t.sub || (t.merchant ? catName(S.settings, t.cat) : ''));
-    return [first, t.time, t.bank, t.note].filter(Boolean).join(' · ');
+    return [first, t.time, t.fromSide ? 'Side income' : '', t.bank, t.note].filter(Boolean).join(' · ');
   };
 
   const del = (t: Tx) => {
@@ -76,6 +76,7 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
       if (!t) return;
       t.merchant = form.name.trim();
       t.amt = pennies;
+      if (t.kind === 'out' && !t.billId && !t.biz) { if (form.side) t.fromSide = true; else delete t.fromSide; }
       if (!t.billId && form.cat) { t.cat = form.cat; t.biz = t.kind === 'in' ? form.cat === 'side' : t.biz; }
     });
     setOpen(null);
@@ -126,6 +127,9 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
             {pickList.map((c) => <Chip key={c.id} label={'long' in c ? (c as { long: string }).long : c.n} colour={c.c} icon={c.i} on={form.cat === c.id} onPress={() => setForm({ ...form, cat: c.id })} />)}
           </View>
         </>}
+        {open && S.settings.sideIncome && open.kind === 'out' && !open.billId && !open.biz && (
+          <Chip label="Paid from side income" on={form.side} onPress={() => setForm({ ...form, side: !form.side })} />
+        )}
         {same.length > 0 && (
           <Chip label={`Also change ${same.length} other ${open?.merchant} ${same.length === 1 ? 'entry' : 'entries'}`} on={form.all} onPress={() => setForm({ ...form, all: !form.all })} />
         )}

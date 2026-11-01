@@ -1,5 +1,5 @@
 /// <reference types="jest" />
-import { billDue, checkinGap, cycleOf, cycleSummary, dayInfo, dueDirectDebits, pot, potBalance, safeInfo } from './budget';
+import { billDue, checkinGap, cycleOf, cycleSummary, dayInfo, sideSummary, taxYearStart, dueDirectDebits, pot, potBalance, safeInfo } from './budget';
 import type { Bill, Settings, State, Tx } from './types';
 
 const settings = (o: Partial<Settings> = {}): Settings => ({
@@ -148,5 +148,25 @@ describe('looking back', () => {
     expect([m.pay, m.business, m.spent, m.bills, m.plan]).toEqual([300000, 20000, 13500, 100000, 200000]);
     expect(m.byCat).toEqual([{ cat: 'fun', amt: 9000 }, { cat: 'food', amt: 4500 }]);
     expect(m.days.map((d) => d.spent)).toEqual([3000, 9000, 1500]);
+  });
+});
+
+describe('side income', () => {
+  const S = state({ settings: settings({ sideIncome: true, savings: 0 }), tx: [
+    tx({ kind: 'in', cat: 'salary', amt: 300000, date: '2026-10-27' }),
+    tx({ kind: 'in', cat: 'side', biz: true, amt: 50000, date: '2026-10-28' }),
+    tx({ kind: 'out', cat: 'home', biz: true, amt: 10000, date: '2026-10-28' }),
+    tx({ kind: 'out', cat: 'personal', fromSide: true, amt: 30000, date: '2026-10-29' }),
+  ] });
+  it('keeps money paid from side income off the daily budget', () => {
+    expect(safeInfo(S, '2026-10-29').todaySpent).toBe(0);
+  });
+  it('shows what is left of side income after tax and what you paid out', () => {
+    expect(sideSummary(S, '2026-04-06', '2026-10-29')).toEqual({ income: 50000, costs: 10000, profit: 40000, tax: 8000, rate: 20, drawn: 30000, left: 2000 });
+  });
+  it('starts the UK tax year on 6 April', () => {
+    expect(taxYearStart('2026-04-05')).toBe('2025-04-06');
+    expect(taxYearStart('2026-11-01')).toBe('2026-04-06');
+    expect(taxYearStart('2026-11-01', 'EUR')).toBe('2026-01-01');
   });
 });

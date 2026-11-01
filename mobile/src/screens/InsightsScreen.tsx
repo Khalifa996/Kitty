@@ -1,13 +1,13 @@
 // Looking back: how a single day went, and a pay month at a glance.
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { cycleOf, cycleSummary, dayInfo } from '../engine/budget';
+import { cycleOf, cycleSummary, dayInfo, sideSummary, taxYearStart } from '../engine/budget';
 import { catName, categories, inName, inTypes } from '../engine/cats';
 import { diffDays, nextDay, parse, prevDay } from '../engine/dates';
 import type { Tx } from '../engine/types';
 import { useKitty } from '../store/KittyState';
 import { Icon } from '../ui/Icon';
-import { Card, CatIcon, Label } from '../ui/kit';
+import { Card, CatIcon, Chip, Label } from '../ui/kit';
 import { C, money, moneyS } from '../ui/theme';
 
 const DAYS_BACK = 60;
@@ -34,7 +34,7 @@ function Stepper({ label, onPrev, onNext }: { label: string; onPrev?: () => void
 }
 
 export function InsightsScreen() {
-  const { S, today } = useKitty();
+  const { S, today, update } = useKitty();
   const [view, setView] = useState<'day' | 'month'>('day');
   const [day, setDay] = useState(() => prevDay(today));
   const [back, setBack] = useState(0); // pay months back from this one
@@ -64,6 +64,9 @@ export function InsightsScreen() {
   const topCat = m.byCat[0]?.amt || 1;
   const n = m.days.length, prevSoFar = prev.days.slice(0, n).reduce((a, d) => a + d.spent, 0);
   const isNow = back === 0;
+  const sideOn = S.settings.sideIncome;
+  const sideMonth = useMemo(() => sideSummary(S, cycle.start, cycle.end), [S, cycle]);
+  const ty = taxYearStart(today, cur), sideYear = useMemo(() => sideSummary(S, ty, today), [S, ty, today]);
 
   if (!S.settings.setupDone) {
     return <View style={s.wrap}><Text style={s.h1}>Insights</Text><Text style={s.hint}>Bring your data across in More first.</Text></View>;
@@ -126,6 +129,28 @@ export function InsightsScreen() {
               <Text style={s.hint}>{isNow ? `By day ${n}` : 'In total'}, that's {moneyS(Math.abs(m.spent - prevSoFar), cur)} {m.spent <= prevSoFar ? 'less' : 'more'} than the pay month before.</Text>
             )}
           </Card>
+
+          {sideOn && (
+            <Card style={{ gap: 10 }}>
+              <Label>Side income</Label>
+              <Text style={s.hint}>This pay month: {money(sideMonth.income, cur)} in, {money(sideMonth.costs, cur)} business costs, {money(sideMonth.drawn, cur)} paid out for you or family.</Text>
+              <View style={s.grid}>
+                <View style={s.cell}><Label>Profit this tax year</Label><Text style={s.mid}>{moneyS(sideYear.profit, cur)}</Text>
+                  <Text style={s.meta}>Since {short(ty)}</Text></View>
+                <View style={s.cell}><Label>Keep for tax</Label><Text style={[s.mid, { color: C.warn }]}>{moneyS(sideYear.tax, cur)}</Text>
+                  <Text style={s.meta}>{sideYear.rate}% of profit</Text></View>
+              </View>
+              <Text style={[s.hint, sideYear.left < 0 && { color: C.bad }]}>
+                {sideYear.left >= 0
+                  ? `After tax and ${money(sideYear.drawn, cur)} paid out, ${money(sideYear.left, cur)} of side income is still free.`
+                  : `You've paid out ${money(-sideYear.left, cur)} more than your side income after tax. The tax bill would come from your pay.`}
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                {[20, 26, 40].map((r) => <Chip key={r} label={`${r}%`} on={sideYear.rate === r} onPress={() => update((d) => { d.settings.sideTaxRate = r; })} />)}
+              </View>
+              <Text style={s.meta}>Rough guide: 20% basic rate, 26% once side profit passes the National Insurance threshold, 40% higher rate. Not tax advice.</Text>
+            </Card>
+          )}
 
           {n > 0 && (
             <Card style={{ gap: 10 }}>

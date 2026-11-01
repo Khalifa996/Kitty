@@ -25,6 +25,7 @@ const when = (ms: number) => {
 export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (msg: string, undo?: () => void) => void; goSetup: () => void }) {
   const { S, update } = useKitty();
   const [cats, setCats] = useState<Record<string, string>>({});
+  const [side, setSide] = useState<Record<string, boolean>>({});
   const [picking, setPicking] = useState<Item | null>(null);
   const [showSkipped, setShowSkipped] = useState(false);
   const [showNotices, setShowNotices] = useState(false);
@@ -49,6 +50,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
     if (i.sug.action === 'skip' || i.sug.action === 'ask') return null;
     const t = { ...i.sug.tx };
     if (i.sug.action === 'add' && cats[i.p.key]) { t.cat = cats[i.p.key]; t.biz = t.cat === 'side'; }
+    if (side[i.p.key] && t.kind === 'out' && !t.billId) t.fromSide = true;
     return t;
   };
 
@@ -166,7 +168,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
         const isCash = i.sug.action === 'add' && !!i.sug.cash;
         const list = isIn ? inTypes(S.settings) : categories(S.settings);
         const c = list.find((x) => x.id === t.cat);
-        const label = i.sug.action === 'pay-bill' ? `Bill: ${i.sug.billName}` : isIn ? inName(t.cat) : (c?.n || 'Other');
+        const label = (i.sug.action === 'pay-bill' ? `Bill: ${i.sug.billName}` : isIn ? inName(t.cat) : (c?.n || 'Other')) + (t.fromSide ? ' · side income' : '');
         const guessed = i.sug.action === 'add' && i.sug.guessed && !cats[i.p.key];
         return (
           <Card key={i.p.key} style={{ gap: 10 }}>
@@ -253,6 +255,12 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
               onPress={() => { setCats({ ...cats, [picking.p.key]: c.id }); setPicking(null); }} />
           ))}
         </View>
+        {picking && S.settings.sideIncome && txFor(picking)?.kind === 'out' && (
+          <View style={{ gap: 6 }}>
+            <Chip label="Paid from side income" on={!!side[picking.p.key]} onPress={() => setSide({ ...side, [picking.p.key]: !side[picking.p.key] })} />
+            <Text style={s.hint}>Personal spending paid with money from your side income. It stays off your daily budget and isn't a business cost.</Text>
+          </View>
+        )}
       </Sheet>
     </ScrollView>
   );
