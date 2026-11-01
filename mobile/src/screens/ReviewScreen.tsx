@@ -4,7 +4,9 @@ import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-na
 import { alreadyLogged, guessCategory, knownCategory, suggest, type Suggestion } from '../capture/toEntry';
 import { isMoneyApp, keysFor, type Capture } from '../capture/useCapture';
 import { catName, categories, inName, inTypes } from '../engine/cats';
-import type { Tx } from '../engine/types';
+import type { State, Tx } from '../engine/types';
+import type { AiResult } from '../ai/cloud';
+import { useSmartSort } from '../ai/useSmartSort';
 import { amountIn, clean, isGenericTitle, tidyName, type ParsedAlert } from '../parse/bankAlerts';
 import { hm, ymd } from '../engine/dates';
 import { useKitty } from '../store/KittyState';
@@ -13,6 +15,25 @@ import { Icon } from '../ui/Icon';
 import { C, money } from '../ui/theme';
 
 type Item = { p: ParsedAlert; sug: Suggestion; dup?: Tx };
+
+/** Use the AI's answer for an alert Kitty couldn't read, or a shop it couldn't place. Kitty's own rules and your history win otherwise. */
+function withAi(i: Item, r: AiResult | undefined, S: State): Item {
+  if (!r || i.dup) return i;
+  const valid = (id: string, kind: 'out' | 'in') => (kind === 'out' ? categories(S.settings) : inTypes(S.settings)).some((c) => c.id === id);
+  const sure = r.confidence === 'high';
+  if (i.sug.action === 'ask') {
+    if (r.kind === 'not_payment' || r.kind === 'transfer') return { ...i, sug: { action: 'skip', reason: `Smart sorting: ${r.note.replace(/\.$/, "")}` } };
+    const kind = r.kind === 'received' ? 'in' : 'out', d = new Date(i.p.time);
+    const cat = valid(r.category, kind) ? r.category : kind === 'in' ? 'extra' : 'other';
+    const tx: Tx = { id: `a-${i.p.key.replace(/[^a-z0-9]/gi, '').slice(-16)}`, kind, amt: i.p.amount || 0, cat, sub: null, merchant: r.name || '', note: '',
+      date: ymd(d), time: hm(d), biz: cat === 'side', billId: null, source: 'alert', bank: i.p.bank };
+    return { ...i, sug: { action: 'add', tx, guessed: !sure, ai: true, hint: `Smart sorting: ${r.note.replace(/\.$/, "")}` } };
+  }
+  if (i.sug.action === 'add' && i.sug.guessed && valid(r.category, i.sug.tx.kind)) {
+    return { ...i, sug: { ...i.sug, ai: true, guessed: !sure, tx: { ...i.sug.tx, cat: r.category, biz: r.category === 'side', merchant: i.sug.tx.merchant || r.name } } };
+  }
+  return i;
+}
 
 // Notices that might hide a real payment; adverts, declines and limits never do
 const ADDABLE = /payment check|not a payment|account warning/i;
@@ -34,9 +55,15 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
   const [showNotices, setShowNotices] = useState(false);
   const cur = S.settings.currency;
 
-  const items: Item[] = useMemo(() => cap.parsed
+  const base: Item[] = useMemo(() => cap.parsed
     .filter((p) => p.kind !== 'ignore' || !p.duplicateOf)
     .map((p) => ({ p, sug: suggest(S, p, `a-${p.key.replace(/[^a-z0-9]/gi, '').slice(-16)}`), dup: alreadyLogged(S, p) })), [cap.parsed, S]);
+
+  // Smart sorting (opt-in): ask the AI about alerts Kitty couldn't read and shops it couldn't place
+  const needHelp = useMemo(() => base.filter((i) => !i.p.duplicateOf && !i.dup && (i.sug.action === 'ask' || (i.sug.action === 'add' && i.sug.guessed && !i.sug.cash)))
+    .map((i) => { const r = cap.raw.find((x) => x.key === i.p.key); return { key: i.p.key, app: i.p.bank, title: r?.title || '', text: r?.text || '' }; }), [base, cap.raw]);
+  const ai = useSmartSort(S, needHelp);
+  const items: Item[] = useMemo(() => base.map((i) => withAi(i, ai.results[i.p.key], S)), [base, ai.results, S]);
   const todo = items.filter((i) => i.sug.action !== 'skip' && !i.p.duplicateOf);
   const skipped = items.filter((i) => i.sug.action === 'skip' && !i.p.duplicateOf && !i.p.warning);
   // What your banks are warning you about (overdraft, low balance): newest of each kind per bank, last three days
@@ -124,7 +151,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
   };
   const clearSkipped = () => { cap.done(skipped.flatMap((i) => keysFor(i.p, cap.parsed))); setShowSkipped(false); };
   // Things that need you: not sure what they are, or cash. Everything else can be added in one go
-  const easy = todo.filter((i) => !i.dup && i.sug.action !== 'ask' && !(i.sug.action === 'add' && i.sug.cash));
+  const easy = todo.filter((i) => !i.dup && i.sug.action !== 'ask' && !(i.sug.action === 'add' && (i.sug.cash || (i.sug.ai && i.sug.guessed))));
   const notices = skipped.filter((i) => i.p.kind === 'ignore' && !i.p.amount);
   const skippedPay = skipped.filter((i) => !notices.includes(i));
   const dupText = (t: Tx) => `${t.merchant || (t.kind === 'in' ? inName(t.cat) : catName(S.settings, t.cat))}, ${money(t.amt, cur)}, ${when(new Date(t.date + 'T' + (t.time || '12:00')).getTime())}`;
@@ -148,6 +175,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
         <View style={{ flex: 1 }}>
           <Text style={s.h1}>To review</Text>
           <Text style={s.sub}>{todo.length ? `${todo.length} payment${todo.length === 1 ? '' : 's'} from your bank alerts` : 'Payments from your bank alerts show up here'}</Text>
+          {ai.on && (ai.busy || ai.error) ? <Text style={[s.sub, ai.error ? { color: C.warn } : null]}>{ai.busy ? 'Smart sorting the ones Kitty is unsure about…' : ai.error}</Text> : null}
         </View>
         {easy.length > 1 && <Btn label={`Add all ${easy.length}`} primary small onPress={() => add(easy)} />}
       </View>
@@ -214,7 +242,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
         const isCash = i.sug.action === 'add' && !!i.sug.cash;
         const list = isIn ? inTypes(S.settings) : categories(S.settings);
         const c = list.find((x) => x.id === t.cat);
-        const label = (i.sug.action === 'pay-bill' ? `Bill: ${i.sug.billName}` : isIn ? inName(t.cat) : (c?.n || 'Other')) + (t.fromSide ? ' · side income' : '');
+        const label = (i.sug.action === 'pay-bill' ? `Bill: ${i.sug.billName}` : isIn ? inName(t.cat) : (c?.n || 'Other')) + (t.fromSide ? ' · side income' : '') + (i.sug.action === 'add' && i.sug.ai ? ' · AI' : '');
         const guessed = i.sug.action === 'add' && i.sug.guessed && !cats[i.p.key];
         return (
           <Card key={i.p.key} style={{ gap: 10 }}>

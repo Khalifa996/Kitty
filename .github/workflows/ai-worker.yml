@@ -1,0 +1,79 @@
+name: AI service
+
+# Deploys ai/worker to Cloudflare. Needs these repository secrets (Settings > Secrets and variables > Actions):
+#   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, ANTHROPIC_API_KEY, KITTY_AI_KEY
+# Writes the service's address to ai/worker/url.txt, which the Android build picks up.
+
+on:
+  push:
+    branches: [main]
+    paths: ['ai/worker/src/**', 'ai/worker/wrangler.toml', '.github/workflows/ai-worker.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Test
+        run: node ai/worker/src/sort.test.mjs
+
+      - name: Check the secrets are set
+        id: check
+        run: |
+          if [ -z "$CF_TOKEN" ]; then
+            echo "::notice::Cloudflare secrets are not set yet, so the AI service was not deployed."
+            echo "ready=no" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=yes" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy
+        id: deploy
+        if: steps.check.outputs.ready == 'yes'
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: ai/worker
+          command: deploy
+          secrets: |
+            ANTHROPIC_API_KEY
+            APP_KEY
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          APP_KEY: ${{ secrets.KITTY_AI_KEY }}
+
+      - name: Save the address for the app
+        if: steps.check.outputs.ready == 'yes'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          URL: ${{ steps.deploy.outputs.deployment-url }}
+          OUT: ${{ steps.deploy.outputs.command-output }}
+        run: |
+          addr="$URL"
+          if [ -z "$addr" ]; then addr=$(printf '%s' "$OUT" | grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' | head -1); fi
+          if [ -z "$addr" ]; then echo "::warning::Deployed, but could not read the address"; exit 0; fi
+          echo "AI service is at $addr"
+          curl -fsS "$addr/health" || echo "::warning::Health check failed"
+          if [ "$(cat ai/worker/url.txt 2>/dev/null)" != "$addr" ]; then
+            echo "$addr" > ai/worker/url.txt
+            git config user.name "kitty-ci"
+            git config user.email "kitty-ci@users.noreply.github.com"
+            git add ai/worker/url.txt
+            git commit -m "AI service address (CI)"
+            git push origin HEAD:main
+            # A push by this workflow doesn't start other workflows, so start the app build directly
+            gh workflow run android.yml --ref main
+          fi

@@ -9,7 +9,7 @@ Owner: Mo. Goal: public release on Google Play first, then the App Store. See `R
 1. **One honest number.** Every figure must make sense on day 1 and on the last day of a cycle. Never extrapolate from too little data. If a number could mislead, explain it or hide it.
 2. **Three taps to log.** Opening the app lands on the keypad. Merchant memory fills the category.
 3. **For anyone with an income.** Weekly, fortnightly, 4-weekly or monthly pay, any currency. Power features (business/side income, debts) stay out of the way until switched on.
-4. **Private by default.** No account and no bank login. Data stays on the device unless the user exports it.
+4. **Private by default.** No account and no bank login. Data stays on the device unless the user exports it, or turns on Smart sorting (opt-in cloud AI, see below), which sends only the alerts Kitty couldn't sort, with account numbers removed.
 5. **Plain UK English.** Name things the way people say them ("bills", "payday", "safe to spend"), not system terms.
 
 ## Current state: web prototype (PWA)
@@ -63,6 +63,7 @@ Expo SDK 58, TypeScript. Being rebuilt from the prototype screen by screen.
 - Icons: `src/ui/icons.ts` holds the web app's Lucide shapes; draw them with `<Icon>` (react-native-svg) or `<CatIcon>` for a tinted circle. Categories carry an icon id (`i`).
 - New packages: add them to `deps.txt`; CI installs matching versions with `npx expo install` and commits the lock file.
 - Builds run on GitHub Actions (`.github/workflows/android.yml`): install, type check, Jest, prebuild, Gradle, then the APK is published to Releases. A report of each build is pushed to the `ci-reports` branch (`android.md`).
+- Smart sorting (opt-in cloud AI): `src/ai/` on the phone (`redact.ts` strips account numbers, sort codes and emails; `useSmartSort` sends at most 20 unsorted alerts at a time and caches answers). `ai/worker/` is a Cloudflare Worker that calls Claude Haiku 5.5 with a JSON schema and keeps nothing. `.github/workflows/ai-worker.yml` deploys it when the repository secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `ANTHROPIC_API_KEY` and `KITTY_AI_KEY` are set, writes its address to `ai/worker/url.txt`, and starts an app build; the app gets the address and key as `EXPO_PUBLIC_KITTY_AI_URL` / `EXPO_PUBLIC_KITTY_AI_KEY`. Off by default; the More screen explains exactly what is sent. Declare it in the Play Data safety form (shared with a service provider, only when switched on). Keep a monthly spend limit on the Anthropic account.
 - Test APKs are signed with `credentials/sideload.keystore` (debug passwords, test builds only).
 - npm is not reachable from Claude's workspace, so run tests locally with `node --experimental-strip-types` and a small shim, and let CI do the real install.
 - Sideloaded apps on Android 13+ need "Allow restricted settings" (App info → ⋮) before notification access can be granted.

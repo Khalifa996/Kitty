@@ -3,6 +3,8 @@ import * as Clipboard from 'expo-clipboard';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { isMoneyApp } from '../capture/useCapture';
+import { aiAvailable, newInstallId } from '../ai/cloud';
+import { aiSortedCount } from '../ai/useSmartSort';
 import { KittyNotifications } from '../../modules/kitty-notifications';
 import type { Capture } from '../capture/useCapture';
 import type { State } from '../engine/types';
@@ -11,10 +13,11 @@ import { alertLog, parseBackup } from '../store/storage';
 import { Btn, Card, Label } from '../ui/kit';
 import { C } from '../ui/theme';
 
-const VERSION = '0.6.2';
+const VERSION = '0.7';
 
 export function MoreScreen({ cap, onDone }: { cap: Capture; onDone: (msg: string) => void }) {
-  const { S, replace } = useKitty();
+  const { S, replace, update } = useKitty();
+  const aiOn = !!S.settings.ai?.on;
   const [paste, setPaste] = useState('');
   const [found, setFound] = useState<State | null>(null);
   const [err, setErr] = useState('');
@@ -72,6 +75,18 @@ export function MoreScreen({ cap, onDone }: { cap: Capture; onDone: (msg: string
           </>
         )}
       </Card>
+
+      {aiAvailable && (
+        <Card style={{ gap: 10 }}>
+          <Label>Smart sorting with AI</Label>
+          <Text style={s.hint}>{aiOn ? `On. ${aiSortedCount()} alerts sorted so far.` : 'Off.'} When Kitty can't tell what an alert is, or which category a shop belongs in, it can ask an AI.</Text>
+          <Text style={s.hint}>Only that alert's text is sent, with account numbers removed. Your balance, history, bills and settings are never sent. It goes to Kitty's AI service and is read by Claude, Anthropic's AI. Kitty's service keeps no copy.</Text>
+          <Btn label={aiOn ? 'Turn off' : 'Turn on smart sorting'} primary={!aiOn} onPress={() => {
+            update((d) => { d.settings.ai = { on: !aiOn, install: d.settings.ai?.install || newInstallId() }; });
+            onDone(aiOn ? 'Smart sorting is off. Nothing more will be sent' : 'Smart sorting is on');
+          }} />
+        </Card>
+      )}
 
       <Card style={{ gap: 10 }}>
         <Label>Bring your data across</Label>

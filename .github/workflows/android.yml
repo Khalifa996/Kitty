@@ -3,7 +3,7 @@ name: Android app
 on:
   push:
     branches: [main]
-    paths: ['mobile/**', '.github/workflows/android.yml']
+    paths: ['mobile/**', '.github/workflows/android.yml', 'ai/worker/url.txt']
   workflow_dispatch:
 
 permissions:
@@ -22,6 +22,8 @@ jobs:
         working-directory: mobile
     env:
       LOGS: ${{ github.workspace }}/ci-logs
+      # Smart sorting (opt-in cloud AI): the app key is shared with the AI service; the address is written by ai-worker.yml
+      EXPO_PUBLIC_KITTY_AI_KEY: ${{ secrets.KITTY_AI_KEY }}
     steps:
       - uses: actions/checkout@v4
 
@@ -35,7 +37,9 @@ jobs:
           java-version: 17
 
       - name: Prepare
-        run: mkdir -p "$LOGS"
+        run: |
+          mkdir -p "$LOGS"
+          if [ -s ../ai/worker/url.txt ]; then echo "EXPO_PUBLIC_KITTY_AI_URL=$(tr -d '[:space:]' < ../ai/worker/url.txt)" >> "$GITHUB_ENV"; fi
 
       - name: Set up the Expo project (first run only)
         id: bootstrap

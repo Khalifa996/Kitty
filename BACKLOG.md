@@ -10,6 +10,8 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | P1 | 29 Oct | App: balance check-ins, Settings (change pay, categories, side income switch) still only in the web app |
 | P2 | 1 Nov | Intelligence: on-device AI (Gemini Nano via ML Kit Prompt API, beta, newer flagships only) to read unclear alerts and name shops; falls back to rules and learning on other phones |
 | P1 | 1 Nov | Setup that fits each person before testers: other income sources, regular spending, which banks, fixed amounts; essentials first, the rest as prompts in week one (ROADMAP phase 2c) |
+| P1 | 1 Nov | Before public launch: harden the AI service (per-install rate limits, Play Integrity check), and add Smart sorting to the privacy policy and Play Data safety form |
+| P2 | 1 Nov | On-device AI for phones that have Gemini Nano (Pixel 9+, Galaxy S26, Z Fold8): same Smart sorting without anything leaving the phone |
 | P1 | 1 Nov | Testers: 12+ people for the Play closed test; their anonymised alert exports to confirm each bank's wording |
 | P2 | 1 Nov | Cash: a Cash pot for a stash at home (withdrawal tops it up, spending from it skips the daily budget) |
 | P2 | 29 Oct | App: change an entry's date; notes; Business switch; pay from a pot |
@@ -38,6 +40,11 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | P3 | Light theme |
 
 ## Changelog
+**App 0.7, 1 Nov 2026: smart sorting (opt-in AI)**
+- Optional Smart sorting in More: alerts Kitty can't read, and shops it can't place, are sorted by Claude (Anthropic's AI) through Kitty's own small service. Only those alerts are sent, with account numbers, sort codes and emails removed. Off unless you turn it on
+- AI answers are marked "AI" in Review and never override your own history; low-confidence answers still show a question mark and stay out of Add all
+- The AI service deploys itself from GitHub once the account keys are added
+
 **App 0.6.2, 1 Nov 2026: learns what to ignore**
 - Kitty only asks "spent or received?" when an alert talks about money moving; a price in a job post or advert is not a payment
 - Job alerts (Airtasker tasks and similar) are skipped; a platform's own payout alerts are skipped because the money is added when it reaches your bank

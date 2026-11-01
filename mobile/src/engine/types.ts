@@ -16,6 +16,7 @@ export type Settings = {
   checkEvery: number;
   limits: Record<string, number>;
   dismissed: Record<string, boolean>;
+  ai?: { on: boolean; install: string }; // smart sorting with cloud AI: off unless the person turns it on
   learned?: { skip?: Record<string, number>; keep?: Record<string, number> }; // what the person did with alerts Kitty couldn't read, by bank
   opening?: { start: string; date: string; pot: number } | null;
   prepaid?: Record<string, string>;

@@ -85,7 +85,7 @@ export function sameName(a?: string, b?: string): boolean {
 }
 
 export type Suggestion =
-  | { action: 'add'; tx: Tx; guessed: boolean; hint?: string; cash?: boolean }
+  | { action: 'add'; tx: Tx; guessed: boolean; hint?: string; cash?: boolean; ai?: boolean }
   | { action: 'pay-bill'; billId: string; billName: string; tx: Tx; replaces?: Tx }
   | { action: 'ask'; reason: string }
   | { action: 'skip'; reason: string };
