@@ -47,5 +47,6 @@ class KittyNotificationsModule : Module() {
     Function("getCandidates") { CaptureStore.candidates(ctx) }
     Function("getExtraApps") { CaptureStore.extraApps(ctx).toList() }
     Function("setExtraApps") { pkgs: List<String> -> CaptureStore.setExtra(ctx, pkgs) }
+    Function("getAppLabel") { pkg: String -> CaptureStore.label(ctx, pkg) }
   }
 }

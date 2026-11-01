@@ -9,6 +9,7 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 |---|---|---|
 | P1 | 29 Oct | App: balance check-ins, Settings (change pay, categories, side income switch) still only in the web app |
 | P3 | 1 Nov | Shop categories: optional on-device AI (Android Gemini Nano) for names with no clues, no data leaving the phone |
+| P1 | 1 Nov | Testers: 12+ people for the Play closed test; their anonymised alert exports to confirm each bank's wording |
 | P2 | 1 Nov | Cash: a Cash pot for a stash at home (withdrawal tops it up, spending from it skips the daily budget) |
 | P2 | 29 Oct | App: change an entry's date; notes; Business switch; pay from a pot |
 | P2 | 29 Oct | Work expenses: mark a spend as "I'll get this back" so it stays off the daily budget until the reimbursement arrives |
@@ -37,6 +38,8 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 
 ## Changelog
 **App 0.6 (in progress), 1 Nov 2026: anyone can start; side income without the guesswork**
+- Alerts from more UK banks: Lloyds, Halifax, Bank of Scotland, HSBC, first direct, Santander, Nationwide, TSB, RBS, Ulster Bank, Chase, Amex, Virgin Money, Kroo and Curve. Read with general rules until testers send real examples
+- Any other app that posts money alerts: Kitty offers to read it ("Money alerts from X"), only if you say yes
 - Plan tab: Bills (due now, coming up, paid, mark paid or undo, add and edit, debt payoff dates, subscriptions a year) and Pots (each payday, target, top up, close; new pots can start on the next payday). Pay for something from a pot in Activity. Settings and backups move behind the button on Plan
 - First-run setup in the app: how often you're paid, take-home pay, bills, savings and money now if you start part-way; or bring a backup across
 - Spending can be marked "Paid from side income": off the daily budget, not a business cost (web app too)

@@ -45,7 +45,21 @@ export function MoreScreen({ cap, onDone }: { cap: Capture; onDone: (msg: string
         {!cap.native ? (
           <Text style={s.hint}>Reading bank alerts only works in the Android app.</Text>
         ) : cap.enabled ? (
-          <Text style={s.hint}>On. Kitty reads payment alerts from Barclays, Revolut, Monzo, Starling, NatWest and Google Wallet. They never leave your phone.</Text>
+          <>
+            <Text style={s.hint}>On. Kitty reads payment alerts from the main UK banks and card apps, and from Google Wallet. They never leave your phone.</Text>
+            {cap.watched.map((a) => (
+              <View key={a.pkg} style={[s.row, { alignItems: 'center' }]}>
+                <Text style={[s.hint, { flex: 1, color: C.fg }]}>Also reading {a.label}</Text>
+                <Btn label="Stop" small onPress={() => cap.watchApp(a.pkg, false)} />
+              </View>
+            ))}
+            {cap.spotted.map((a) => (
+              <View key={a.pkg} style={[s.row, { alignItems: 'center' }]}>
+                <Text style={[s.hint, { flex: 1 }]}>{a.label} posts money alerts</Text>
+                <Btn label="Read them" small onPress={() => cap.watchApp(a.pkg, true)} />
+              </View>
+            ))}
+          </>
         ) : (
           <>
             <Text style={[s.hint, { color: C.fg }]}>Off. Tap Allow access, find Kitty and switch it on.</Text>

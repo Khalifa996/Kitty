@@ -1,7 +1,7 @@
 // Turns a bank app's notification into something Kitty can log.
 // Built from real UK alerts. Every rule here should have a test in bankAlerts.test.ts.
 
-export type RawAlert = { key: string; pkg: string; title: string; text: string; time: number };
+export type RawAlert = { key: string; pkg: string; title: string; text: string; time: number; app?: string };
 
 export type AlertKind = 'spent' | 'received' | 'transfer' | 'bill' | 'ignore';
 
@@ -31,6 +31,21 @@ export const BANK_APPS: Record<string, string> = {
   'co.uk.getmondo': 'Monzo',
   'com.starlingbank.android': 'Starling',
   'com.rbs.mobile.android.natwest': 'NatWest',
+  'com.rbs.mobile.android.rbs': 'RBS',
+  'com.rbs.mobile.android.ubr': 'Ulster Bank',
+  'com.grppl.android.shell.CMBlloydsTSB73': 'Lloyds',
+  'com.grppl.android.shell.halifax': 'Halifax',
+  'com.grppl.android.shell.BOS': 'Bank of Scotland',
+  'uk.co.hsbc.hsbcukmobilebanking': 'HSBC',
+  'com.firstdirect.bankingonthego': 'first direct',
+  'uk.co.santander.santanderUK': 'Santander',
+  'co.uk.Nationwide.Mobile': 'Nationwide',
+  'uk.co.tsb.newmobilebank': 'TSB',
+  'com.chase.intl': 'Chase',
+  'com.americanexpress.android.acctsvcs.uk': 'Amex',
+  'com.virginmoney.uk.mobile.android': 'Virgin Money',
+  'com.kroo.app': 'Kroo',
+  'com.imaginecurve.curve.prd': 'Curve',
   'com.google.android.apps.walletnfcrel': 'Google Wallet',
 };
 
@@ -65,7 +80,8 @@ const PAYERS: [RegExp, string][] = [
 /** "GOOGLE PLAY APPS" → "Google Play Apps". Leaves mixed case alone. */
 export function tidyName(s: string): string {
   for (const [rx, name] of PAYERS) if (rx.test(s || '')) return name;
-  const t = clean(s).replace(PREFIX, '').replace(/[.,;:]+$/, '').trim();
+  // Card terminals often add a store number (TESCO STORES 2041)
+  const t = clean(s).replace(PREFIX, '').replace(/[.,;:]+$/, '').replace(/\s+#?\d{3,}$/, '').trim();
   if (!t) return t;
   if (t === t.toUpperCase() && /[A-Z]{3,}/.test(t)) {
     // Title case, but keep likely initials as they are: a short first word (ABC, BP) or a two-letter word (UK)
@@ -96,10 +112,13 @@ const IGNORE: [RegExp, string][] = [
 /** The first amount in a piece of text, in pennies. */
 export const amountIn = (s: string) => { const m = (s || '').match(AMOUNT); return m ? toPennies(m[1]) : undefined; };
 
-const GENERIC_TITLES = /^(revolut|barclays|barclaycard|monzo|starling( bank)?|natwest|payment|card payment|new notification|google wallet)$/i;
+const BANK_NAMES = [...new Set(Object.values(BANK_APPS))].map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+const GENERIC_TITLES = new RegExp(`^(${BANK_NAMES}|monzo bank|starling bank|payment|card payment|new notification|notification)$`, 'i');
+/** A title that just names the bank, not a shop. */
+export const isGenericTitle = (t: string) => GENERIC_TITLES.test(clean(t));
 
 export function parseAlert(a: RawAlert): ParsedAlert {
-  const bank = BANK_APPS[a.pkg] || a.pkg;
+  const bank = BANK_APPS[a.pkg] || a.app || a.pkg;
   const title = clean(a.title);
   const text = clean(a.text);
   const all = `${title} ${text}`;
@@ -159,7 +178,7 @@ export function parseAlert(a: RawAlert): ParsedAlert {
 
   // Spending
   if (/\b(spent|paid|payment|purchase|card used|debited|you sent|withdrew|withdrawal)\b/i.test(text) || /^\s*-?£/.test(text)) {
-    let merchant: string | undefined = (text.match(/\b(?:at|with|to)\s+(.+?)(?:\s+(?:from|on|using)\s+your\b|\s+balance\b|\.\s|\.$|$)/i) || [])[1];
+    let merchant: string | undefined = (text.match(/\b(?:at|with|to)\s+(.+?)(?:\s+(?:from|on|using|with)\s+(?:your|a|card)\b|\s+card ending\b|\s+balance\b|\.\s|\.$|$)/i) || [])[1];
     if (merchant && /your account|another account/i.test(merchant)) merchant = undefined;
     if (!merchant && !GENERIC_TITLES.test(title) && !AMOUNT.test(title)) merchant = title;
     const sent = /\byou sent\b|transfer sent/i.test(all);

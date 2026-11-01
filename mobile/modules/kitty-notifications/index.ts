@@ -10,6 +10,7 @@ type NativeKitty = {
   getCandidates(): string[];
   getExtraApps(): string[];
   setExtraApps(pkgs: string[]): void;
+  getAppLabel(pkg: string): string;
   addListener(event: 'onCapture', cb: (e: { json: string }) => void): Subscription;
 };
 

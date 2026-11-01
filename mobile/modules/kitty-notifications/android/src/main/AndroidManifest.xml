@@ -1,4 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- Lets Kitty show the names of apps that post money alerts (launcher apps only, not every package) -->
+  <queries>
+    <intent>
+      <action android:name="android.intent.action.MAIN" />
+      <category android:name="android.intent.category.LAUNCHER" />
+    </intent>
+  </queries>
   <application>
     <service
       android:name="expo.modules.kittynotifications.KittyNotificationListener"

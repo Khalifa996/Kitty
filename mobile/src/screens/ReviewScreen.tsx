@@ -5,7 +5,7 @@ import { alreadyLogged, guessCategory, knownCategory, suggest, type Suggestion }
 import { keysFor, type Capture } from '../capture/useCapture';
 import { catName, categories, inName, inTypes } from '../engine/cats';
 import type { Tx } from '../engine/types';
-import { amountIn, clean, tidyName, type ParsedAlert } from '../parse/bankAlerts';
+import { amountIn, clean, isGenericTitle, tidyName, type ParsedAlert } from '../parse/bankAlerts';
 import { hm, ymd } from '../engine/dates';
 import { useKitty } from '../store/KittyState';
 import { Btn, Card, Chip, Label, Sheet } from '../ui/kit';
@@ -71,7 +71,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
   /** You decided what an alert was (one Kitty couldn't read, or a notice you want to add anyway). */
   const addAs = (p: ParsedAlert, kind: 'out' | 'in', amt: number) => {
     const r = rawOf(p), d = new Date(p.time);
-    const name = p.merchant || (r && !/^(revolut|barclays|barclaycard|monzo|starling|natwest|google wallet|new notification)$/i.test(clean(r.title)) && !amountIn(r.title) ? tidyName(r.title) : '');
+    const name = p.merchant || (r && !isGenericTitle(r.title) && !amountIn(r.title) ? tidyName(r.title) : '');
     const cat = kind === 'in' ? 'extra' : guessCategory(S, name) || knownCategory(name) || 'other';
     const t: Tx = { id: `a-${p.key.replace(/[^a-z0-9]/gi, '').slice(-16)}`, kind, amt, cat, sub: null, merchant: name, note: '', date: ymd(d), time: hm(d), biz: false, billId: null, source: 'alert', bank: p.bank };
     update((x) => { x.tx.push(t); });
@@ -136,6 +136,17 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
           <Btn label="Go to More" onPress={goSetup} />
         </Card>
       )}
+
+      {cap.spotted.filter((a) => !S.settings.dismissed?.[`app:${a.pkg}`]).slice(0, 1).map((a) => (
+        <Card key={a.pkg} style={{ gap: 8 }}>
+          <Text style={s.h2}>Money alerts from {a.label}</Text>
+          <Text style={s.hint}>Kitty noticed {a.label} posting alerts with amounts in them. If it's one of your banks or cards, Kitty can read its alerts too. They stay on your phone.</Text>
+          <View style={[s.row, { justifyContent: 'flex-end' }]}>
+            <Btn label="Not mine" small onPress={() => update((d) => { d.settings.dismissed = { ...(d.settings.dismissed || {}), [`app:${a.pkg}`]: true }; })} />
+            <Btn label="Read its alerts" small primary onPress={() => { cap.watchApp(a.pkg, true); onDone(`Kitty will read alerts from ${a.label}`); }} />
+          </View>
+        </Card>
+      ))}
 
       {todo.length === 0 && cap.enabled !== false && (
         <Card><Text style={s.hint}>All caught up. Pay with a card and the payment shows up here within seconds.</Text></Card>

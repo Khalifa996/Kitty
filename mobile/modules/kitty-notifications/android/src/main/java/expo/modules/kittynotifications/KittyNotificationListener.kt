@@ -26,6 +26,7 @@ class KittyNotificationListener : NotificationListenerService() {
       val item = JSONObject()
         .put("key", "${n.key}|${n.postTime}")
         .put("pkg", pkg)
+        .put("app", if (CaptureStore.BANK_APPS.contains(pkg)) "" else CaptureStore.label(this, pkg))
         .put("title", title)
         .put("text", body)
         .put("time", n.postTime)

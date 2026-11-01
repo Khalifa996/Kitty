@@ -23,6 +23,21 @@ object CaptureStore {
     "co.uk.getmondo",
     "com.starlingbank.android",
     "com.rbs.mobile.android.natwest",
+    "com.rbs.mobile.android.rbs",
+    "com.rbs.mobile.android.ubr",
+    "com.grppl.android.shell.CMBlloydsTSB73",
+    "com.grppl.android.shell.halifax",
+    "com.grppl.android.shell.BOS",
+    "uk.co.hsbc.hsbcukmobilebanking",
+    "com.firstdirect.bankingonthego",
+    "uk.co.santander.santanderUK",
+    "co.uk.Nationwide.Mobile",
+    "uk.co.tsb.newmobilebank",
+    "com.chase.intl",
+    "com.americanexpress.android.acctsvcs.uk",
+    "com.virginmoney.uk.mobile.android",
+    "com.kroo.app",
+    "com.imaginecurve.curve.prd",
     "com.google.android.apps.walletnfcrel"
   )
 
@@ -43,6 +58,12 @@ object CaptureStore {
   }
 
   fun candidates(ctx: Context): List<String> = (prefs(ctx).getStringSet(SEEN, emptySet()) ?: emptySet()).filter { !isWatched(ctx, it) }
+
+  /** The name people know an app by, for apps Kitty can see. Falls back to the package name. */
+  fun label(ctx: Context, pkg: String): String = try {
+    val pm = ctx.packageManager
+    pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
+  } catch (e: Exception) { pkg }
 
   fun setExtra(ctx: Context, pkgs: List<String>) {
     prefs(ctx).edit().putStringSet(EXTRA, pkgs.toSet()).apply()

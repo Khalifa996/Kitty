@@ -165,3 +165,19 @@ it("keeps the bank's category symbol", () => {
   expect(parseAlert({ key: 'e', pkg: 'com.revolut.revolut', title: 'The Label Yard', text: '🛍 You spent £28\nGBP balance: £100', time: 1 }).emoji).toBe('🛍');
   expect(parseAlert({ key: 'f', pkg: 'co.uk.getmondo', title: '🍏 £1 at Co-op', text: '', time: 1 }).emoji).toBe('🍏');
 });
+
+// Made-up alerts in the styles other UK banks use. Replace with real (anonymised) ones as testers send them.
+describe('other UK banks, generic wording', () => {
+  const a = (pkg: string, title: string, text: string) => parseAll([{ key: 'k', pkg, title, text, time: 1 }])[0];
+  it('reads card payments', () => {
+    expect(a('com.grppl.android.shell.CMBlloydsTSB73', 'Lloyds', 'You spent £12.30 at TESCO STORES 2041 with your debit card ending 1234')).toMatchObject({ bank: 'Lloyds', kind: 'spent', amount: 1230, merchant: 'Tesco Stores' });
+    expect(a('uk.co.santander.santanderUK', 'Santander', 'A card payment of £4.50 was made at COSTA COFFEE using your card ending 1234')).toMatchObject({ bank: 'Santander', kind: 'spent', amount: 450, merchant: 'Costa Coffee' });
+    expect(a('com.chase.intl', 'Chase', 'You paid £8.20 to Pret A Manger')).toMatchObject({ bank: 'Chase', kind: 'spent', amount: 820, merchant: 'Pret A Manger' });
+  });
+  it('reads money in', () => {
+    expect(a('uk.co.hsbc.hsbcukmobilebanking', 'HSBC', '£150.00 has been paid into your account from ACME LTD')).toMatchObject({ bank: 'HSBC', kind: 'received', amount: 15000 });
+  });
+  it('names an app the person turned on by its label', () => {
+    expect(parseAll([{ key: 'k', pkg: 'com.example.bank', app: 'Example Bank', title: 'Example Bank', text: 'You spent £3.00 at Greggs', time: 1 }])[0]).toMatchObject({ bank: 'Example Bank', merchant: 'Greggs' });
+  });
+});

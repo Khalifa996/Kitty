@@ -26,9 +26,22 @@ function removeRaw(keys: string[]) {
 export const keysFor = (p: ParsedAlert, all: ParsedAlert[]) =>
   [p.key, ...(p.pairedWith ? [p.pairedWith] : []), ...all.filter((q) => q.duplicateOf === p.key).map((q) => q.key)];
 
+export type OtherApp = { pkg: string; label: string };
+function readApps(): { spotted: OtherApp[]; watched: OtherApp[] } {
+  const K = KittyNotifications;
+  if (!K) return { spotted: [], watched: [] };
+  try {
+    const name = (pkg: string) => ({ pkg, label: K.getAppLabel ? K.getAppLabel(pkg) : pkg });
+    return { spotted: K.getCandidates().map(name), watched: K.getExtraApps().map(name) };
+  } catch {
+    return { spotted: [], watched: [] };
+  }
+}
+
 export function useCapture() {
   const [raw, setRaw] = useState<RawAlert[]>(readRaw);
-  const refresh = useCallback(() => setRaw(readRaw()), []);
+  const [apps, setApps] = useState(readApps);
+  const refresh = useCallback(() => { setRaw(readRaw()); setApps(readApps()); }, []);
 
   useEffect(() => {
     const app = AppState.addEventListener('change', (s) => { if (s === 'active') refresh(); });
@@ -46,8 +59,17 @@ export function useCapture() {
     refresh();
   }, [raw, refresh]);
 
+  /** Start or stop reading alerts from another app (a bank Kitty doesn't know yet). Only the person can turn this on. */
+  const watchApp = useCallback((pkg: string, on: boolean) => {
+    const K = KittyNotifications;
+    if (!K) return;
+    const cur = K.getExtraApps().filter((p) => p !== pkg);
+    K.setExtraApps(on ? [...cur, pkg] : cur);
+    refresh();
+  }, [refresh]);
+
   const enabled = KittyNotifications ? KittyNotifications.isEnabled() : null;
-  return { raw, parsed, refresh, done, enabled, native: !!KittyNotifications };
+  return { raw, parsed, refresh, done, enabled, native: !!KittyNotifications, spotted: apps.spotted, watched: apps.watched, watchApp };
 }
 
 export type Capture = ReturnType<typeof useCapture>;
