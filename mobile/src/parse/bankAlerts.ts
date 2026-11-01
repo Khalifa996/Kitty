@@ -21,6 +21,7 @@ export type ParsedAlert = {
   duplicateOf?: string; // key of the alert this one repeats
   unsure?: boolean;     // has an amount, but Kitty can't tell what it is: ask the person
   cash?: boolean;       // a cash withdrawal
+  warning?: string;     // something the person should know about (overdraft, low balance): shown as a heads-up
   emoji?: string;       // the bank's own category symbol (Revolut and Monzo start alerts with one)
 };
 
@@ -94,7 +95,16 @@ export function tidyName(s: string): string {
   return t;
 }
 
+// Things the bank is telling you about your money, not money moving. Worth a heads-up, never a payment.
+const WARNINGS: [RegExp, string][] = [
+  [/unarranged overdraft|overdraft limit (exceeded|reached)|over your (arranged )?overdraft|payments? (may|will|could) (bounce|be returned)/i, 'Overdraft'],
+  [/balance is (below|under|low)|low balance|running low|top up now/i, 'Low balance'],
+];
+// The bank telling you about a charge it is taking: real money, so it can be added as a bank charge
+const BANK_CHARGE = /\b(charge|fee|interest)\b[^.]*\b(overdraft|overdrawn)\b|\boverdraft\b[^.]*\b(charge|fee|interest)\b|\bmonthly (account )?fee\b/i;
+
 const IGNORE: [RegExp, string][] = [
+  [/budget update|of your [^.]*budget|spending report|monthly summary|weekly summary|your year in/i, 'Summary from your bank'],
   [/\bverify\b|tap to verify|approve (this|the) payment/i, 'Payment check, not a payment'],
   [/authori[sz]ed for future payments/i, 'Card saved with a shop, not a payment'],
   [/one[- ]time (pass)?code|\bOTP\b|security code|passcode/i, 'Security code'],
@@ -125,6 +135,9 @@ export function parseAlert(a: RawAlert): ParsedAlert {
   const lead = (a.text || '').match(/^\s*(\p{Extended_Pictographic})/u) || (a.title || '').match(/^\s*(\p{Extended_Pictographic})/u);
   const base: ParsedAlert = { key: a.key, time: a.time, bank, kind: 'ignore', emoji: lead ? lead[1] : undefined };
 
+  const charge = BANK_CHARGE.test(all) && (text.match(AMOUNT) || title.match(AMOUNT));
+  if (charge) return { ...base, kind: 'spent', amount: toPennies(charge[1]), merchant: `${bank} charges`, reason: 'Bank charge' };
+  for (const [rx, why] of WARNINGS) if (rx.test(all)) return { ...base, reason: `${why} warning`, warning: why };
   for (const [rx, why] of IGNORE) if (rx.test(all)) return { ...base, reason: why };
 
   // Revolut shows a family member's card as "<Name> 💳" with "Spent £x at Shop"
@@ -139,7 +152,7 @@ export function parseAlert(a: RawAlert): ParsedAlert {
   if (tFrom && !text.match(AMOUNT)) return { ...base, kind: 'received', amount: toPennies(tFrom[1]), merchant: tidyName(tFrom[2]) };
 
   const am = text.match(AMOUNT) || title.match(AMOUNT);
-  if (!am) return { ...base, reason: 'No amount found' };
+  if (!am) return { ...base, reason: 'Not a payment' };
   const amount = toPennies(am[1]);
   const bal = text.match(BALANCE);
   const acct = (all.match(/ending\s+(\d{4})/i) || all.match(/(?:••|\*\*)\s?(\d{4})/) || [])[1];

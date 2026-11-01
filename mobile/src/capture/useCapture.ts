@@ -27,6 +27,10 @@ export const keysFor = (p: ParsedAlert, all: ParsedAlert[]) =>
   [p.key, ...(p.pairedWith ? [p.pairedWith] : []), ...all.filter((q) => q.duplicateOf === p.key).map((q) => q.key)];
 
 export type OtherApp = { pkg: string; label: string };
+// Only offer to read apps that look like banks, cards or wallets (not shops, marketplaces or app stores)
+const MONEY_APP = /bank|banking|money|pay\b|paypal|card|credit|finance|wallet|cash|building society|savings|loan|klarna|clearpay|monzo|starling|revolut|chase|amex|curve|kroo|zopa|tide|wise/i;
+const NOT_A_BANK = /vinted|ebay|depop|amazon|store|shop|market|deliveroo|uber|just ?eat|game|play/i;
+export const isMoneyApp = (a: OtherApp) => MONEY_APP.test(`${a.label} ${a.pkg}`) && !NOT_A_BANK.test(a.label);
 function readApps(): { spotted: OtherApp[]; watched: OtherApp[] } {
   const K = KittyNotifications;
   if (!K) return { spotted: [], watched: [] };

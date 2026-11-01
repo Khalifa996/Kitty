@@ -181,3 +181,23 @@ describe('other UK banks, generic wording', () => {
     expect(parseAll([{ key: 'k', pkg: 'com.example.bank', app: 'Example Bank', title: 'Example Bank', text: 'You spent £3.00 at Greggs', time: 1 }])[0]).toMatchObject({ bank: 'Example Bank', merchant: 'Greggs' });
   });
 });
+
+// Made-up wording in the style of real alerts (amounts changed)
+describe('warnings and bank notices', () => {
+  const a = (pkg: string, title: string, text: string) => parseAlert({ key: 'k', pkg, title, text, time: 1 });
+  it('treats overdraft and low balance alerts as warnings, not payments', () => {
+    expect(a('co.uk.getmondo', "You're in an unarranged overdraft", 'Please add money to your account to avoid payments bouncing.')).toMatchObject({ kind: 'ignore', warning: 'Overdraft' });
+    expect(a('co.uk.getmondo', 'Overdraft limit exceeded', 'Please pay now or see options')).toMatchObject({ kind: 'ignore', warning: 'Overdraft' });
+    expect(a('com.revolut.revolut', 'Balance is below £20', 'If you can, top up now so your next transaction is covered')).toMatchObject({ kind: 'ignore', warning: 'Low balance' });
+  });
+  it("skips the bank's own budget updates and reports", () => {
+    expect(a('com.revolut.revolut', 'A quick budget update', "You've used 50% of your £1,000 monthly budget, with 3 day(s) left")).toMatchObject({ kind: 'ignore', reason: 'Summary from your bank' });
+    expect(a('co.uk.getmondo', 'Your spending report is in', "Each month's different")).toMatchObject({ kind: 'ignore' });
+  });
+  it('picks up an overdraft charge as real money', () => {
+    expect(a('co.uk.getmondo', '£12.34 charge for using your overdraft in October', 'You were overdrawn for 9 days this month.')).toMatchObject({ kind: 'spent', amount: 1234, merchant: 'Monzo charges', reason: 'Bank charge' });
+  });
+  it('says plainly when something is not a payment', () => {
+    expect(a('co.uk.getmondo', 'Hello', 'Something with no money in it')).toMatchObject({ kind: 'ignore', reason: 'Not a payment' });
+  });
+});

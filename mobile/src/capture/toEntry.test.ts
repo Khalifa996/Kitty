@@ -174,3 +174,15 @@ it("uses the bank's own category symbol for shops nobody has listed", () => {
   const mine = suggest(S, alert({ amount: 2800, merchant: 'The Label Yard', emoji: '🛍' }), 'n23');
   expect(mine.action === 'add' && [mine.tx.cat, mine.guessed]).toEqual(['personal', false]);
 });
+
+it("doesn't learn a category from a name Kitty filled in", () => {
+  const S = withHistory();
+  S.tx.push({ id: 'm', kind: 'in', amt: 18000, cat: 'expenses', merchant: 'Money in', note: '', date: '2026-10-20', time: '10:00', biz: false, billId: null });
+  const s = suggest(S, alert({ kind: 'received', amount: 4000, merchant: 'Money in' }), 'n24');
+  expect(s.action === 'add' && [s.tx.cat, s.guessed]).toEqual(['extra', true]);
+});
+
+it('offers a bank charge as a one-off bill', () => {
+  const s = suggest(withHistory(), alert({ kind: 'spent', amount: 1234, merchant: 'Monzo charges', reason: 'Bank charge' }), 'n25');
+  expect(s).toMatchObject({ action: 'add', tx: { cat: 'bills', sub: 'Bank charge', amt: 1234 } });
+});

@@ -64,5 +64,29 @@
   "title": "Verify a payment",
   "text": "You're making an online card payment of £18.25 to Amazon. Tap to verify",
   "ago": 96
+ },
+ {
+  "pkg": "co.uk.getmondo",
+  "title": "You're in an unarranged overdraft",
+  "text": "Please add money to your account to avoid payments bouncing.",
+  "ago": 40
+ },
+ {
+  "pkg": "com.revolut.revolut",
+  "title": "Balance is below £20",
+  "text": "If you can, top up now so your next transaction is covered",
+  "ago": 70
+ },
+ {
+  "pkg": "co.uk.getmondo",
+  "title": "£6.50 charge for using your overdraft in October",
+  "text": "You were overdrawn for 5 days this month.",
+  "ago": 45
+ },
+ {
+  "pkg": "com.revolut.revolut",
+  "title": "Invite friends, earn £50",
+  "text": "Refer friends and get £50 for each eligible sign-up. T&Cs apply",
+  "ago": 300
  }
 ]

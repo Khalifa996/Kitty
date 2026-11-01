@@ -2,6 +2,7 @@
 import * as Clipboard from 'expo-clipboard';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { isMoneyApp } from '../capture/useCapture';
 import { KittyNotifications } from '../../modules/kitty-notifications';
 import type { Capture } from '../capture/useCapture';
 import type { State } from '../engine/types';
@@ -10,7 +11,7 @@ import { alertLog, parseBackup } from '../store/storage';
 import { Btn, Card, Label } from '../ui/kit';
 import { C } from '../ui/theme';
 
-const VERSION = '0.6';
+const VERSION = '0.6.1';
 
 export function MoreScreen({ cap, onDone }: { cap: Capture; onDone: (msg: string) => void }) {
   const { S, replace } = useKitty();
@@ -53,7 +54,7 @@ export function MoreScreen({ cap, onDone }: { cap: Capture; onDone: (msg: string
                 <Btn label="Stop" small onPress={() => cap.watchApp(a.pkg, false)} />
               </View>
             ))}
-            {cap.spotted.map((a) => (
+            {cap.spotted.filter(isMoneyApp).map((a) => (
               <View key={a.pkg} style={[s.row, { alignItems: 'center' }]}>
                 <Text style={[s.hint, { flex: 1 }]}>{a.label} posts money alerts</Text>
                 <Btn label="Read them" small onPress={() => cap.watchApp(a.pkg, true)} />

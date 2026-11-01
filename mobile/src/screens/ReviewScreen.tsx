@@ -1,8 +1,8 @@
 // Payments Kitty spotted in your bank alerts, ready to add with one tap.
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { alreadyLogged, guessCategory, knownCategory, suggest, type Suggestion } from '../capture/toEntry';
-import { keysFor, type Capture } from '../capture/useCapture';
+import { isMoneyApp, keysFor, type Capture } from '../capture/useCapture';
 import { catName, categories, inName, inTypes } from '../engine/cats';
 import type { Tx } from '../engine/types';
 import { amountIn, clean, isGenericTitle, tidyName, type ParsedAlert } from '../parse/bankAlerts';
@@ -13,6 +13,9 @@ import { Icon } from '../ui/Icon';
 import { C, money } from '../ui/theme';
 
 type Item = { p: ParsedAlert; sug: Suggestion; dup?: Tx };
+
+// Notices that might hide a real payment; adverts, declines and limits never do
+const ADDABLE = /payment check|not a payment|account warning/i;
 
 const when = (ms: number) => {
   const d = new Date(ms), now = new Date();
@@ -35,7 +38,11 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
     .filter((p) => p.kind !== 'ignore' || !p.duplicateOf)
     .map((p) => ({ p, sug: suggest(S, p, `a-${p.key.replace(/[^a-z0-9]/gi, '').slice(-16)}`), dup: alreadyLogged(S, p) })), [cap.parsed, S]);
   const todo = items.filter((i) => i.sug.action !== 'skip' && !i.p.duplicateOf);
-  const skipped = items.filter((i) => i.sug.action === 'skip' && !i.p.duplicateOf);
+  const skipped = items.filter((i) => i.sug.action === 'skip' && !i.p.duplicateOf && !i.p.warning);
+  // What your banks are warning you about (overdraft, low balance): newest of each kind per bank, last three days
+  const warnings = cap.parsed.filter((p) => p.warning && Date.now() - p.time < 3 * 864e5)
+    .filter((p, k, all) => all.findIndex((q) => q.bank === p.bank && q.warning === p.warning) === k);
+  const allWarnings = cap.parsed.filter((p) => p.warning);
 
   // Tidy up: things Kitty skipped by itself are cleared after three days
   useEffect(() => {
@@ -129,6 +136,28 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
         {easy.length > 1 && <Btn label={`Add all ${easy.length}`} primary small onPress={() => add(easy)} />}
       </View>
 
+      {warnings.length > 0 && (
+        <Card style={{ gap: 10, borderWidth: 1, borderColor: C.warn }}>
+          <View style={s.row}>
+            <Icon name="info" size={18} colour={C.warn} />
+            <Text style={[s.h2, { flex: 1 }]}>Your bank{warnings.length > 1 ? 's' : ''} flagged something</Text>
+          </View>
+          {warnings.map((p) => (
+            <View key={p.key} style={{ gap: 3 }}>
+              <Text style={s.meta}>{p.bank} · {when(p.time)}</Text>
+              <Text style={s.quote}>{bankText(p)}</Text>
+            </View>
+          ))}
+          {warnings.some((p) => p.warning === 'Overdraft') && (
+            <Text style={s.hint}>Overdraft charges add up quickly. If money is tight, MoneyHelper has free, confidential help.</Text>
+          )}
+          <View style={[s.row, { justifyContent: 'flex-end' }]}>
+            {warnings.some((p) => p.warning === 'Overdraft') && <Btn label="Free help" small onPress={() => Linking.openURL('https://www.moneyhelper.org.uk')} />}
+            <Btn label="Got it" small primary onPress={() => cap.done(allWarnings.map((p) => p.key))} />
+          </View>
+        </Card>
+      )}
+
       {cap.native && cap.enabled === false && (
         <Card style={{ gap: 8 }}>
           <Text style={s.h2}>Kitty can't see your bank alerts</Text>
@@ -137,16 +166,6 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
         </Card>
       )}
 
-      {cap.spotted.filter((a) => !S.settings.dismissed?.[`app:${a.pkg}`]).slice(0, 1).map((a) => (
-        <Card key={a.pkg} style={{ gap: 8 }}>
-          <Text style={s.h2}>Money alerts from {a.label}</Text>
-          <Text style={s.hint}>Kitty noticed {a.label} posting alerts with amounts in them. If it's one of your banks or cards, Kitty can read its alerts too. They stay on your phone.</Text>
-          <View style={[s.row, { justifyContent: 'flex-end' }]}>
-            <Btn label="Not mine" small onPress={() => update((d) => { d.settings.dismissed = { ...(d.settings.dismissed || {}), [`app:${a.pkg}`]: true }; })} />
-            <Btn label="Read its alerts" small primary onPress={() => { cap.watchApp(a.pkg, true); onDone(`Kitty will read alerts from ${a.label}`); }} />
-          </View>
-        </Card>
-      ))}
 
       {todo.length === 0 && cap.enabled !== false && (
         <Card><Text style={s.hint}>All caught up. Pay with a card and the payment shows up here within seconds.</Text></Card>
@@ -213,6 +232,17 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
         );
       })}
 
+      {cap.spotted.filter(isMoneyApp).filter((a) => !S.settings.dismissed?.[`app:${a.pkg}`]).slice(0, 1).map((a) => (
+        <Card key={a.pkg} style={{ gap: 8 }}>
+          <Text style={s.h2}>Money alerts from {a.label}</Text>
+          <Text style={s.hint}>Kitty noticed {a.label} posting alerts with amounts in them. If it's one of your banks or cards, Kitty can read its alerts too. They stay on your phone.</Text>
+          <View style={[s.row, { justifyContent: 'flex-end' }]}>
+            <Btn label="Not mine" small onPress={() => update((d) => { d.settings.dismissed = { ...(d.settings.dismissed || {}), [`app:${a.pkg}`]: true }; })} />
+            <Btn label="Read its alerts" small primary onPress={() => { cap.watchApp(a.pkg, true); onDone(`Kitty will read alerts from ${a.label}`); }} />
+          </View>
+        </Card>
+      ))}
+
       {skipped.length > 0 && (
         <View style={{ gap: 8 }}>
           <View style={s.row}>
@@ -239,7 +269,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
                   <Text style={s.quote}>{bankText(i.p)}</Text>
                   {twin && <Text style={[s.meta, { color: C.warn }]}>Same amount as {twin}. Adding this would count it twice.</Text>}
                 </View>
-                {amt ? <Btn label="Add" small onPress={() => addAs(i.p, 'out', amt)} /> : null}
+                {amt && ADDABLE.test(i.p.reason || '') ? <Btn label="Add" small onPress={() => addAs(i.p, 'out', amt)} /> : null}
               </View>
             );
           })}

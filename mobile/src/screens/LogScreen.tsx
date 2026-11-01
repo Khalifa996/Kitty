@@ -79,7 +79,7 @@ export function LogScreen({ onSaved }: { onSaved: (msg: string, undo: () => void
   return (
     // Fits one screen: the keypad takes whatever height is left, so Save is always in view
     <ScrollView contentContainerStyle={s.wrap} keyboardShouldPersistTaps="handled">
-      <SafeStrip extraLine={line} />
+      <SafeStrip extraLine={line} day={date} />
       <View style={s.toggles}>
         <View style={s.seg}>
           {(['out', 'in'] as const).map((m) => (

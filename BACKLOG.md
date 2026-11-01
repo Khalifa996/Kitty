@@ -38,7 +38,16 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | P3 | Light theme |
 
 ## Changelog
-**App 0.6 (in progress), 1 Nov 2026: anyone can start; side income without the guesswork**
+**App 0.6.1, 1 Nov 2026: warnings, not noise**
+- Overdraft and low-balance alerts show as a heads-up at the top of Review (with a link to free help for overdrafts), never as payments
+- An overdraft charge is offered as a bank charge to add
+- Banks' own budget updates and spending reports are skipped; "No amount found" now says "Not a payment"
+- Adverts, declines and card-limit notices no longer offer Add
+- Only bank, card and wallet apps are suggested for reading (not Vinted or app stores), below your payments
+- "Money in" with no payer name no longer copies the last category
+- Picking a past date on Log shows how that day went at the top
+
+**App 0.6, 1 Nov 2026: anyone can start; side income without the guesswork**
 - Alerts from more UK banks: Lloyds, Halifax, Bank of Scotland, HSBC, first direct, Santander, Nationwide, TSB, RBS, Ulster Bank, Chase, Amex, Virgin Money, Kroo and Curve. Read with general rules until testers send real examples
 - Any other app that posts money alerts: Kitty offers to read it ("Money alerts from X"), only if you say yes
 - Plan tab: Bills (due now, coming up, paid, mark paid or undo, add and edit, debt payoff dates, subscriptions a year) and Pots (each payday, target, top up, close; new pots can start on the next payday). Pay for something from a pot in Activity. Settings and backups move behind the button on Plan

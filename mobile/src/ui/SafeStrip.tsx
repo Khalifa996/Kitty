@@ -1,12 +1,30 @@
 // The one number: safe to spend today.
 import { StyleSheet, Text, View } from 'react-native';
-import { safeInfo } from '../engine/budget';
+import { dayInfo, safeInfo } from '../engine/budget';
+import { parse } from '../engine/dates';
 import { useKitty } from '../store/KittyState';
 import { C, moneyS } from './theme';
 
-export function SafeStrip({ extraLine }: { extraLine?: string }) {
+/** Today's safe-to-spend figure, or how a past day went when `day` is set. */
+export function SafeStrip({ extraLine, day }: { extraLine?: string; day?: string | null }) {
   const { S, today } = useKitty();
   if (!S.settings.setupDone) return null;
+  if (day && day !== today) {
+    const d = dayInfo(S, day), cur = S.settings.currency, left = d.allowance - d.todaySpent;
+    const name = parse(day).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+    return (
+      <View style={s.strip} accessibilityLabel={`${name}: ${moneyS(Math.abs(left), cur)} ${left >= 0 ? 'under' : 'over'} budget`}>
+        <View style={{ flexShrink: 0 }}>
+          <Text style={s.k}>{name}</Text>
+          <Text style={[s.big, left < 0 && { color: C.bad }]}>{moneyS(Math.abs(left), cur)} {left >= 0 ? 'under' : 'over'}</Text>
+        </View>
+        <View style={{ alignItems: 'flex-end', flexShrink: 1 }}>
+          <Text style={s.k}>Day {d.dayN} of {d.c.days}</Text>
+          <Text style={s.after}>Spent {moneyS(d.todaySpent, cur)} of {moneyS(Math.max(0, d.allowance), cur)}</Text>
+        </View>
+      </View>
+    );
+  }
   const si = safeInfo(S, today), cur = S.settings.currency, over = si.safe < 0;
   const right = extraLine
     ?? (over ? (si.tomorrow === null ? 'Last day of the cycle' : si.tomorrow < 0 ? 'Cycle budget used up' : `${moneyS(si.tomorrow, cur)}/day from tomorrow`)

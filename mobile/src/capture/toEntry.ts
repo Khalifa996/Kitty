@@ -59,8 +59,10 @@ const WORDS: [RegExp, string][] = [
 export const wordCategory = (merchant?: string) => (merchant ? WORDS.find(([rx]) => rx.test(merchant))?.[1] ?? null : null);
 
 /** What this payer was logged as last time (money in). */
+// Names Kitty fills in when the alert doesn't say who: never learn a category from these
+const PLACEHOLDER = /^(money in|payment sent|refund|cash|shop not named)$/i;
 function guessIncome(S: State, merchant?: string): string | null {
-  if (!merchant) return null;
+  if (!merchant || PLACEHOLDER.test(merchant.trim())) return null;
   const m = norm(merchant); let best: string | null = null;
   for (const t of S.tx) if (t.kind === 'in' && t.merchant && norm(t.merchant) === m) best = t.cat;
   return best;
@@ -71,7 +73,7 @@ const TAKINGS = /^(stripe|sumup|square|zettle|izettle|paypal payouts?|tide)\b/i;
 const SELLING = /^(vinted|ebay|depop|facebook marketplace|gumtree)$/i;
 
 // Words that say nothing about who a bill is with
-const FILLER = new Set(['bill', 'bills', 'payment', 'payments', 'repayment', 'direct', 'debit', 'limited', 'card', 'account', 'monthly', 'premium', 'services', 'online', 'google', 'apple', 'paypal', 'with', 'from', 'the']);
+const FILLER = new Set(['bill', 'bills', 'payment', 'payments', 'repayment', 'direct', 'debit', 'limited', 'card', 'account', 'monthly', 'premium', 'services', 'online', 'google', 'apple', 'paypal', 'with', 'from', 'the', 'charges', 'charge', 'monzo', 'barclays', 'revolut', 'starling', 'natwest', 'lloyds', 'halifax', 'hsbc', 'santander', 'nationwide', 'bank']);
 const words = (s: string) => new Set((s || '').toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3 && !FILLER.has(w)));
 /** "Google Youtube" and "YouTube Premium", "Monzo Flex" and "Monzo Flex Bill". */
 export function sameName(a?: string, b?: string): boolean {
@@ -136,6 +138,10 @@ export function suggest(S: State, p: ParsedAlert, id: string): Suggestion {
     return { action: 'add', guessed: !seen && !work && !sold && (cat === 'extra' || takings), tx: { ...base, kind: 'in', cat, sub: work ? 'Job' : sold ? 'Sold something' : null, biz: cat === 'side' } };
   }
 
+  if (p.reason === 'Bank charge') {
+    return { action: 'add', guessed: false, hint: 'Your bank says it is taking this charge. Add it so your budget allows for it',
+      tx: { ...base, kind: 'out', cat: 'bills', sub: 'Bank charge' } };
+  }
   if (p.cash) {
     return { action: 'add', guessed: true, hint: 'Cash withdrawal. If it\'s already gone (paid someone, given away), add it. If you\'ll spend it bit by bit, tap Cash to spend and log what you buy on the keypad',
       tx: { ...base, kind: 'out', cat: 'other', sub: 'Cash', merchant: p.merchant && p.merchant !== 'Cash' ? `Cash (${p.merchant})` : 'Cash' }, cash: true };
