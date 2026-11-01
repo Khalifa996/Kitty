@@ -10,18 +10,19 @@ import { InsightsScreen } from './src/screens/InsightsScreen';
 import { LogScreen } from './src/screens/LogScreen';
 import { MoreScreen } from './src/screens/MoreScreen';
 import { ReviewScreen } from './src/screens/ReviewScreen';
+import { PlanScreen } from './src/screens/PlanScreen';
 import { SetupScreen } from './src/screens/SetupScreen';
 import { KittyProvider, useKitty } from './src/store/KittyState';
 import { Icon } from './src/ui/Icon';
 import { C } from './src/ui/theme';
 
-type Tab = 'log' | 'review' | 'activity' | 'insights' | 'more';
+type Tab = 'log' | 'review' | 'activity' | 'plan' | 'insights';
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'log', label: 'Log', icon: 'plusc' },
   { id: 'review', label: 'Review', icon: 'inbox' },
   { id: 'activity', label: 'Activity', icon: 'list' },
+  { id: 'plan', label: 'Plan', icon: 'calendar' },
   { id: 'insights', label: 'Insights', icon: 'pie' },
-  { id: 'more', label: 'More', icon: 'sliders' },
 ];
 
 export default function App() {
@@ -40,6 +41,7 @@ function Shell() {
   const cap = useCapture();
   const [tab, setTab] = useState<Tab>('log');
   const [importing, setImporting] = useState(false);
+  const [more, setMore] = useState(false);
   const [toast, setToast] = useState<{ msg: string; undo?: () => void } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -72,11 +74,20 @@ function Shell() {
   return (
     <SafeAreaView style={s.screen} edges={['top', 'left', 'right']}>
       <View style={{ flex: 1 }}>
-        {tab === 'log' && <LogScreen onSaved={show} />}
-        {tab === 'review' && <ReviewScreen cap={cap} onDone={show} goSetup={() => setTab('more')} />}
-        {tab === 'activity' && <ActivityScreen onDone={show} />}
-        {tab === 'insights' && <InsightsScreen />}
-        {tab === 'more' && <MoreScreen cap={cap} onDone={(m) => show(m)} />}
+        {more ? (
+          <View style={{ flex: 1 }}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={() => setMore(false)} style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+              <Text style={s.link}>‹ Back</Text>
+            </Pressable>
+            <MoreScreen cap={cap} onDone={(m) => show(m)} />
+          </View>
+        ) : <>
+          {tab === 'log' && <LogScreen onSaved={show} />}
+          {tab === 'review' && <ReviewScreen cap={cap} onDone={show} goSetup={() => setMore(true)} />}
+          {tab === 'activity' && <ActivityScreen onDone={show} />}
+          {tab === 'plan' && <PlanScreen onDone={show} openMore={() => setMore(true)} />}
+          {tab === 'insights' && <InsightsScreen />}
+        </>}
       </View>
 
       {toast && (
@@ -92,7 +103,7 @@ function Shell() {
 
       <SafeAreaView edges={['bottom']} style={s.tabs}>
         {TABS.map((t) => (
-          <Pressable key={t.id} accessibilityRole="tab" accessibilityLabel={`${t.label} tab`} accessibilityState={{ selected: tab === t.id }} onPress={() => setTab(t.id)} style={s.tab}>
+          <Pressable key={t.id} accessibilityRole="tab" accessibilityLabel={`${t.label} tab`} accessibilityState={{ selected: tab === t.id }} onPress={() => { setMore(false); setTab(t.id); }} style={s.tab}>
             <View style={s.tabTop}>
               <Icon name={t.icon} size={22} colour={tab === t.id ? C.gold : C.faint} />
               {t.id === 'review' && pending > 0 && <Text style={s.badge}>{pending > 99 ? '99+' : pending}</Text>}

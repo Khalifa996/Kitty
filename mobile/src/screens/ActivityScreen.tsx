@@ -20,9 +20,9 @@ const dayLabel = (d: string) => {
 export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => void) => void }) {
   const { S, update } = useKitty();
   const [open, setOpen] = useState<Tx | null>(null);
-  const [form, setForm] = useState({ name: '', amt: '', cat: '', all: true, side: false });
+  const [form, setForm] = useState({ name: '', amt: '', cat: '', all: true, side: false, pot: '' });
   const cur = S.settings.currency;
-  const openTx = (t: Tx) => { setOpen(t); setForm({ name: t.merchant, amt: (t.amt / 100).toFixed(2), cat: t.cat, all: true, side: !!t.fromSide }); };
+  const openTx = (t: Tx) => { setOpen(t); setForm({ name: t.merchant, amt: (t.amt / 100).toFixed(2), cat: t.cat, all: true, side: !!t.fromSide, pot: t.potId || '' }); };
 
   const sections = useMemo(() => {
     const list = [...S.tx].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).slice(0, 400);
@@ -36,11 +36,14 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
     return out;
   }, [S.tx]);
 
-  const icon = (t: Tx) => t.checkin ? 'search' : t.billId ? 'receipt' : t.kind === 'in' ? (inTypes(S.settings).find((x) => x.id === t.cat)?.i || 'wallet') : (categories(S.settings).find((c) => c.id === t.cat)?.i || 'more');
+  const icon = (t: Tx) => t.checkin ? 'search' : t.potIn || t.potId ? 'piggy' : t.billId ? 'receipt' : t.kind === 'in' ? (inTypes(S.settings).find((x) => x.id === t.cat)?.i || 'wallet') : (categories(S.settings).find((c) => c.id === t.cat)?.i || 'more');
   const colour = (t: Tx) => t.billId ? C.bill : t.kind === 'in' ? (inTypes(S.settings).find((x) => x.id === t.cat)?.c || C.good) : (categories(S.settings).find((c) => c.id === t.cat)?.c || C.muted);
   const sub = (t: Tx) => {
     const bill = t.billId ? S.bills.find((b) => b.id === t.billId) : null;
+    const pot = t.potId || t.potIn ? S.pots.find((p) => p.id === (t.potId || t.potIn)) : null;
     const first = t.checkin ? 'Found at balance check'
+      : t.potIn ? 'Moved to pot'
+      : pot ? `From pot: ${pot.name}`
       : bill ? (t.auto ? 'Direct Debit' : { bill: 'Bill', sub: 'Subscription', debt: 'Debt repayment' }[bill.type])
       : t.kind === 'in' ? inName(t.cat)
       : (t.sub || (t.merchant ? catName(S.settings, t.cat) : ''));
@@ -77,6 +80,7 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
       t.merchant = form.name.trim();
       t.amt = pennies;
       if (t.kind === 'out' && !t.billId && !t.biz) { if (form.side) t.fromSide = true; else delete t.fromSide; }
+      if (t.kind === 'out' && !t.billId && !t.potIn) { if (form.pot) t.potId = form.pot; else delete t.potId; }
       if (!t.billId && form.cat) { t.cat = form.cat; t.biz = t.kind === 'in' ? form.cat === 'side' : t.biz; }
     });
     setOpen(null);
@@ -125,6 +129,13 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
           <Label>{open?.kind === 'in' ? 'Type' : 'Category'}</Label>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {pickList.map((c) => <Chip key={c.id} label={'long' in c ? (c as { long: string }).long : c.n} colour={c.c} icon={c.i} on={form.cat === c.id} onPress={() => setForm({ ...form, cat: c.id })} />)}
+          </View>
+        </>}
+        {open && open.kind === 'out' && !open.billId && !open.potIn && S.pots.some((p) => !p.closed) && <>
+          <Label>Paid from</Label>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            <Chip label="Daily budget" on={!form.pot} onPress={() => setForm({ ...form, pot: '' })} />
+            {S.pots.filter((p) => !p.closed).map((p) => <Chip key={p.id} label={`Pot: ${p.name}`} icon="piggy" colour={C.pot} on={form.pot === p.id} onPress={() => setForm({ ...form, pot: p.id })} />)}
           </View>
         </>}
         {open && S.settings.sideIncome && open.kind === 'out' && !open.billId && !open.biz && (

@@ -60,7 +60,9 @@ await session('sample', true, [
   ['6-activity', tab('Activity')],
   ['8-insights-day', tab('Insights')],
   ['9-insights-month', (p) => p.getByText('Pay month', { exact: true }).click()],
-  ['7-more', tab('More')],
+  ['7-plan', tab('Plan')],
+  ['7b-pots', (p) => p.getByText('Pots', { exact: true }).click()],
+  ['7c-more', (p) => p.getByLabel('Settings and backups').click()],
   ['1b-log-date', async (p) => { await tab('Log')(p); await p.getByLabel(/^Date:/).click(); }],
 ]);
 writeFileSync(join(outDir, 'errors.txt'), errors.join('\n') || 'none');

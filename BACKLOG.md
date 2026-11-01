@@ -7,14 +7,13 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 ## Snags
 | Pri | Found | Snag |
 |---|---|---|
-| P1 | 29 Oct | App: Bills, Pots, balance check-ins and Settings screens still only in the web app |
+| P1 | 29 Oct | App: balance check-ins, Settings (change pay, categories, side income switch) still only in the web app |
 | P3 | 1 Nov | Shop categories: optional on-device AI (Android Gemini Nano) for names with no clues, no data leaving the phone |
 | P2 | 1 Nov | Cash: a Cash pot for a stash at home (withdrawal tops it up, spending from it skips the daily budget) |
 | P2 | 29 Oct | App: change an entry's date; notes; Business switch; pay from a pot |
 | P2 | 29 Oct | Work expenses: mark a spend as "I'll get this back" so it stays off the daily budget until the reimbursement arrives |
 | P2 | 28 Oct | Payments to your own accounts or business (e.g. a business account) show as spending. Let people mark a payee as "one of my accounts" so future ones count as transfers |
 | P2 | 27 Oct | Log screen in Received mode is tall on small phones (two rows of types plus the debt picker) |
-| P2 | 27 Oct | A pot created mid-cycle takes a full top-up from this cycle. Offer "start from next payday" |
 | P3 | 27 Oct | Closed pots disappear completely. Add a "closed pots" list |
 | P2 | 27 Oct | "Last working day" pay ignores bank holidays (UK employers usually pay the day before) |
 | P2 | 27 Oct | With non-monthly pay, bills track by calendar month. A bill paid early on the 30th counts for the wrong month |
@@ -38,6 +37,7 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 
 ## Changelog
 **App 0.6 (in progress), 1 Nov 2026: anyone can start; side income without the guesswork**
+- Plan tab: Bills (due now, coming up, paid, mark paid or undo, add and edit, debt payoff dates, subscriptions a year) and Pots (each payday, target, top up, close; new pots can start on the next payday). Pay for something from a pot in Activity. Settings and backups move behind the button on Plan
 - First-run setup in the app: how often you're paid, take-home pay, bills, savings and money now if you start part-way; or bring a backup across
 - Spending can be marked "Paid from side income": off the daily budget, not a business cost (web app too)
 - Insights, when side income is on: this pay month's side income, costs and money paid out; profit this tax year, how much to keep for tax (20%, 26% or 40%), and a warning when more has been paid out than is left after tax
