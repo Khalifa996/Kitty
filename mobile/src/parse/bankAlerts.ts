@@ -103,7 +103,13 @@ const WARNINGS: [RegExp, string][] = [
 // The bank telling you about a charge it is taking: real money, so it can be added as a bank charge
 const BANK_CHARGE = /\b(charge|fee|interest)\b[^.]*\b(overdraft|overdrawn)\b|\boverdraft\b[^.]*\b(charge|fee|interest)\b|\bmonthly (account )?fee\b/i;
 
+// Words that mean money actually moved
+const MONEY_MOVING = /\b(paid|pay|payment|received|sent|spent|charged?|debit(ed)?|credit(ed)?|refund(ed)?|transfer(red)?|payout|withdr\w*|deposit(ed)?|purchase|bought|top(ped)? ?up|direct debit|standing order|card|transaction|exchanged?|on hold|pending)\b/i;
+// Platforms whose own alerts about money duplicate what later lands in your bank
+const PLATFORM = /airtasker|vinted|ebay|depop|etsy|fiverr|upwork|checkatrade|mybuilder|bark|taskrabbit|uber|deliveroo|just ?eat|amazon/i;
+
 const IGNORE: [RegExp, string][] = [
+  [/\btask in\b|we found a task|new task|job (alert|offer|request)|quote request|new lead\b|requests? a quote/i, 'Job alert, not a payment'],
   [/budget update|of your [^.]*budget|spending report|monthly summary|weekly summary|your year in/i, 'Summary from your bank'],
   [/\bverify\b|tap to verify|approve (this|the) payment/i, 'Payment check, not a payment'],
   [/authori[sz]ed for future payments/i, 'Card saved with a shop, not a payment'],
@@ -135,6 +141,10 @@ export function parseAlert(a: RawAlert): ParsedAlert {
   const lead = (a.text || '').match(/^\s*(\p{Extended_Pictographic})/u) || (a.title || '').match(/^\s*(\p{Extended_Pictographic})/u);
   const base: ParsedAlert = { key: a.key, time: a.time, bank, kind: 'ignore', emoji: lead ? lead[1] : undefined };
 
+  // An app the person turned on that isn't a bank (a marketplace or job platform): its payouts reach the bank later
+  if (!BANK_APPS[a.pkg] && PLATFORM.test(`${bank} ${a.pkg}`)) {
+    return { ...base, reason: MONEY_MOVING.test(all) && AMOUNT.test(all) ? `Added when the money reaches your bank, so it isn't counted twice` : 'Not a payment' };
+  }
   const charge = BANK_CHARGE.test(all) && (text.match(AMOUNT) || title.match(AMOUNT));
   if (charge) return { ...base, kind: 'spent', amount: toPennies(charge[1]), merchant: `${bank} charges`, reason: 'Bank charge' };
   for (const [rx, why] of WARNINGS) if (rx.test(all)) return { ...base, reason: `${why} warning`, warning: why };
@@ -202,6 +212,8 @@ export function parseAlert(a: RawAlert): ParsedAlert {
     return { ...out, kind: 'spent', cash: cash || undefined, sent: sent || undefined, merchant: merchant ? tidyName(merchant) : undefined, reason: merchant ? undefined : 'Shop not named in the alert' };
   }
 
+  // Only ask about it if it talks about money moving; a price in an advert or a job post is not a payment
+  if (!MONEY_MOVING.test(all)) return { ...out, reason: 'Not a payment' };
   return { ...out, unsure: true, reason: 'Kitty couldn\'t tell what this one is' };
 }
 

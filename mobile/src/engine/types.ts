@@ -16,6 +16,7 @@ export type Settings = {
   checkEvery: number;
   limits: Record<string, number>;
   dismissed: Record<string, boolean>;
+  learned?: { skip?: Record<string, number>; keep?: Record<string, number> }; // what the person did with alerts Kitty couldn't read, by bank
   opening?: { start: string; date: string; pot: number } | null;
   prepaid?: Record<string, string>;
   ddSkip?: Record<string, boolean>;

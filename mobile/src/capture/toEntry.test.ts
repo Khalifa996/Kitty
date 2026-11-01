@@ -186,3 +186,13 @@ it('offers a bank charge as a one-off bill', () => {
   const s = suggest(withHistory(), alert({ kind: 'spent', amount: 1234, merchant: 'Monzo charges', reason: 'Bank charge' }), 'n25');
   expect(s).toMatchObject({ action: 'add', tx: { cat: 'bills', sub: 'Bank charge', amt: 1234 } });
 });
+
+it('stops asking about alerts the person keeps skipping', () => {
+  const S = withHistory();
+  const p = alert({ kind: 'ignore', unsure: true, amount: 3000, bank: 'Revolut' });
+  expect(suggest(S, p, 'n26').action).toBe('ask');
+  S.settings.learned = { skip: { Revolut: 2 } };
+  expect(suggest(S, p, 'n27')).toMatchObject({ action: 'skip', reason: 'You skipped alerts like this from Revolut before' });
+  S.settings.learned = { skip: { Revolut: 2 }, keep: { Revolut: 1 } };
+  expect(suggest(S, p, 'n28').action).toBe('ask');
+});

@@ -43,6 +43,11 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
   const warnings = cap.parsed.filter((p) => p.warning && Date.now() - p.time < 3 * 864e5)
     .filter((p, k, all) => all.findIndex((q) => q.bank === p.bank && q.warning === p.warning) === k);
   const allWarnings = cap.parsed.filter((p) => p.warning);
+  // An app the person turned on that has sent only non-payments: offer to stop reading it
+  const quietApps = cap.watched.filter((a) => {
+    const mine = cap.parsed.filter((p) => p.bank === a.label);
+    return !S.settings.dismissed?.[`keepapp:${a.pkg}`] && mine.length >= 3 && !mine.some((p) => p.kind === 'spent' || p.kind === 'received' || p.kind === 'bill' || p.unsure);
+  });
 
   // Tidy up: things Kitty skipped by itself are cleared after three days
   useEffect(() => {
@@ -72,11 +77,22 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
     onDone(txs.length === 1 ? `${old.length ? 'Updated' : 'Added'} ${money(txs[0].amt, cur)}${txs[0].merchant ? ' · ' + txs[0].merchant : ''}` : `Added ${txs.length} payments`,
       () => update((d) => { const ids = new Set(txs.map((t) => t.id)); d.tx = d.tx.filter((t) => !ids.has(t.id)); d.tx.push(...old); }));
   };
-  const skip = (i: Item) => { cap.done(keysFor(i.p, cap.parsed)); onDone('Skipped'); };
+  /** Remember what the person did with alerts Kitty couldn't read, so it asks less over time. */
+  const learn = (bank: string, how: 'skip' | 'keep') => update((d) => {
+    const L = d.settings.learned || {}, m = { ...(L[how] || {}) };
+    m[bank] = (m[bank] || 0) + 1;
+    d.settings.learned = { ...L, [how]: m };
+  });
+  const skip = (i: Item) => {
+    if (i.sug.action === 'ask') learn(i.p.bank, 'skip');
+    cap.done(keysFor(i.p, cap.parsed));
+    onDone('Skipped');
+  };
   const cashToSpend = (i: Item) => { cap.done(keysFor(i.p, cap.parsed)); onDone('Noted. Log what you buy with it on the keypad'); };
 
   /** You decided what an alert was (one Kitty couldn't read, or a notice you want to add anyway). */
   const addAs = (p: ParsedAlert, kind: 'out' | 'in', amt: number) => {
+    if (p.unsure) learn(p.bank, 'keep');
     const r = rawOf(p), d = new Date(p.time);
     const name = p.merchant || (r && !isGenericTitle(r.title) && !amountIn(r.title) ? tidyName(r.title) : '');
     const cat = kind === 'in' ? 'extra' : guessCategory(S, name) || knownCategory(name) || 'other';
@@ -242,6 +258,24 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
           </View>
         </Card>
       ))}
+
+      {quietApps.slice(0, 1).map((a) => {
+        const n = cap.parsed.filter((p) => p.bank === a.label).length;
+        return (
+          <Card key={a.pkg} style={{ gap: 8 }}>
+            <Text style={s.h2}>{a.label} isn't sending payments</Text>
+            <Text style={s.hint}>Kitty has read {n} alerts from {a.label} and none of them were money in or out. Your bank's alerts already cover payments, so it's simpler to stop reading {a.label}.</Text>
+            <View style={[s.row, { justifyContent: 'flex-end' }]}>
+              <Btn label="Keep reading" small onPress={() => update((d) => { d.settings.dismissed = { ...(d.settings.dismissed || {}), [`keepapp:${a.pkg}`]: true }; })} />
+              <Btn label={`Stop reading ${a.label}`} small primary onPress={() => {
+                cap.done(cap.parsed.filter((p) => p.bank === a.label).map((p) => p.key));
+                cap.watchApp(a.pkg, false);
+                onDone(`Kitty has stopped reading ${a.label}`);
+              }} />
+            </View>
+          </Card>
+        );
+      })}
 
       {skipped.length > 0 && (
         <View style={{ gap: 8 }}>

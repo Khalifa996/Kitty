@@ -8,7 +8,7 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | Pri | Found | Snag |
 |---|---|---|
 | P1 | 29 Oct | App: balance check-ins, Settings (change pay, categories, side income switch) still only in the web app |
-| P3 | 1 Nov | Shop categories: optional on-device AI (Android Gemini Nano) for names with no clues, no data leaving the phone |
+| P2 | 1 Nov | Intelligence: on-device AI (Gemini Nano via ML Kit Prompt API, beta, newer flagships only) to read unclear alerts and name shops; falls back to rules and learning on other phones |
 | P1 | 1 Nov | Setup that fits each person before testers: other income sources, regular spending, which banks, fixed amounts; essentials first, the rest as prompts in week one (ROADMAP phase 2c) |
 | P1 | 1 Nov | Testers: 12+ people for the Play closed test; their anonymised alert exports to confirm each bank's wording |
 | P2 | 1 Nov | Cash: a Cash pot for a stash at home (withdrawal tops it up, spending from it skips the daily budget) |
@@ -38,6 +38,12 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | P3 | Light theme |
 
 ## Changelog
+**App 0.6.2, 1 Nov 2026: learns what to ignore**
+- Kitty only asks "spent or received?" when an alert talks about money moving; a price in a job post or advert is not a payment
+- Job alerts (Airtasker tasks and similar) are skipped; a platform's own payout alerts are skipped because the money is added when it reaches your bank
+- After two skips of unclear alerts from the same bank (and none kept), Kitty stops asking about that kind
+- An app you turned on that only sends non-payments gets a "Stop reading it?" card
+
 **App 0.6.1, 1 Nov 2026: warnings, not noise**
 - Overdraft and low-balance alerts show as a heads-up at the top of Review (with a link to free help for overdrafts), never as payments
 - An overdraft charge is offered as a bank charge to add

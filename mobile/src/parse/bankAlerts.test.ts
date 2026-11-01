@@ -201,3 +201,18 @@ describe('warnings and bank notices', () => {
     expect(a('co.uk.getmondo', 'Hello', 'Something with no money in it')).toMatchObject({ kind: 'ignore', reason: 'Not a payment' });
   });
 });
+
+describe('apps that are not banks', () => {
+  it('ignores job posts that mention a price', () => {
+    const j = parseAll([{ key: 'j', pkg: 'au.com.airtasker', app: 'Airtasker', title: 'Furniture assembly task in Hackney', text: '"Assemble a bed" - £70', time: 1 }])[0];
+    expect(j).toMatchObject({ kind: 'ignore' });
+    expect(j.unsure).toBeUndefined();
+  });
+  it("doesn't count a platform payout twice", () => {
+    expect(parseAll([{ key: 'p', pkg: 'au.com.airtasker', app: 'Airtasker', title: 'Payment released', text: "You've been paid £70 for your task", time: 1 }])[0]).toMatchObject({ kind: 'ignore', reason: "Added when the money reaches your bank, so it isn't counted twice" });
+  });
+  it('still asks about a bank alert it cannot read if money moved', () => {
+    expect(parseAlert({ key: 'q', pkg: 'com.revolut.revolut', title: 'Revolut', text: 'A transaction of £12 is on hold', time: 1 })).toMatchObject({ unsure: true });
+    expect(parseAlert({ key: 'r', pkg: 'com.revolut.revolut', title: 'Deal of the day', text: 'Cashback up to £12', time: 1 }).unsure).toBeUndefined();
+  });
+});

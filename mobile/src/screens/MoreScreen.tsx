@@ -11,7 +11,7 @@ import { alertLog, parseBackup } from '../store/storage';
 import { Btn, Card, Label } from '../ui/kit';
 import { C } from '../ui/theme';
 
-const VERSION = '0.6.1';
+const VERSION = '0.6.2';
 
 export function MoreScreen({ cap, onDone }: { cap: Capture; onDone: (msg: string) => void }) {
   const { S, replace } = useKitty();

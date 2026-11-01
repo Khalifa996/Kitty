@@ -91,7 +91,12 @@ export type Suggestion =
   | { action: 'skip'; reason: string };
 
 export function suggest(S: State, p: ParsedAlert, id: string): Suggestion {
-  if (p.unsure && p.amount) return { action: 'ask', reason: p.reason || 'Kitty couldn\'t tell what this one is' };
+  if (p.unsure && p.amount) {
+    // Learn from what the person did before: skipped two from this bank and never kept one, so stop asking
+    const L = S.settings.learned || {};
+    if ((L.skip?.[p.bank] || 0) >= 2 && !L.keep?.[p.bank]) return { action: 'skip', reason: `You skipped alerts like this from ${p.bank} before` };
+    return { action: 'ask', reason: p.reason || 'Kitty couldn\'t tell what this one is' };
+  }
   if (p.kind === 'ignore') return { action: 'skip', reason: p.reason || 'Not a payment' };
   if (p.kind === 'transfer') return { action: 'skip', reason: p.reason || 'Moved between your accounts' };
   if (!p.amount) return { action: 'skip', reason: 'No amount' };
