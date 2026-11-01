@@ -20,9 +20,9 @@ const dayLabel = (d: string) => {
 export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => void) => void }) {
   const { S, update } = useKitty();
   const [open, setOpen] = useState<Tx | null>(null);
-  const [form, setForm] = useState({ name: '', amt: '', cat: '' });
+  const [form, setForm] = useState({ name: '', amt: '', cat: '', all: true });
   const cur = S.settings.currency;
-  const openTx = (t: Tx) => { setOpen(t); setForm({ name: t.merchant, amt: (t.amt / 100).toFixed(2), cat: t.cat }); };
+  const openTx = (t: Tx) => { setOpen(t); setForm({ name: t.merchant, amt: (t.amt / 100).toFixed(2), cat: t.cat, all: true }); };
 
   const sections = useMemo(() => {
     const list = [...S.tx].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).slice(0, 400);
@@ -62,10 +62,16 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
   };
 
   const pennies = Math.round(parseFloat(form.amt.replace(/[^0-9.]/g, '')) * 100);
+  // Other entries from the same place with the old category: fixing one fixes them all, and Kitty remembers it
+  const same = open && open.merchant && form.cat !== open.cat && !open.billId
+    ? S.tx.filter((x) => x.id !== open.id && x.kind === open.kind && !x.billId && x.cat === open.cat && x.merchant.trim().toLowerCase() === open.merchant.trim().toLowerCase())
+    : [];
   const save = () => {
     if (!open || !(pennies > 0)) return;
-    const was = open;
+    const was = open, others = form.all ? same : [];
+    const before = new Map(others.map((x) => [x.id, x.cat]));
     update((d) => {
+      for (const x of d.tx) if (before.has(x.id)) x.cat = form.cat;
       const t = d.tx.find((x) => x.id === was.id);
       if (!t) return;
       t.merchant = form.name.trim();
@@ -73,7 +79,9 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
       if (!t.billId && form.cat) { t.cat = form.cat; t.biz = t.kind === 'in' ? form.cat === 'side' : t.biz; }
     });
     setOpen(null);
-    onDone('Saved', () => update((d) => { d.tx = d.tx.map((x) => (x.id === was.id ? was : x)); }));
+    onDone(others.length ? `Saved, and ${others.length} more from ${was.merchant}` : 'Saved', () => update((d) => {
+      d.tx = d.tx.map((x) => (x.id === was.id ? was : before.has(x.id) ? { ...x, cat: before.get(x.id) as string } : x));
+    }));
   };
   const pickList = open && !open.billId && !open.checkin ? (open.kind === 'in' ? inTypes(S.settings) : categories(S.settings)) : [];
 
@@ -118,6 +126,9 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
             {pickList.map((c) => <Chip key={c.id} label={'long' in c ? (c as { long: string }).long : c.n} colour={c.c} icon={c.i} on={form.cat === c.id} onPress={() => setForm({ ...form, cat: c.id })} />)}
           </View>
         </>}
+        {same.length > 0 && (
+          <Chip label={`Also change ${same.length} other ${open?.merchant} ${same.length === 1 ? 'entry' : 'entries'}`} on={form.all} onPress={() => setForm({ ...form, all: !form.all })} />
+        )}
         <View style={{ flexDirection: 'row', gap: 10 }}>
           {open && <Btn label="Delete" danger onPress={() => del(open)} />}
           <Btn label="Save" primary style={{ flex: 1 }} disabled={!(pennies > 0)} onPress={save} />

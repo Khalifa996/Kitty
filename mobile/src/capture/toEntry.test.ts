@@ -1,5 +1,5 @@
 /// <reference types="jest" />
-import { alreadyLogged, guessCategory, knownCategory, sameName, suggest } from './toEntry';
+import { alreadyLogged, emojiCategory, guessCategory, knownCategory, sameName, suggest, wordCategory } from './toEntry';
 import { blankState } from '../engine/migrate';
 import type { ParsedAlert } from '../parse/bankAlerts';
 import type { State } from '../engine/types';
@@ -153,4 +153,24 @@ it('asks about a cash withdrawal instead of guessing', () => {
 it('asks about alerts Kitty could not read', () => {
   expect(suggest(withHistory(), alert({ kind: 'ignore', unsure: true, amount: 3000 }), 'n20').action).toBe('ask');
   expect(suggest(withHistory(), alert({ kind: 'ignore', reason: 'Advert' }), 'n21').action).toBe('skip');
+});
+
+it('works out the kind of shop from words in its name', () => {
+  expect(wordCategory('Holland Bazaar Ltd')).toBe('groceries');
+  expect(wordCategory('Northside Cash & Carry')).toBe('groceries');
+  expect(wordCategory('Bread And Co Cafe')).toBe('food');
+  expect(wordCategory('Kings Barbers')).toBe('personal');
+  expect(wordCategory('Acme Ltd')).toBeNull();
+});
+
+it("uses the bank's own category symbol for shops nobody has listed", () => {
+  expect(emojiCategory('🍽️')).toBe('food');
+  expect(emojiCategory('🛍')).toBe('shopping');
+  const s = suggest(withHistory(), alert({ amount: 2800, merchant: 'The Label Yard', emoji: '🛍' }), 'n22');
+  expect(s.action === 'add' && [s.tx.cat, s.guessed]).toEqual(['shopping', true]);
+  // Your own history wins over the bank
+  const S = withHistory();
+  S.tx.push({ id: 'ly', kind: 'out', amt: 500, cat: 'personal', merchant: 'The Label Yard', note: '', date: '2026-10-20', time: '10:00', biz: false, billId: null });
+  const mine = suggest(S, alert({ amount: 2800, merchant: 'The Label Yard', emoji: '🛍' }), 'n23');
+  expect(mine.action === 'add' && [mine.tx.cat, mine.guessed]).toEqual(['personal', false]);
 });

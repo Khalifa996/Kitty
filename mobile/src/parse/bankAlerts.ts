@@ -21,6 +21,7 @@ export type ParsedAlert = {
   duplicateOf?: string; // key of the alert this one repeats
   unsure?: boolean;     // has an amount, but Kitty can't tell what it is: ask the person
   cash?: boolean;       // a cash withdrawal
+  emoji?: string;       // the bank's own category symbol (Revolut and Monzo start alerts with one)
 };
 
 export const BANK_APPS: Record<string, string> = {
@@ -102,7 +103,8 @@ export function parseAlert(a: RawAlert): ParsedAlert {
   const title = clean(a.title);
   const text = clean(a.text);
   const all = `${title} ${text}`;
-  const base: ParsedAlert = { key: a.key, time: a.time, bank, kind: 'ignore' };
+  const lead = (a.text || '').match(/^\s*(\p{Extended_Pictographic})/u) || (a.title || '').match(/^\s*(\p{Extended_Pictographic})/u);
+  const base: ParsedAlert = { key: a.key, time: a.time, bank, kind: 'ignore', emoji: lead ? lead[1] : undefined };
 
   for (const [rx, why] of IGNORE) if (rx.test(all)) return { ...base, reason: why };
 

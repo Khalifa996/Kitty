@@ -160,3 +160,8 @@ it('flags cash withdrawals', () => {
 it('marks alerts it cannot read as unsure, so the person is asked', () => {
   expect(parseAlert({ key: 'c', pkg: 'com.revolut.revolut', title: 'Revolut', text: 'Your exchange of £120 is complete', time: 1 })).toMatchObject({ kind: 'ignore', unsure: true, amount: 12000 });
 });
+
+it("keeps the bank's category symbol", () => {
+  expect(parseAlert({ key: 'e', pkg: 'com.revolut.revolut', title: 'The Label Yard', text: '🛍 You spent £28\nGBP balance: £100', time: 1 }).emoji).toBe('🛍');
+  expect(parseAlert({ key: 'f', pkg: 'co.uk.getmondo', title: '🍏 £1 at Co-op', text: '', time: 1 }).emoji).toBe('🍏');
+});

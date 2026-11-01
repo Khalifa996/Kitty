@@ -8,6 +8,7 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | Pri | Found | Snag |
 |---|---|---|
 | P1 | 29 Oct | App: Bills, Pots, balance check-ins and Settings screens still only in the web app |
+| P3 | 1 Nov | Shop categories: optional on-device AI (Android Gemini Nano) for names with no clues, no data leaving the phone |
 | P2 | 1 Nov | Cash: a Cash pot for a stash at home (withdrawal tops it up, spending from it skips the daily budget) |
 | P1 | 29 Oct | App: first-run setup for new users (only import from the web app so far) |
 | P2 | 29 Oct | App: change an entry's date; notes; Business switch; pay from a pot |
@@ -45,6 +46,8 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 - Insights tab: any day in the last 60 days (budget, spent, under or over, what you logged) and a pay month overview (money in, bills, day to day, each day's bar, where it went, compared with the month before)
 - Log: one date button for the last 30 days replaces Today/Yesterday
 - Food and wine shops count as groceries; vape shops as personal
+- Shops nobody has listed: Kitty uses the bank's own category (the symbol Revolut and Monzo put on each alert), then words in the name (Bazaar, Cash & Carry, Cafe, Barbers...)
+- Change one entry's category and the other entries from that place change too, so the next one is right
 
 **App 0.4, 30 Oct 2026: icons, swipe, one-screen Log**
 - Icons are back: categories, money-in types, Activity rows and the tab bar use the same line icons as the web app

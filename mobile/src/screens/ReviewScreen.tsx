@@ -248,7 +248,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
 
       <Sheet open={!!picking} onClose={() => setPicking(null)} title="Pick a category">
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {picking && (picking.sug.action !== 'skip' && picking.sug.tx.kind === 'in' ? inTypes(S.settings) : categories(S.settings)).map((c) => (
+          {picking && (txFor(picking)?.kind === 'in' ? inTypes(S.settings) : categories(S.settings)).map((c) => (
             <Chip key={c.id} label={'long' in c ? (c as { long: string }).long : c.n} colour={c.c} icon={c.i} on={txFor(picking)?.cat === c.id}
               onPress={() => { setCats({ ...cats, [picking.p.key]: c.id }); setPicking(null); }} />
           ))}

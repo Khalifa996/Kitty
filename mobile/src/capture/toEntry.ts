@@ -32,6 +32,32 @@ const KNOWN: [RegExp, string][] = [
 ];
 export const knownCategory = (merchant?: string) => (merchant ? KNOWN.find(([rx]) => rx.test(merchant))?.[1] ?? null : null);
 
+// The bank's own category, from the symbol Revolut and Monzo put at the start of an alert. Set by the shop's card terminal code.
+const EMOJI: Record<string, string> = {
+  '🍽': 'food', '🍔': 'food', '☕': 'food', '🍕': 'food', '🥡': 'food',
+  '🛒': 'groceries', '🍏': 'groceries', '🥦': 'groceries', '🍎': 'groceries',
+  '🚌': 'transport', '🚗': 'transport', '🚕': 'transport', '🚆': 'transport', '⛽': 'transport', '🌍': 'transport', '🅿': 'transport',
+  '🛍': 'shopping', '👕': 'shopping', '👗': 'shopping', '📦': 'shopping',
+  '🍿': 'fun', '🎬': 'fun', '🎟': 'fun', '🎮': 'fun', '🍺': 'fun', '🍻': 'fun', '🎉': 'fun',
+  '💊': 'health', '🏥': 'health', '💪': 'health',
+  '🏠': 'home', '🔨': 'home', '🛠': 'home',
+  '💇': 'personal', '💅': 'personal',
+};
+export const emojiCategory = (e?: string) => (e ? EMOJI[e.replace(/\uFE0F/g, '')] ?? null : null);
+
+// Words that say what kind of place it is, for shops nobody has listed. Checked in order, so the specific ones come first.
+const WORDS: [RegExp, string][] = [
+  [/\b(supermarkets?|grocer(y|s|ies)?|bazaa?r|cash (and|&) carry|wholesale|halal|butchers?|fishmonger|food ?(store|centre|center|hall)|superstore)\b/i, 'groceries'],
+  [/\b(caf[eé]s?|coffee|bakery|bakers|bagels?|takeaway|kebabs?|chicken|chippy|fish (and|&) chips|sushi|noodles?|curry|diner|bistro|brasserie|eatery|deli|canteen|pizz\w*|burgers?|grill|kitchen|restaurant)\b/i, 'food'],
+  [/\b(pubs?|bar|tavern|inn|club|cinema|theatre|bowl(ing)?|golf|arena|stadium|escape room)\b/i, 'fun'],
+  [/\b(taxis?|cabs?|car ?park|parking|petrol|fuel|filling station|rail(ways?)?|trains?|buses|coach(es)?|airport|car wash)\b/i, 'transport'],
+  [/\b(pharmacy|chemists?|dental|dentists?|clinic|opticians?|gym|fitness|leisure centre)\b/i, 'health'],
+  [/\b(barbers?|salon|hair|beauty|nails|spa|laundrette|launderette|dry clean\w*)\b/i, 'personal'],
+  [/\b(hardware|diy|furniture|garden centre|timber|builders merchants?|plumbing|electricals?)\b/i, 'home'],
+  [/\b(fashion|clothing|shoes|boutique|outlet|jewell?ers?)\b/i, 'shopping'],
+];
+export const wordCategory = (merchant?: string) => (merchant ? WORDS.find(([rx]) => rx.test(merchant))?.[1] ?? null : null);
+
 /** What this payer was logged as last time (money in). */
 function guessIncome(S: State, merchant?: string): string | null {
   if (!merchant) return null;
@@ -114,8 +140,10 @@ export function suggest(S: State, p: ParsedAlert, id: string): Suggestion {
     return { action: 'add', guessed: true, hint: 'Cash withdrawal. If it\'s already gone (paid someone, given away), add it. If you\'ll spend it bit by bit, tap Cash to spend and log what you buy on the keypad',
       tx: { ...base, kind: 'out', cat: 'other', sub: 'Cash', merchant: p.merchant && p.merchant !== 'Cash' ? `Cash (${p.merchant})` : 'Cash' }, cash: true };
   }
-  const cat = guessCategory(S, p.merchant) || knownCategory(p.merchant);
-  return { action: 'add', guessed: !cat, tx: { ...base, kind: 'out', cat: cat || 'other', sub: null } };
+  // Your own history first, then shops Kitty knows, then the bank's category, then words in the name
+  const mine = guessCategory(S, p.merchant), known = knownCategory(p.merchant);
+  const cat = mine || known || emojiCategory(p.emoji) || wordCategory(p.merchant);
+  return { action: 'add', guessed: !mine && !known, tx: { ...base, kind: 'out', cat: cat || 'other', sub: null } };
 }
 
 /** Something close to this amount was already logged by hand around the same day (a round £225 for £225.76, say). */
