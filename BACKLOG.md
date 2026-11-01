@@ -48,6 +48,7 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 - Food and wine shops count as groceries; vape shops as personal
 - Shops nobody has listed: Kitty uses the bank's own category (the symbol Revolut and Monzo put on each alert), then words in the name (Bazaar, Cash & Carry, Cafe, Barbers...)
 - Change one entry's category and the other entries from that place change too, so the next one is right
+- Log quick picks come from what you log by hand (cash, things the bank doesn't see), favouring often, lately and this time of day; one-offs fade after two weeks; a usual amount is offered when it never changes. Typing still searches everything
 
 **App 0.4, 30 Oct 2026: icons, swipe, one-screen Log**
 - Icons are back: categories, money-in types, Activity rows and the tab bar use the same line icons as the web app

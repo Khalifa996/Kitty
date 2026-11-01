@@ -2,6 +2,7 @@
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { safeInfo } from '../engine/budget';
+import { places, quickPicks } from '../engine/picks';
 import { categories, inTypes } from '../engine/cats';
 import { addDays, hm, ymd } from '../engine/dates';
 import type { Tx } from '../engine/types';
@@ -28,18 +29,11 @@ export function LogScreen({ onSaved }: { onSaved: (msg: string, undo: () => void
   const cats = mode === 'out' ? categories(S.settings) : inTypes(S.settings);
   const chosen = cat ?? (mode === 'out' ? (cats.find((c) => c.id === 'food') || cats[0]).id : 'salary');
 
-  // Places you've logged before, most used first; the last category used for each
-  const memory = useMemo(() => {
-    const m = new Map<string, { name: string; cat: string; n: number }>();
-    for (const t of S.tx) {
-      if (t.kind !== mode || !t.merchant || t.billId || t.checkin || t.potIn) continue;
-      const k = norm(t.merchant), e = m.get(k) || { name: t.merchant.trim(), cat: t.cat, n: 0 };
-      e.cat = t.cat; e.n++; m.set(k, e);
-    }
-    return [...m.values()].sort((a, b) => b.n - a.n);
-  }, [S.tx, mode]);
+  // Before typing: quick picks from what you log by hand. While typing: every place you've logged
+  const memory = useMemo(() => places(S, mode), [S, mode]);
+  const picks = useMemo(() => quickPicks(S, mode, today, new Date().getHours()), [S, mode, today]);
   const q = norm(merchant);
-  const sugg = (q ? memory.filter((e) => norm(e.name).includes(q)) : memory).slice(0, 8);
+  const sugg: { name: string; cat: string; amt?: number }[] = q ? memory.filter((e) => norm(e.name).includes(q)).slice(0, 8) : picks;
 
   const key = (v: string) => {
     let a = amt;
@@ -55,7 +49,7 @@ export function LogScreen({ onSaved }: { onSaved: (msg: string, undo: () => void
     setAmt(a);
   };
 
-  const pick = (name: string, c: string) => { setMerchant(name); setCat(c); };
+  const pick = (name: string, c: string, usual?: number) => { setMerchant(name); setCat(c); if (usual && !amt) setAmt((usual / 100).toFixed(2).replace(/\.00$/, '')); };
   const typed = (v: string) => {
     setMerchant(v);
     const hit = memory.find((e) => norm(e.name) === norm(v));
@@ -107,7 +101,7 @@ export function LogScreen({ onSaved }: { onSaved: (msg: string, undo: () => void
         style={s.field} accessibilityLabel="Where" returnKeyType="done" />
       {sugg.length > 0 && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 6 }} keyboardShouldPersistTaps="handled">
-          {sugg.map((e) => { const c = cats.find((x) => x.id === e.cat); return <Chip key={e.name} label={e.name} on={norm(e.name) === q} colour={c?.c || C.muted} icon={c?.i} onPress={() => pick(e.name, e.cat)} />; })}
+          {sugg.map((e) => { const c = cats.find((x) => x.id === e.cat); return <Chip key={e.name} label={e.amt ? `${e.name} · ${moneyS(e.amt, cur)}` : e.name} on={norm(e.name) === q} colour={c?.c || C.muted} icon={c?.i} onPress={() => pick(e.name, e.cat, e.amt)} />; })}
         </ScrollView>
       )}
       <View style={s.cats}>
