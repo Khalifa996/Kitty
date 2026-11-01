@@ -119,9 +119,9 @@ export function SetupScreen({ onImport }: { onImport: () => void }) {
             <Text style={s.lead}>Fill in what you pay each month and leave the rest blank. You can change these any time.</Text>
             {d.bills.map((b, i) => (
               <View key={i} style={s.billRow}>
-                <TextInput value={b.name} onChangeText={(name) => setBill(i, { name })} style={[s.input, { flex: 1 }]} placeholder="Bill name" placeholderTextColor={C.faint} accessibilityLabel="Bill name" />
-                <TextInput defaultValue={pounds(b.amt)} onChangeText={(t) => setBill(i, { amt: pence(t) })} style={[s.input, { width: 84, textAlign: 'right' }]} keyboardType="decimal-pad" placeholder="£0" placeholderTextColor={C.faint} accessibilityLabel={`${b.name} amount`} />
-                <Pressable accessibilityRole="button" accessibilityLabel={`${b.name} due on the ${ord(b.day)}`} onPress={() => setDayFor(i)} style={[s.input, { width: 60, justifyContent: 'center' }]}>
+                <TextInput value={b.name} onChangeText={(name) => setBill(i, { name })} style={[s.input, { flex: 1, minWidth: 0 }]} placeholder="Bill name" placeholderTextColor={C.faint} accessibilityLabel="Bill name" />
+                <TextInput defaultValue={pounds(b.amt)} onChangeText={(t) => setBill(i, { amt: pence(t) })} style={[s.input, { width: 76, textAlign: 'right' }]} keyboardType="decimal-pad" placeholder="£0" placeholderTextColor={C.faint} accessibilityLabel={`${b.name} amount`} />
+                <Pressable accessibilityRole="button" accessibilityLabel={`${b.name} due on the ${ord(b.day)}`} onPress={() => setDayFor(i)} style={[s.input, { width: 56, justifyContent: 'center' }]}>
                   <Text style={[s.fieldT, { fontSize: 14, textAlign: 'center' }]}>{ord(b.day)}</Text>
                 </Pressable>
               </View>
