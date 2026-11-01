@@ -83,7 +83,7 @@ export const k = StyleSheet.create({
   btnT: { color: C.fg, fontWeight: '800', fontSize: 15 },
   card: { backgroundColor: C.surface, borderRadius: R.card, padding: 16 },
   label: { color: C.muted, fontSize: 11, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase' },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.surface, borderRadius: R.pill, paddingHorizontal: 12, height: 34, maxWidth: 220 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.surface2, borderRadius: R.pill, paddingHorizontal: 12, height: 34, maxWidth: 220 },
   chipT: { color: C.fg, fontWeight: '700', fontSize: 13 },
   scrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' },
   sheet: { backgroundColor: C.surface, borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingHorizontal: 16, paddingTop: 10 },
