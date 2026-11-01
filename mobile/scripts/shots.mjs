@@ -48,8 +48,12 @@ await session('sample', true, [
   ['3-review', tab('Review')],
   ['4-review-added', (p) => p.getByRole('button', { name: 'Add', exact: true }).first().click()],
   ['5-review-skipped', (p) => p.getByLabel('Show skipped').click()],
+  ['5b-review-notices', async (p) => { await p.getByLabel('Show notices').click(); await p.mouse.wheel(0, 600); }],
   ['6-activity', tab('Activity')],
+  ['8-insights-day', tab('Insights')],
+  ['9-insights-month', (p) => p.getByText('Pay month', { exact: true }).click()],
   ['7-more', tab('More')],
+  ['1b-log-date', async (p) => { await tab('Log')(p); await p.getByLabel(/^Date:/).click(); }],
 ]);
 writeFileSync(join(outDir, 'errors.txt'), errors.join('\n') || 'none');
 console.log('screenshots done; errors:', errors.length ? '\n' + errors.join('\n') : 'none');

@@ -1,4 +1,4 @@
-// Kitty: safe to spend today. Tabs: Log, Review (bank alerts), Activity, More.
+// Kitty: safe to spend today. Tabs: Log, Review (bank alerts), Activity, Insights, More.
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { suggest } from './src/capture/toEntry';
 import { useCapture } from './src/capture/useCapture';
 import { ActivityScreen } from './src/screens/ActivityScreen';
+import { InsightsScreen } from './src/screens/InsightsScreen';
 import { LogScreen } from './src/screens/LogScreen';
 import { MoreScreen } from './src/screens/MoreScreen';
 import { ReviewScreen } from './src/screens/ReviewScreen';
@@ -13,11 +14,12 @@ import { KittyProvider, useKitty } from './src/store/KittyState';
 import { Icon } from './src/ui/Icon';
 import { C } from './src/ui/theme';
 
-type Tab = 'log' | 'review' | 'activity' | 'more';
+type Tab = 'log' | 'review' | 'activity' | 'insights' | 'more';
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'log', label: 'Log', icon: 'plusc' },
   { id: 'review', label: 'Review', icon: 'inbox' },
   { id: 'activity', label: 'Activity', icon: 'list' },
+  { id: 'insights', label: 'Insights', icon: 'pie' },
   { id: 'more', label: 'More', icon: 'sliders' },
 ];
 
@@ -54,6 +56,7 @@ function Shell() {
         {tab === 'log' && <LogScreen onSaved={show} />}
         {tab === 'review' && <ReviewScreen cap={cap} onDone={show} goSetup={() => setTab('more')} />}
         {tab === 'activity' && <ActivityScreen onDone={show} />}
+        {tab === 'insights' && <InsightsScreen />}
         {tab === 'more' && <MoreScreen cap={cap} onDone={(m) => show(m)} />}
       </View>
 

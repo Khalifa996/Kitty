@@ -7,7 +7,8 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 ## Snags
 | Pri | Found | Snag |
 |---|---|---|
-| P1 | 29 Oct | App: Bills, Pots, Insights, balance check-ins and Settings screens still only in the web app |
+| P1 | 29 Oct | App: Bills, Pots, balance check-ins and Settings screens still only in the web app |
+| P2 | 1 Nov | Cash: a Cash pot for a stash at home (withdrawal tops it up, spending from it skips the daily budget) |
 | P1 | 29 Oct | App: first-run setup for new users (only import from the web app so far) |
 | P2 | 29 Oct | App: change an entry's date; notes; Business switch; pay from a pot |
 | P2 | 29 Oct | Work expenses: mark a spend as "I'll get this back" so it stays off the daily budget until the reimbursement arrives |
@@ -36,6 +37,15 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | P3 | Light theme |
 
 ## Changelog
+**App 0.5, 1 Nov 2026: nothing hidden, looking back**
+- Alerts Kitty can't read but that have an amount go to the top of Review with the bank's own words: Spent, Received or Skip
+- Cash withdrawals ask: already gone (add it) or cash to spend (log what you buy)
+- Bank notices: tap to see each one in the bank's words; Add anyway where there's an amount, with a warning when it would count a payment twice
+- Anything not added can still be added, and shows the bank's wording
+- Insights tab: any day in the last 60 days (budget, spent, under or over, what you logged) and a pay month overview (money in, bills, day to day, each day's bar, where it went, compared with the month before)
+- Log: one date button for the last 30 days replaces Today/Yesterday
+- Food and wine shops count as groceries; vape shops as personal
+
 **App 0.4, 30 Oct 2026: icons, swipe, one-screen Log**
 - Icons are back: categories, money-in types, Activity rows and the tab bar use the same line icons as the web app
 - Log fits on one screen: Spent/Received and Today/Yesterday share a row, and the keypad takes whatever height is left, so Save is always in view

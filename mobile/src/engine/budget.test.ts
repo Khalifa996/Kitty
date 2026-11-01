@@ -1,5 +1,5 @@
 /// <reference types="jest" />
-import { billDue, checkinGap, cycleOf, dueDirectDebits, pot, potBalance, safeInfo } from './budget';
+import { billDue, checkinGap, cycleOf, cycleSummary, dayInfo, dueDirectDebits, pot, potBalance, safeInfo } from './budget';
 import type { Bill, Settings, State, Tx } from './types';
 
 const settings = (o: Partial<Settings> = {}): Settings => ({
@@ -123,5 +123,30 @@ describe('balance check-ins', () => {
   });
   it('needs a starting point first', () => {
     expect(checkinGap(state({ accounts }), { a: 1 })).toBeNull();
+  });
+});
+
+describe('looking back', () => {
+  const S = state({ settings: settings({ savings: 0 }), bills: [bill('Rent', 100000, 1)], tx: [
+    tx({ kind: 'in', cat: 'salary', amt: 300000, date: '2026-10-27' }),
+    tx({ amt: 3000, cat: 'food', date: '2026-10-27' }),
+    tx({ amt: 9000, cat: 'fun', date: '2026-10-28' }),
+    tx({ amt: 1500, cat: 'food', date: '2026-10-29' }),
+    tx({ amt: 100000, cat: 'bills', billId: 'Rent', date: '2026-11-01' }),
+    tx({ kind: 'in', cat: 'side', amt: 20000, biz: true, date: '2026-10-28' }),
+  ] });
+  it('shows a past day as it stood that evening', () => {
+    // 27 Oct: £2,000 over 31 days = £64.52 a day, £30 spent
+    const d = dayInfo(S, '2026-10-27');
+    expect(d.allowance).toBe(Math.round(200000 / 31));
+    expect(d.todaySpent).toBe(3000);
+    // 28 Oct: what was left after the 27th, over 30 days; later spending does not change it
+    expect(dayInfo(S, '2026-10-28').allowance).toBe(Math.round((200000 - 3000) / 30));
+  });
+  it('sums up a pay month', () => {
+    const m = cycleSummary(S, cycleOf('2026-10-27', S.settings), '2026-10-29');
+    expect([m.pay, m.business, m.spent, m.bills, m.plan]).toEqual([300000, 20000, 13500, 100000, 200000]);
+    expect(m.byCat).toEqual([{ cat: 'fun', amt: 9000 }, { cat: 'food', amt: 4500 }]);
+    expect(m.days.map((d) => d.spent)).toEqual([3000, 9000, 1500]);
   });
 });

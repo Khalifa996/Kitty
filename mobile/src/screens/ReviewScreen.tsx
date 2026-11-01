@@ -1,11 +1,12 @@
 // Payments Kitty spotted in your bank alerts, ready to add with one tap.
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { alreadyLogged, suggest, type Suggestion } from '../capture/toEntry';
+import { alreadyLogged, guessCategory, knownCategory, suggest, type Suggestion } from '../capture/toEntry';
 import { keysFor, type Capture } from '../capture/useCapture';
 import { catName, categories, inName, inTypes } from '../engine/cats';
 import type { Tx } from '../engine/types';
-import type { ParsedAlert } from '../parse/bankAlerts';
+import { amountIn, clean, tidyName, type ParsedAlert } from '../parse/bankAlerts';
+import { hm, ymd } from '../engine/dates';
 import { useKitty } from '../store/KittyState';
 import { Btn, Card, Chip, Label, Sheet } from '../ui/kit';
 import { Icon } from '../ui/Icon';
@@ -26,6 +27,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
   const [cats, setCats] = useState<Record<string, string>>({});
   const [picking, setPicking] = useState<Item | null>(null);
   const [showSkipped, setShowSkipped] = useState(false);
+  const [showNotices, setShowNotices] = useState(false);
   const cur = S.settings.currency;
 
   const items: Item[] = useMemo(() => cap.parsed
@@ -40,8 +42,11 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
     if (old.length) cap.done(old.flatMap((i) => keysFor(i.p, cap.parsed)));
   }, [skipped.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const rawOf = (p: ParsedAlert) => cap.raw.find((r) => r.key === p.key);
+  const bankText = (p: ParsedAlert) => { const r = rawOf(p); return r ? [clean(r.title), clean(r.text)].filter(Boolean).join(' · ') : p.reason || ''; };
+
   const txFor = (i: Item): Tx | null => {
-    if (i.sug.action === 'skip') return null;
+    if (i.sug.action === 'skip' || i.sug.action === 'ask') return null;
     const t = { ...i.sug.tx };
     if (i.sug.action === 'add' && cats[i.p.key]) { t.cat = cats[i.p.key]; t.biz = t.cat === 'side'; }
     return t;
@@ -59,6 +64,25 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
       () => update((d) => { const ids = new Set(txs.map((t) => t.id)); d.tx = d.tx.filter((t) => !ids.has(t.id)); d.tx.push(...old); }));
   };
   const skip = (i: Item) => { cap.done(keysFor(i.p, cap.parsed)); onDone('Skipped'); };
+  const cashToSpend = (i: Item) => { cap.done(keysFor(i.p, cap.parsed)); onDone('Noted. Log what you buy with it on the keypad'); };
+
+  /** You decided what an alert was (one Kitty couldn't read, or a notice you want to add anyway). */
+  const addAs = (p: ParsedAlert, kind: 'out' | 'in', amt: number) => {
+    const r = rawOf(p), d = new Date(p.time);
+    const name = p.merchant || (r && !/^(revolut|barclays|barclaycard|monzo|starling|natwest|google wallet|new notification)$/i.test(clean(r.title)) && !amountIn(r.title) ? tidyName(r.title) : '');
+    const cat = kind === 'in' ? 'extra' : guessCategory(S, name) || knownCategory(name) || 'other';
+    const t: Tx = { id: `a-${p.key.replace(/[^a-z0-9]/gi, '').slice(-16)}`, kind, amt, cat, sub: null, merchant: name, note: '', date: ymd(d), time: hm(d), biz: false, billId: null, source: 'alert', bank: p.bank };
+    update((x) => { x.tx.push(t); });
+    cap.done(keysFor(p, cap.parsed));
+    onDone(`Added ${money(amt, cur)}${name ? ' · ' + name : ''}. Change the category in Activity if it's wrong`, () => update((x) => { x.tx = x.tx.filter((y) => y.id !== t.id); }));
+  };
+  /** The same amount already arrived as a payment, or is already logged: adding this would count it twice. */
+  const twinOf = (p: ParsedAlert, amt: number): string | null => {
+    const other = cap.parsed.find((q) => q.key !== p.key && q.kind === 'spent' && q.amount === amt && Math.abs(q.time - p.time) < 36e5);
+    if (other) return `${other.merchant || other.bank}, ${money(amt, cur)} at ${when(other.time)}`;
+    const t = S.tx.find((x) => x.amt === amt && Math.abs(new Date(x.date + 'T' + (x.time || '12:00')).getTime() - p.time) < 864e5);
+    return t ? `${t.merchant || catName(S.settings, t.cat)}, ${money(amt, cur)} at ${when(new Date(t.date + 'T' + (t.time || '12:00')).getTime())}` : null;
+  };
   /** The alert is something already logged by hand: keep that entry, with the bank's exact amount and the shop's name. */
   const same = (i: Item) => {
     const was = i.dup as Tx;
@@ -74,6 +98,8 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
       () => update((d) => { d.tx = d.tx.map((x) => (x.id === was.id ? was : x)); }));
   };
   const clearSkipped = () => { cap.done(skipped.flatMap((i) => keysFor(i.p, cap.parsed))); setShowSkipped(false); };
+  // Things that need you: not sure what they are, or cash. Everything else can be added in one go
+  const easy = todo.filter((i) => !i.dup && i.sug.action !== 'ask' && !(i.sug.action === 'add' && i.sug.cash));
   const notices = skipped.filter((i) => i.p.kind === 'ignore' && !i.p.amount);
   const skippedPay = skipped.filter((i) => !notices.includes(i));
   const dupText = (t: Tx) => `${t.merchant || (t.kind === 'in' ? inName(t.cat) : catName(S.settings, t.cat))}, ${money(t.amt, cur)}, ${when(new Date(t.date + 'T' + (t.time || '12:00')).getTime())}`;
@@ -98,7 +124,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
           <Text style={s.h1}>To review</Text>
           <Text style={s.sub}>{todo.length ? `${todo.length} payment${todo.length === 1 ? '' : 's'} from your bank alerts` : 'Payments from your bank alerts show up here'}</Text>
         </View>
-        {todo.length > 1 && <Btn label={`Add all ${todo.length}`} primary small onPress={() => add(todo.filter((i) => !i.dup))} />}
+        {easy.length > 1 && <Btn label={`Add all ${easy.length}`} primary small onPress={() => add(easy)} />}
       </View>
 
       {cap.native && cap.enabled === false && (
@@ -114,7 +140,30 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
       )}
 
       {todo.map((i) => {
+        if (i.sug.action === 'ask') {
+          const amt = i.p.amount || 0;
+          return (
+            <Card key={i.p.key} style={{ gap: 10 }}>
+              <View style={s.row}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={s.name}>Not sure about this one</Text>
+                  <Text style={s.meta}>{i.p.bank} · {when(i.p.time)}</Text>
+                </View>
+                <Text style={s.amt}>{money(amt, cur)}</Text>
+              </View>
+              <Text style={s.quote}>{bankText(i.p)}</Text>
+              <Text style={s.hint}>Is this money you spent, or money you received?</Text>
+              <View style={s.row}>
+                <Btn label="Skip" small onPress={() => skip(i)} />
+                <View style={{ flex: 1 }} />
+                <Btn label="Received" small onPress={() => addAs(i.p, 'in', amt)} />
+                <Btn label="Spent" small onPress={() => addAs(i.p, 'out', amt)} />
+              </View>
+            </Card>
+          );
+        }
         const t = txFor(i) as Tx, isIn = t.kind === 'in';
+        const isCash = i.sug.action === 'add' && !!i.sug.cash;
         const list = isIn ? inTypes(S.settings) : categories(S.settings);
         const c = list.find((x) => x.id === t.cat);
         const label = i.sug.action === 'pay-bill' ? `Bill: ${i.sug.billName}` : isIn ? inName(t.cat) : (c?.n || 'Other');
@@ -136,7 +185,10 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
                 ? <View style={s.tag}><Icon name="receipt" size={15} colour={C.bill} /><Text style={s.tagT}>{label}</Text></View>
                 : <Chip label={guessed ? `${label}?` : label} colour={c?.c || C.muted} icon={c?.i} onPress={() => setPicking(i)} />}
               <View style={{ flex: 1 }} />
-              {i.dup ? <>
+              {isCash ? <>
+                <Btn label="Cash to spend" small onPress={() => cashToSpend(i)} />
+                <Btn label="Add" small primary onPress={() => add([i])} />
+              </> : i.dup ? <>
                 <Btn label="Add anyway" small onPress={() => add([i])} />
                 <Btn label="Same one" small primary onPress={() => same(i)} />
               </> : <>
@@ -152,26 +204,43 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
         <View style={{ gap: 8 }}>
           <View style={s.row}>
             <Pressable style={{ flex: 1, paddingVertical: 8 }} accessibilityRole="button" accessibilityLabel="Show skipped" onPress={() => setShowSkipped(!showSkipped)}>
-              <Label>{showSkipped ? 'Hide' : 'Show'} {skipped.length} skipped automatically</Label>
+              <Label>{skipped.length} not added · {showSkipped ? 'hide' : 'see why'}</Label>
             </Pressable>
             {showSkipped && <Btn label="Clear all" small onPress={clearSkipped} />}
           </View>
           {showSkipped && notices.length > 0 && (
-            <View style={s.skipRow}>
+            <Pressable style={s.skipRow} accessibilityRole="button" accessibilityLabel={showNotices ? 'Hide notices' : 'Show notices'} onPress={() => setShowNotices(!showNotices)}>
               <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={[s.name, { fontSize: 14, color: C.muted }]}>{notices.length} bank notice{notices.length === 1 ? '' : 's'}</Text>
+                <Text style={[s.name, { fontSize: 14, color: C.muted }]}>{notices.length} bank notice{notices.length === 1 ? '' : 's'} · {showNotices ? 'hide' : 'see them'}</Text>
                 <Text style={s.meta} numberOfLines={2}>{[...new Set(notices.map((i) => i.sug.action === 'skip' ? i.sug.reason : ''))].filter(Boolean).join(' · ')}</Text>
               </View>
               <Btn label="Clear" small onPress={() => cap.done(notices.flatMap((i) => keysFor(i.p, cap.parsed)))} />
-            </View>
+            </Pressable>
           )}
+          {showSkipped && showNotices && notices.map((i) => {
+            const r = rawOf(i.p), amt = r ? amountIn(r.text) ?? amountIn(r.title) : undefined, twin = amt ? twinOf(i.p, amt) : null;
+            return (
+              <View key={i.p.key} style={[s.skipRow, { marginLeft: 14, alignItems: 'flex-start' }]}>
+                <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+                  <Text style={s.meta}>{i.p.bank} · {when(i.p.time)} · {i.sug.action === 'skip' ? i.sug.reason : ''}</Text>
+                  <Text style={s.quote}>{bankText(i.p)}</Text>
+                  {twin && <Text style={[s.meta, { color: C.warn }]}>Same amount as {twin}. Adding this would count it twice.</Text>}
+                </View>
+                {amt ? <Btn label="Add" small onPress={() => addAs(i.p, 'out', amt)} /> : null}
+              </View>
+            );
+          })}
           {showSkipped && skippedPay.map((i) => (
             <View key={i.p.key} style={s.skipRow}>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={[s.name, { fontSize: 14, color: C.muted }]} numberOfLines={1}>{i.p.merchant || i.p.bank}{i.p.amount ? ` · ${money(i.p.amount, cur)}` : ''}</Text>
                 <Text style={s.meta} numberOfLines={2}>{i.sug.action === 'skip' ? i.sug.reason : ''}</Text>
+                <Text style={[s.meta, { color: C.faint }]} numberOfLines={2}>{bankText(i.p)}</Text>
               </View>
-              <Btn label="Clear" small onPress={() => cap.done(keysFor(i.p, cap.parsed))} />
+              <View style={{ gap: 6 }}>
+                {i.p.amount ? <Btn label="Add" small onPress={() => addAs(i.p, i.p.kind === 'received' || (i.p.kind === 'transfer' && !i.p.sent) ? 'in' : 'out', i.p.amount as number)} /> : null}
+                <Btn label="Clear" small onPress={() => cap.done(keysFor(i.p, cap.parsed))} />
+              </View>
             </View>
           ))}
         </View>
@@ -202,5 +271,6 @@ const s = StyleSheet.create({
   amt: { color: C.fg, fontSize: 17, fontWeight: '700', fontVariant: ['tabular-nums'] },
   tag: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.surface2, borderRadius: 999, paddingHorizontal: 12, height: 34 },
   tagT: { color: C.fg, fontWeight: '700', fontSize: 13 },
+  quote: { color: C.fg, fontSize: 13.5, lineHeight: 19, backgroundColor: C.surface2, borderRadius: 10, padding: 10 },
   skipRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.surface, borderRadius: 12, padding: 12 },
 });

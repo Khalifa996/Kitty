@@ -87,6 +87,8 @@ it('knows common UK shops for new users', () => {
   expect(knownCategory('Amazon.co.uk')).toBe('shopping');
   expect(knownCategory('Hollywood Bowl Derby')).toBe('fun');
   expect(knownCategory('Screwfix')).toBe('home');
+  expect(knownCategory('Balham Food And Wine')).toBe('groceries');
+  expect(knownCategory('MR Vape Limited')).toBe('personal');
   expect(knownCategory('Acme Ltd')).toBeNull();
 });
 
@@ -141,4 +143,14 @@ it('treats card reader payouts as business takings when side income is on', () =
   S.settings.sideIncome = true;
   const on = suggest(S, alert({ kind: 'received', amount: 4210, merchant: 'Stripe Payments Uk Ltd' }), 'n18');
   expect(on.action === 'add' && [on.tx.cat, on.tx.biz, on.guessed]).toEqual(['side', true, true]);
+});
+
+it('asks about a cash withdrawal instead of guessing', () => {
+  const s = suggest(withHistory(), alert({ amount: 10000, merchant: 'High Street', cash: true }), 'n19');
+  expect(s).toMatchObject({ action: 'add', cash: true, guessed: true, tx: { merchant: 'Cash (High Street)', sub: 'Cash' } });
+});
+
+it('asks about alerts Kitty could not read', () => {
+  expect(suggest(withHistory(), alert({ kind: 'ignore', unsure: true, amount: 3000 }), 'n20').action).toBe('ask');
+  expect(suggest(withHistory(), alert({ kind: 'ignore', reason: 'Advert' }), 'n21').action).toBe('skip');
 });

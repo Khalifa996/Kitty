@@ -19,6 +19,8 @@ export type ParsedAlert = {
   pairedWith?: string;  // key of the other half of a move between your own accounts
   reason?: string;      // why it was ignored, or a note for the person
   duplicateOf?: string; // key of the alert this one repeats
+  unsure?: boolean;     // has an amount, but Kitty can't tell what it is: ask the person
+  cash?: boolean;       // a cash withdrawal
 };
 
 export const BANK_APPS: Record<string, string> = {
@@ -90,6 +92,9 @@ const IGNORE: [RegExp, string][] = [
   [/t&cs apply|terms apply|save over|open an? \w+ account|refer a friend|cashback offer|exclusive offer|virtual card number|shop more securely/i, 'Advert'],
 ];
 
+/** The first amount in a piece of text, in pennies. */
+export const amountIn = (s: string) => { const m = (s || '').match(AMOUNT); return m ? toPennies(m[1]) : undefined; };
+
 const GENERIC_TITLES = /^(revolut|barclays|barclaycard|monzo|starling( bank)?|natwest|payment|card payment|new notification|google wallet)$/i;
 
 export function parseAlert(a: RawAlert): ParsedAlert {
@@ -158,11 +163,12 @@ export function parseAlert(a: RawAlert): ParsedAlert {
     const sent = /\byou sent\b|transfer sent/i.test(all);
     if (merchant && sent) merchant = merchant.replace(/\.\s.*$/, '');
     if (!merchant && sent) merchant = 'Payment sent';
-    if (!merchant && /withdr/i.test(text)) merchant = 'Cash';
-    return { ...out, kind: 'spent', sent: sent || undefined, merchant: merchant ? tidyName(merchant) : undefined, reason: merchant ? undefined : 'Shop not named in the alert' };
+    const cash = /withdr|cash ?machine|cashpoint|\batm\b/i.test(all) || /[\u{1F3E7}\u{1F4B5}]/u.test(a.text + a.title);
+    if (!merchant && cash) merchant = 'Cash';
+    return { ...out, kind: 'spent', cash: cash || undefined, sent: sent || undefined, merchant: merchant ? tidyName(merchant) : undefined, reason: merchant ? undefined : 'Shop not named in the alert' };
   }
 
-  return { ...out, reason: 'Not sure what this one is' };
+  return { ...out, unsure: true, reason: 'Kitty couldn\'t tell what this one is' };
 }
 
 /**

@@ -151,3 +151,12 @@ it('skips card limit notices and wallet tips', () => {
   expect(parseAlert({ key: 'c', pkg: 'com.revolut.revolut', title: 'Contactless limit ⚠️', text: 'Approaching limit. Tap to reset it now, or use Chip & PIN to reset it on your next payment', time: 1 })).toMatchObject({ kind: 'ignore', reason: 'Card limit notice' });
   expect(parseAlert({ key: 'w', pkg: 'com.google.android.apps.walletnfcrel', title: 'Shop more securely', text: 'Create a virtual card number for Mastercard ••1111 in a few steps', time: 1 })).toMatchObject({ kind: 'ignore', reason: 'Advert' });
 });
+
+it('flags cash withdrawals', () => {
+  expect(parseAlert({ key: 'a', pkg: 'com.revolut.revolut', title: 'Cash machine', text: '🏧 You withdrew £100', time: 1 })).toMatchObject({ kind: 'spent', cash: true, amount: 10000 });
+  expect(parseAlert({ key: 'b', pkg: 'com.barclays.android.barclaysmobilebanking', title: 'Barclays', text: 'Pers acct - You withdrew £40.00 from a cash machine using your account ending 1111.', time: 1 })).toMatchObject({ kind: 'spent', cash: true, merchant: 'Cash' });
+});
+
+it('marks alerts it cannot read as unsure, so the person is asked', () => {
+  expect(parseAlert({ key: 'c', pkg: 'com.revolut.revolut', title: 'Revolut', text: 'Your exchange of £120 is complete', time: 1 })).toMatchObject({ kind: 'ignore', unsure: true, amount: 12000 });
+});

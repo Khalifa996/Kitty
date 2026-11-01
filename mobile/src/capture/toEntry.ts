@@ -21,7 +21,8 @@ export function guessCategory(S: State, merchant?: string): string | null {
 
 // Common UK shops, for people who haven't logged them before. History always wins over this list.
 const KNOWN: [RegExp, string][] = [
-  [/\b(tesco|sainsbury|asda|aldi|lidl|co-?op|morrisons|waitrose|iceland|ocado|m&s food|marks.*spencer.*food|farmfoods|budgens|spar|londis|nisa|one stop|costcutter)\b/i, 'groceries'],
+  [/\b(vapes?|vaping|tobacco|tobacconist)\b/i, 'personal'],
+  [/\b(tesco|sainsbury|asda|aldi|lidl|co-?op|morrisons|waitrose|iceland|ocado|m&s food|marks.*spencer.*food|farmfoods|budgens|spar|londis|nisa|one stop|costcutter|food (and|&) wine|off ?licen[cs]e|mini ?market|convenience store|news ?agents?)\b/i, 'groceries'],
   [/\b(pret|greggs|costa|starbucks|caff?e|cafe|coffee|nando|mcdonald|kfc|burger king|subway|wagamama|pizza|deliveroo|just ?eat|uber ?eats|domino|leon|itsu|wasabi|restaurant|grill|kitchen)\b/i, 'food'],
   [/\b(tfl|transport for london|trainline|national rail|lner|avanti|gwr|uber|bolt|addison lee|voi|lime|santander cycles|shell|bp|esso|texaco|jet|petrol|fuel|service station|parking|ringgo|paybyphone|dart charge|congestion|ulez)\b/i, 'transport'],
   [/\b(amazon|argos|ebay|asos|primark|next|zara|h&m|uniqlo|currys|john lewis|tk ?maxx|sports direct|jd sports|shein|temu|aliexpress|apple\.com|google play)\b/i, 'shopping'],
@@ -56,11 +57,13 @@ export function sameName(a?: string, b?: string): boolean {
 }
 
 export type Suggestion =
-  | { action: 'add'; tx: Tx; guessed: boolean; hint?: string }
+  | { action: 'add'; tx: Tx; guessed: boolean; hint?: string; cash?: boolean }
   | { action: 'pay-bill'; billId: string; billName: string; tx: Tx; replaces?: Tx }
+  | { action: 'ask'; reason: string }
   | { action: 'skip'; reason: string };
 
 export function suggest(S: State, p: ParsedAlert, id: string): Suggestion {
+  if (p.unsure && p.amount) return { action: 'ask', reason: p.reason || 'Kitty couldn\'t tell what this one is' };
   if (p.kind === 'ignore') return { action: 'skip', reason: p.reason || 'Not a payment' };
   if (p.kind === 'transfer') return { action: 'skip', reason: p.reason || 'Moved between your accounts' };
   if (!p.amount) return { action: 'skip', reason: 'No amount' };
@@ -107,6 +110,10 @@ export function suggest(S: State, p: ParsedAlert, id: string): Suggestion {
     return { action: 'add', guessed: !seen && !work && !sold && (cat === 'extra' || takings), tx: { ...base, kind: 'in', cat, sub: work ? 'Job' : sold ? 'Sold something' : null, biz: cat === 'side' } };
   }
 
+  if (p.cash) {
+    return { action: 'add', guessed: true, hint: 'Cash withdrawal. If it\'s already gone (paid someone, given away), add it. If you\'ll spend it bit by bit, tap Cash to spend and log what you buy on the keypad',
+      tx: { ...base, kind: 'out', cat: 'other', sub: 'Cash', merchant: p.merchant && p.merchant !== 'Cash' ? `Cash (${p.merchant})` : 'Cash' }, cash: true };
+  }
   const cat = guessCategory(S, p.merchant) || knownCategory(p.merchant);
   return { action: 'add', guessed: !cat, tx: { ...base, kind: 'out', cat: cat || 'other', sub: null } };
 }

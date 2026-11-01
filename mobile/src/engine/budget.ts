@@ -163,3 +163,42 @@ export function dueDirectDebits(S: State, today: string, now = '06:00'): Tx[] {
   }
   return out;
 }
+
+// ---------- Looking back ----------
+/** How a past day went, as Kitty would have seen it at the end of that day. */
+export function dayInfo(S: State, day: string): SafeInfo {
+  return safeInfo({ ...S, tx: S.tx.filter((t) => t.date <= day) }, day);
+}
+
+export type CycleSummary = {
+  c: Cycle;
+  pay: number; extra: number; business: number;   // money in
+  spent: number; bills: number;                    // money out: day to day, bills and debts
+  plan: number;                                    // money to spend this cycle
+  byCat: { cat: string; amt: number }[];           // day-to-day spending, biggest first
+  days: { date: string; spent: number; allowance: number }[]; // up to today
+};
+
+/** Money in and out for one pay cycle, for the overview. Days after `today` are left out. */
+export function cycleSummary(S: State, c: Cycle, today: string): CycleSummary {
+  const L = txIn(S, c), ins = L.filter((t) => t.kind === 'in');
+  const flex = L.filter((t) => t.kind === 'out' && !t.biz && !t.potId && !t.billId);
+  const by = new Map<string, number>();
+  for (const t of flex) by.set(t.cat, (by.get(t.cat) || 0) + t.amt);
+  const days: CycleSummary['days'] = [];
+  for (let d = c.start; d <= c.end && d <= today; d = nextDay(d)) {
+    const si = dayInfo(S, d);
+    days.push({ date: d, spent: si.todaySpent, allowance: si.allowance });
+  }
+  return {
+    c,
+    pay: sum(ins.filter((t) => t.cat === 'salary' && !t.biz), (t) => t.amt),
+    extra: sum(ins.filter((t) => !t.biz && t.cat !== 'salary' && t.cat !== 'transfer'), (t) => t.amt),
+    business: sum(ins.filter((t) => t.biz), (t) => t.amt),
+    spent: flexNet(L),
+    bills: sum(L.filter((t) => t.kind === 'out' && t.billId), (t) => t.amt),
+    plan: pot(S, c),
+    byCat: [...by].map(([cat, amt]) => ({ cat, amt })).sort((a, b) => b.amt - a.amt),
+    days,
+  };
+}

@@ -6,7 +6,7 @@ import { categories, inTypes } from '../engine/cats';
 import { addDays, hm, ymd } from '../engine/dates';
 import type { Tx } from '../engine/types';
 import { uid, useKitty } from '../store/KittyState';
-import { Btn, CatIcon, Chip } from '../ui/kit';
+import { Btn, CatIcon, Chip, Sheet } from '../ui/kit';
 import { Icon } from '../ui/Icon';
 import { SafeStrip } from '../ui/SafeStrip';
 import { C, moneyS, money, symbol } from '../ui/theme';
@@ -20,7 +20,8 @@ export function LogScreen({ onSaved }: { onSaved: (msg: string, undo: () => void
   const [amt, setAmt] = useState('');
   const [merchant, setMerchant] = useState('');
   const [cat, setCat] = useState<string | null>(null);
-  const [when, setWhen] = useState<'today' | 'yesterday'>('today');
+  const [date, setDate] = useState<string | null>(null); // null = today
+  const [picking, setPicking] = useState(false);
   const cur = S.settings.currency;
   const p = Math.round(parseFloat(amt || '0') * 100) || 0;
 
@@ -63,21 +64,23 @@ export function LogScreen({ onSaved }: { onSaved: (msg: string, undo: () => void
 
   const si = S.settings.setupDone ? safeInfo(S, today) : null;
   let line: string | undefined;
-  if (si && p > 0 && mode === 'out') {
+  if (si && p > 0 && mode === 'out' && !date) {
     const a = si.safe - p;
     line = a >= 0 ? `${moneyS(a, cur)} left today after this` : si.daysLeft > 1 ? `${moneyS(Math.round((si.left - p) / (si.daysLeft - 1)), cur)}/day from tomorrow` : 'Last day of the cycle';
   }
 
   const save = () => {
     if (p <= 0) return;
-    const date = when === 'today' ? today : ymd(addDays(new Date(today + 'T12:00:00'), -1));
-    const t: Tx = { id: uid(), kind: mode, amt: p, cat: chosen, sub: null, merchant: merchant.trim(), note: '', date, time: when === 'today' ? hm(new Date()) : '12:00', biz: false, billId: null };
+    const d = date || today;
+    const t: Tx = { id: uid(), kind: mode, amt: p, cat: chosen, sub: null, merchant: merchant.trim(), note: '', date: d, time: d === today ? hm(new Date()) : '12:00', biz: false, billId: null };
     update((d) => { d.tx.push(t); });
-    setAmt(''); setMerchant(''); setCat(null);
+    setAmt(''); setMerchant(''); setCat(null); setDate(null);
     onSaved(`Saved ${money(p, cur)}${t.merchant ? ' · ' + t.merchant : ''}`, () => update((d) => { d.tx = d.tx.filter((x) => x.id !== t.id); }));
   };
 
   const [ip, dp] = amt.split('.');
+  const days = Array.from({ length: 31 }, (_, k) => ymd(addDays(new Date(today + 'T12:00:00'), -k)));
+  const dayLabel = (d: string) => d === today ? 'Today' : d === days[1] ? 'Yesterday' : new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
   const rows = [KEYS.slice(0, 3), KEYS.slice(3, 6), KEYS.slice(6, 9), KEYS.slice(9)];
   return (
     // Fits one screen: the keypad takes whatever height is left, so Save is always in view
@@ -91,13 +94,10 @@ export function LogScreen({ onSaved }: { onSaved: (msg: string, undo: () => void
             </Pressable>
           ))}
         </View>
-        <View style={s.seg}>
-          {(['today', 'yesterday'] as const).map((w) => (
-            <Pressable key={w} accessibilityRole="button" accessibilityLabel={w === 'today' ? 'Today' : 'Yesterday'} accessibilityState={{ selected: when === w }} onPress={() => setWhen(w)} style={[s.segB, when === w && s.segOn]}>
-              <Text style={[s.segT, when === w && { color: C.fg }]}>{w === 'today' ? 'Today' : 'Yesterday'}</Text>
-            </Pressable>
-          ))}
-        </View>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Date: ${dayLabel(date || today)}. Change`} onPress={() => setPicking(true)} style={[s.dateBtn, date && { backgroundColor: C.gold }]}>
+          <Icon name="calendar" size={15} colour={date ? C.goldInk : C.muted} />
+          <Text style={[s.segT, { color: date ? C.goldInk : C.fg }]}>{dayLabel(date || today)}</Text>
+        </Pressable>
       </View>
       <Text style={[s.amount, mode === 'in' && { color: C.good }]} accessibilityLiveRegion="polite" numberOfLines={1} adjustsFontSizeToFit>
         <Text style={s.cur}>{symbol(cur).trim()} </Text>
@@ -130,6 +130,11 @@ export function LogScreen({ onSaved }: { onSaved: (msg: string, undo: () => void
           </View>
         ))}
       </View>
+      <Sheet open={picking} onClose={() => setPicking(false)} title="Which day was it?">
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {days.map((d) => <Chip key={d} label={dayLabel(d)} on={(date || today) === d} onPress={() => { setDate(d === today ? null : d); setPicking(false); }} />)}
+        </View>
+      </Sheet>
       <Btn label={p > 0 ? `Save ${money(p, cur)}` : 'Save'} primary={p > 0} disabled={p <= 0} onPress={save} style={{ height: 50 }} />
     </ScrollView>
   );
@@ -142,6 +147,7 @@ const s = StyleSheet.create({
   segB: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
   segOn: { backgroundColor: C.surface2 },
   segT: { color: C.muted, fontWeight: '700', fontSize: 13 },
+  dateBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.surface, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9 },
   amount: { color: C.fg, fontSize: 42, fontWeight: '700', textAlign: 'center', fontVariant: ['tabular-nums'] },
   cur: { fontSize: 22, color: C.muted },
   field: { backgroundColor: C.surface, borderRadius: 12, height: 44, paddingHorizontal: 12, color: C.fg, fontSize: 16 },
