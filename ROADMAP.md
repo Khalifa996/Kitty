@@ -30,7 +30,15 @@ Goal: a stranger can use it for a month without help and without hitting a wrong
 - Next: share a screenshot of a banking app to log several payments at once (on-device text reading)
 - iPhone: Wallet tap-to-pay automation through Shortcuts
 
-## Phase 3: Native app (Expo / React Native, started Oct 2026)
+## Phase 2c: Setup that fits each person (before testers, Dec 2026)
+Setup today asks pay, take-home, bills, savings and money now. Before testers get it, make it fit their life without making it long:
+- Other income: a second job, partner's contribution, benefits, side income (several sources, regular or not)
+- Regular spending that isn't a bill: food shop, travel, childcare, money given to family. Used to size category limits and warn early
+- Which banks and cards they use, so alert reading is switched on for the right apps
+- Fixed amounts that aren't bills (allowance to a partner, savings to a pot)
+- Keep the first run under two minutes: ask the essentials, then offer the rest as short prompts in the first week ("You've logged a food shop 3 times. Set a weekly food budget?")
+
+ (Expo / React Native, started Oct 2026)
 - Port the screens one by one; keep the money logic as a separate, unit-tested module (Jest)
 - Local database (expo-sqlite) with migrations
 - Biometric / PIN lock (expo-local-authentication)

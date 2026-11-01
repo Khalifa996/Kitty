@@ -9,6 +9,7 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 |---|---|---|
 | P1 | 29 Oct | App: balance check-ins, Settings (change pay, categories, side income switch) still only in the web app |
 | P3 | 1 Nov | Shop categories: optional on-device AI (Android Gemini Nano) for names with no clues, no data leaving the phone |
+| P1 | 1 Nov | Setup that fits each person before testers: other income sources, regular spending, which banks, fixed amounts; essentials first, the rest as prompts in week one (ROADMAP phase 2c) |
 | P1 | 1 Nov | Testers: 12+ people for the Play closed test; their anonymised alert exports to confirm each bank's wording |
 | P2 | 1 Nov | Cash: a Cash pot for a stash at home (withdrawal tops it up, spending from it skips the daily budget) |
 | P2 | 29 Oct | App: change an entry's date; notes; Business switch; pay from a pot |
