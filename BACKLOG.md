@@ -10,7 +10,6 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | P1 | 29 Oct | App: Bills, Pots, balance check-ins and Settings screens still only in the web app |
 | P3 | 1 Nov | Shop categories: optional on-device AI (Android Gemini Nano) for names with no clues, no data leaving the phone |
 | P2 | 1 Nov | Cash: a Cash pot for a stash at home (withdrawal tops it up, spending from it skips the daily budget) |
-| P1 | 29 Oct | App: first-run setup for new users (only import from the web app so far) |
 | P2 | 29 Oct | App: change an entry's date; notes; Business switch; pay from a pot |
 | P2 | 29 Oct | Work expenses: mark a spend as "I'll get this back" so it stays off the daily budget until the reimbursement arrives |
 | P2 | 28 Oct | Payments to your own accounts or business (e.g. a business account) show as spending. Let people mark a payee as "one of my accounts" so future ones count as transfers |
@@ -38,7 +37,8 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | P3 | Light theme |
 
 ## Changelog
-**App 0.6 (in progress), 1 Nov 2026: side income without the guesswork**
+**App 0.6 (in progress), 1 Nov 2026: anyone can start; side income without the guesswork**
+- First-run setup in the app: how often you're paid, take-home pay, bills, savings and money now if you start part-way; or bring a backup across
 - Spending can be marked "Paid from side income": off the daily budget, not a business cost (web app too)
 - Insights, when side income is on: this pay month's side income, costs and money paid out; profit this tax year, how much to keep for tax (20%, 26% or 40%), and a warning when more has been paid out than is left after tax
 

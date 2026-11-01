@@ -10,6 +10,7 @@ import { InsightsScreen } from './src/screens/InsightsScreen';
 import { LogScreen } from './src/screens/LogScreen';
 import { MoreScreen } from './src/screens/MoreScreen';
 import { ReviewScreen } from './src/screens/ReviewScreen';
+import { SetupScreen } from './src/screens/SetupScreen';
 import { KittyProvider, useKitty } from './src/store/KittyState';
 import { Icon } from './src/ui/Icon';
 import { C } from './src/ui/theme';
@@ -37,7 +38,8 @@ export default function App() {
 function Shell() {
   const { S } = useKitty();
   const cap = useCapture();
-  const [tab, setTab] = useState<Tab>(S.settings.setupDone ? 'log' : 'more');
+  const [tab, setTab] = useState<Tab>('log');
+  const [importing, setImporting] = useState(false);
   const [toast, setToast] = useState<{ msg: string; undo?: () => void } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -49,6 +51,23 @@ function Shell() {
     timer.current = setTimeout(() => setToast(null), undo ? 5000 : 2600);
   };
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
+  // A new person sets up first; someone with a backup from the web app can bring it across instead
+  if (!S.settings.setupDone) {
+    return (
+      <SafeAreaView style={s.screen} edges={['top', 'left', 'right', 'bottom']}>
+        {importing ? (
+          <View style={{ flex: 1 }}>
+            <Pressable accessibilityRole="button" onPress={() => setImporting(false)} style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+              <Text style={s.link}>Set up from scratch instead</Text>
+            </Pressable>
+            <MoreScreen cap={cap} onDone={(m) => show(m)} />
+          </View>
+        ) : <SetupScreen onImport={() => setImporting(true)} />}
+        {toast && <View style={s.toast}><Text style={s.toastT}>{toast.msg}</Text></View>}
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={s.screen} edges={['top', 'left', 'right']}>
@@ -94,6 +113,7 @@ const s = StyleSheet.create({
   badge: { position: 'absolute', top: -6, left: 14, color: C.goldInk, backgroundColor: C.gold, borderRadius: 9, minWidth: 18, height: 18, lineHeight: 18, textAlign: 'center', fontSize: 11, fontWeight: '800', paddingHorizontal: 5, overflow: 'hidden' },
   tabT: { color: C.faint, fontSize: 12, fontWeight: '700' },
   toast: { position: 'absolute', left: 16, right: 16, bottom: 86, backgroundColor: C.fg, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  link: { color: C.gold, fontWeight: '700', fontSize: 14 },
   toastT: { flex: 1, color: C.bg, fontWeight: '700', fontSize: 14 },
   undo: { color: C.bg, fontWeight: '800', fontSize: 14, textDecorationLine: 'underline' },
 });

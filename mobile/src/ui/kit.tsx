@@ -54,17 +54,23 @@ export function Chip({ label, on, colour, icon, onPress }: { label: string; on?:
   );
 }
 
-/** A panel that slides up from the bottom. */
-export function Sheet({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
-  // Lift the sheet above the keyboard, so the field being typed in stays visible
+/** Height of the on-screen keyboard (0 when hidden). Android draws edge to edge, so screens pad for it themselves. */
+export function useKeyboardHeight(): number {
   const [kb, setKb] = useState(0);
-  const { height } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
   useEffect(() => {
     const show = Keyboard.addListener('keyboardDidShow', (e) => setKb(e.endCoordinates.height));
     const hide = Keyboard.addListener('keyboardDidHide', () => setKb(0));
     return () => { show.remove(); hide.remove(); };
   }, []);
+  return kb;
+}
+
+/** A panel that slides up from the bottom. */
+export function Sheet({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
+  // Lift the sheet above the keyboard, so the field being typed in stays visible
+  const kb = useKeyboardHeight();
+  const { height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   return (
     <Modal visible={open} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
       <Pressable style={k.scrim} onPress={onClose} accessibilityLabel="Close" />

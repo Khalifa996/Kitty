@@ -41,7 +41,15 @@ async function session(name, seed, steps) {
 }
 const tab = (label) => (p) => p.getByLabel(`${label} tab`).click();
 
-await session('fresh', false, [['0-first-open', null]]);
+const btn = (name) => (p) => p.getByRole('button', { name, exact: true }).click();
+await session('fresh', false, [
+  ['0-first-open', null],
+  ['0a-setup-pay', btn('Get started')],
+  ['0b-setup-income', async (p) => { await btn('Next')(p); await p.getByLabel('Take-home pay').fill('1850'); }],
+  ['0c-setup-bills', async (p) => { await btn('Next')(p); await p.getByLabel('Rent or mortgage amount').fill('750'); await p.getByLabel('Mobile phone amount').fill('18'); }],
+  ['0d-setup-save', async (p) => { await btn('Next')(p); await p.getByLabel('Savings each payday').fill('100'); await p.getByLabel('Money you have now').fill('1600'); }],
+  ['0e-setup-done', btn('Start using Kitty')],
+]);
 await session('sample', true, [
   ['1-log', null],
   ['2-log-typing', async (p) => { for (const k of ['4', '.', '5', '0']) await p.getByLabel(k === '.' ? 'Decimal point' : k, { exact: true }).click(); await p.getByLabel('Where').fill('Pret'); }],
