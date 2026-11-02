@@ -54,6 +54,8 @@ await session('sample', true, [
   ['1-log', null],
   ['2-log-typing', async (p) => { for (const k of ['4', '.', '5', '0']) await p.getByLabel(k === '.' ? 'Decimal point' : k, { exact: true }).click(); await p.getByLabel('Where').fill('Pret'); }],
   ['3-review', tab('Review')],
+  ['3b-review-make-bill', async (p) => { await btn('Make it a bill')(p); await p.getByLabel('Bill name').fill('TV licence'); }],
+  ['3c-review-bill-added', btn('Add to my bills')],
   ['4-review-added', (p) => p.getByRole('button', { name: 'Add', exact: true }).first().click()],
   ['5-review-skipped', (p) => p.getByLabel('Show skipped').click()],
   ['5b-review-notices', async (p) => { await p.getByLabel('Show notices').click(); await p.mouse.wheel(0, 600); }],

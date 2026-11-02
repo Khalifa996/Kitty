@@ -1,6 +1,6 @@
 // Turns a parsed bank alert into a Kitty entry, using what the person has logged before.
 import { billDue, billWindowAt } from '../engine/budget';
-import { hm, ymd } from '../engine/dates';
+import { diffDays, hm, ymd } from '../engine/dates';
 import type { State, Tx } from '../engine/types';
 import type { ParsedAlert } from '../parse/bankAlerts';
 
@@ -85,12 +85,12 @@ export function sameName(a?: string, b?: string): boolean {
 }
 
 export type Suggestion =
-  | { action: 'add'; tx: Tx; guessed: boolean; hint?: string; cash?: boolean; ai?: boolean }
+  | { action: 'add'; tx: Tx; guessed: boolean; hint?: string; cash?: boolean; ai?: boolean; newBill?: boolean }
   | { action: 'pay-bill'; billId: string; billName: string; tx: Tx; replaces?: Tx }
   | { action: 'ask'; reason: string }
   | { action: 'skip'; reason: string };
 
-export function suggest(S: State, p: ParsedAlert, id: string): Suggestion {
+export function suggest(S: State, p: ParsedAlert, id: string, others: ParsedAlert[] = []): Suggestion {
   if (p.unsure && p.amount) {
     // Learn from what the person did before: skipped two from this bank and never kept one, so stop asking
     const L = S.settings.learned || {};
@@ -128,8 +128,25 @@ export function suggest(S: State, p: ParsedAlert, id: string): Suggestion {
       if (t.amt === p.amount || p.kind === 'bill') return { action: 'skip', reason: `${done.name} is already ticked off as paid` };
     }
 
+    // The bank didn't say who it's paid to (Barclays never does for Direct Debits): a Direct Debit bill due in the last few days
+    // with a close amount. Due dates on a weekend or bank holiday are collected the next working day, and amounts drift
+    if (p.kind === 'bill' && !p.merchant) {
+      // Never before the due date, and not a bill another alert already matches exactly
+      const exact = (x: { amt: number }) => others.some((q) => q.key !== p.key && q.kind === 'bill' && q.amount === x.amt && Math.abs(q.time - p.time) <= 5 * 864e5);
+      const near = S.bills
+        .filter((x) => { const gap = diffDays(billDue(x, win), date); return x.dd && gap >= 0 && gap <= 5 && !exact(x) && Math.abs(x.amt - (p.amount as number)) <= Math.max(200, x.amt * 0.05); })
+        .sort((x, y) => Math.abs(x.amt - (p.amount as number)) - Math.abs(y.amt - (p.amount as number)))[0];
+      if (near) {
+        const t = paidTx(near);
+        if (!t) return asBill(near);
+        if (t.amt === near.amt && t.amt !== p.amount) return asBill(near, t);
+      }
+    }
+
     if (p.kind === 'bill') {
-      return { action: 'add', guessed: true, hint: p.reason === 'Repayment' ? `Repayment to ${p.merchant || 'a lender'} that matches none of your bills` : 'Direct Debit that matches none of your bills',
+      return { action: 'add', guessed: true, newBill: true,
+        hint: p.reason === 'Repayment' ? `Repayment to ${p.merchant || 'a lender'} that matches none of your bills`
+          : p.merchant ? 'Direct Debit that matches none of your bills' : `${p.bank} didn't say who this Direct Debit is paid to`,
         tx: { ...base, kind: 'out', cat: 'bills', sub: null } };
     }
   }

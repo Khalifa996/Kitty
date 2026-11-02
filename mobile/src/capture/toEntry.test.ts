@@ -123,7 +123,27 @@ it('corrects a Direct Debit Kitty ticked off with the usual amount', () => {
 
 it('offers a Direct Debit that matches no bill instead of hiding it', () => {
   const s = suggest(withHistory(), alert({ kind: 'bill', amount: 6120, bank: 'Barclays', reason: 'Direct Debit' }), 'n16');
-  expect(s).toMatchObject({ action: 'add', guessed: true, hint: 'Direct Debit that matches none of your bills', tx: { kind: 'out', cat: 'bills', amt: 6120 } });
+  expect(s).toMatchObject({ action: 'add', guessed: true, newBill: true, hint: "Barclays didn't say who this Direct Debit is paid to", tx: { kind: 'out', cat: 'bills', amt: 6120 } });
+});
+
+it('matches an unnamed Direct Debit to a bill with a close amount from the last few days', () => {
+  const S = withHistory();
+  S.bills.push({ id: 'en', name: 'Energy', amt: 7000, day: 1, type: 'bill', dd: true }, { id: 'tv', name: 'TV', amt: 1500, day: 30, type: 'sub', dd: true });
+  // Kitty ticked the energy bill off on Sunday 1 Nov at the usual amount; the bank took a little less on Monday
+  S.tx.push({ id: 'dden', kind: 'out', amt: 7000, cat: 'bills', merchant: 'Energy', note: '', date: '2026-11-01', time: '06:00', biz: false, billId: 'en', auto: true });
+  const mon = (h: string) => at(`2026-11-02T${h}:00`);
+  expect(suggest(S, alert({ kind: 'bill', amount: 6840, bank: 'Barclays', time: mon('09:30') }), 'n50')).toMatchObject({ action: 'pay-bill', billId: 'en', tx: { amt: 6840 }, replaces: { id: 'dden' } });
+  // Not ticked off yet: the TV bill was due on Friday, the bank took it today at a slightly different amount
+  expect(suggest(S, alert({ kind: 'bill', amount: 1520, bank: 'Barclays', time: mon('07:00') }), 'n51')).toMatchObject({ action: 'pay-bill', billId: 'tv', tx: { amt: 1520 } });
+  // Nothing close: ask to make it a bill
+  expect(suggest(S, alert({ kind: 'bill', amount: 42110, bank: 'Barclays', time: mon('09:31') }), 'n52')).toMatchObject({ action: 'add', newBill: true });
+  // Not before the due date: a bill due tomorrow isn't matched
+  S.bills.push({ id: 'ph', name: 'Phone', amt: 2400, day: 3, type: 'bill', dd: true });
+  expect(suggest(S, alert({ kind: 'bill', amount: 2380, bank: 'Barclays', time: mon('09:32') }), 'n53')).toMatchObject({ action: 'add', newBill: true });
+  // Another alert has the energy bill's exact amount, so a near one isn't taken for it
+  const exact = alert({ key: 'k2', kind: 'bill', amount: 7000, bank: 'Barclays', time: mon('06:50') });
+  const close = alert({ key: 'k3', kind: 'bill', amount: 7010, bank: 'Barclays', time: mon('07:40') });
+  expect(suggest(S, close, 'n54', [exact, close])).toMatchObject({ action: 'add', newBill: true });
 });
 
 it('spots a round figure logged by hand for the exact bank amount', () => {

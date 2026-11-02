@@ -1,15 +1,15 @@
 // Payments Kitty spotted in your bank alerts, ready to add with one tap.
 import { useEffect, useMemo, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { alreadyLogged, guessCategory, knownCategory, suggest, type Suggestion } from '../capture/toEntry';
 import { isMoneyApp, keysFor, type Capture } from '../capture/useCapture';
 import { catName, categories, inName, inTypes } from '../engine/cats';
-import type { State, Tx } from '../engine/types';
+import type { Bill, State, Tx } from '../engine/types';
 import type { AiResult } from '../ai/cloud';
 import { useSmartSort } from '../ai/useSmartSort';
 import { amountIn, clean, isGenericTitle, tidyName, type ParsedAlert } from '../parse/bankAlerts';
 import { hm, ymd } from '../engine/dates';
-import { useKitty } from '../store/KittyState';
+import { uid, useKitty } from '../store/KittyState';
 import { getItem, setItem } from '../store/kv';
 import { Btn, Card, Chip, Label, Sheet } from '../ui/kit';
 import { Icon } from '../ui/Icon';
@@ -68,16 +68,18 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
   };
   const setCats = (c: Record<string, string>) => keep({ ...picks, cats: c });
   const [picking, setPicking] = useState<Item | null>(null);
+  // Turning an unknown Direct Debit into a monthly bill
+  const [making, setMaking] = useState<{ i: Item; name: string; type: Bill['type'] } | null>(null);
   const [showSkipped, setShowSkipped] = useState(false);
   const [showNotices, setShowNotices] = useState(false);
   const cur = S.settings.currency;
 
   const base: Item[] = useMemo(() => cap.parsed
     .filter((p) => p.kind !== 'ignore' || !p.duplicateOf)
-    .map((p) => ({ p, sug: suggest(S, p, `a-${p.key.replace(/[^a-z0-9]/gi, '').slice(-16)}`), dup: alreadyLogged(S, p) })), [cap.parsed, S]);
+    .map((p) => ({ p, sug: suggest(S, p, `a-${p.key.replace(/[^a-z0-9]/gi, '').slice(-16)}`, cap.parsed), dup: alreadyLogged(S, p) })), [cap.parsed, S]);
 
   // Smart sorting (opt-in): ask the AI about alerts Kitty couldn't read and shops it couldn't place
-  const needHelp = useMemo(() => base.filter((i) => !i.p.duplicateOf && !i.dup && (i.sug.action === 'ask' || (i.sug.action === 'add' && i.sug.guessed && !i.sug.cash)))
+  const needHelp = useMemo(() => base.filter((i) => !i.p.duplicateOf && !i.dup && (i.sug.action === 'ask' || (i.sug.action === 'add' && i.sug.guessed && !i.sug.cash && !(i.sug.newBill && !i.p.merchant))))
     .map((i) => { const r = cap.raw.find((x) => x.key === i.p.key); return { key: i.p.key, app: i.p.bank, title: r?.title || '', text: r?.text || '' }; }), [base, cap.raw]);
   const ai = useSmartSort(S, needHelp);
   const items: Item[] = useMemo(() => base.map((i) => withAi(i, ai.results[i.p.key], S)), [base, ai.results, S]);
@@ -133,6 +135,18 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
     onDone('Skipped');
   };
   const cashToSpend = (i: Item) => { cap.done(keysFor(i.p, cap.parsed)); onDone('Noted. Log what you buy with it on the keypad'); };
+  /** A Direct Debit Kitty didn't know: add it to Plan as a monthly bill, paid today, so future ones are ticked off. */
+  const makeBill = () => {
+    if (!making || !making.name.trim()) return;
+    const t = txFor(making.i) as Tx, name = making.name.trim(), id = 'b' + uid();
+    const sub = making.type === 'sub' ? 'Subscription' : making.type === 'debt' ? 'Debt repayment' : name;
+    const bill: Bill = { id, name, amt: t.amt, day: parseInt(t.date.slice(8), 10), type: making.type, sub, dd: true, ddFrom: t.date };
+    const tx: Tx = { ...t, cat: 'bills', sub, merchant: name, billId: id };
+    update((d) => { d.bills.push(bill); d.tx.push(tx); });
+    cap.done(keysFor(making.i.p, cap.parsed));
+    setMaking(null);
+    onDone(`${name} added to your bills, paid ${money(t.amt, cur)}`, () => update((d) => { d.bills = d.bills.filter((b) => b.id !== id); d.tx = d.tx.filter((x) => x.id !== tx.id); }));
+  };
 
   /** You decided what an alert was (one Kitty couldn't read, or a notice you want to add anyway). */
   const addAs = (p: ParsedAlert, kind: 'out' | 'in', amt: number) => {
@@ -168,7 +182,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
   };
   const clearSkipped = () => { cap.done(skipped.flatMap((i) => keysFor(i.p, cap.parsed))); setShowSkipped(false); };
   // Things that need you: not sure what they are, or cash. Everything else can be added in one go
-  const easy = todo.filter((i) => !i.dup && i.sug.action !== 'ask' && !(i.sug.action === 'add' && (i.sug.cash || (i.sug.ai && i.sug.guessed))));
+  const easy = todo.filter((i) => !i.dup && i.sug.action !== 'ask' && !(i.sug.action === 'add' && (i.sug.cash || i.sug.newBill || (i.sug.ai && i.sug.guessed))));
   const notices = skipped.filter((i) => i.p.kind === 'ignore' && !i.p.amount);
   const skippedPay = skipped.filter((i) => !notices.includes(i));
   const dupText = (t: Tx) => `${t.merchant || (t.kind === 'in' ? inName(t.cat) : catName(S.settings, t.cat))}, ${money(t.amt, cur)}, ${when(new Date(t.date + 'T' + (t.time || '12:00')).getTime())}`;
@@ -257,6 +271,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
         }
         const t = txFor(i) as Tx, isIn = t.kind === 'in';
         const isCash = i.sug.action === 'add' && !!i.sug.cash;
+        const newBill = i.sug.action === 'add' && !!i.sug.newBill;
         const list = isIn ? inTypes(S.settings) : categories(S.settings);
         const c = list.find((x) => x.id === t.cat);
         const label = (i.sug.action === 'pay-bill' ? `Bill: ${i.sug.billName}` : isIn ? inName(t.cat) : (c?.n || 'Other')) + (t.fromSide ? ' · side income' : '') + (i.sug.action === 'add' && i.sug.ai && !cats[i.p.key] ? ' · AI' : '');
@@ -265,20 +280,25 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
           <Card key={i.p.key} style={{ gap: 10 }}>
             <View style={s.row}>
               <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={s.name} numberOfLines={1}>{t.merchant || (isIn ? 'Money in' : 'Shop not named')}</Text>
+                <Text style={s.name} numberOfLines={1}>{t.merchant || (isIn ? 'Money in' : newBill ? 'Direct Debit' : 'Shop not named')}</Text>
                 <Text style={s.meta} numberOfLines={1}>{i.p.bank} · {when(i.p.time)}</Text>
               </View>
               <Text style={[s.amt, isIn && { color: C.good }]}>{isIn ? '+' : ''}{money(t.amt, cur)}</Text>
             </View>
             {i.dup && <Text style={[s.hint, { color: C.warn }]}>Looks like you already logged this: {dupText(i.dup)}.</Text>}
-            {i.sug.action === 'add' && i.sug.hint && <Text style={s.hint}>{i.sug.hint}.</Text>}
+            {i.sug.action === 'add' && i.sug.hint && <Text style={s.hint}>{i.sug.hint}.{newBill ? ' If it comes every month, make it a bill and Kitty will expect it from now on.' : ''}</Text>}
             {i.sug.action === 'pay-bill' && i.sug.replaces && <Text style={s.hint}>Kitty ticked this off as {money(i.sug.replaces.amt, cur)} on the day. Your bank says {money(t.amt, cur)}.</Text>}
             <View style={s.row}>
               {i.sug.action === 'pay-bill'
                 ? <View style={s.tag}><Icon name="receipt" size={15} colour={C.bill} /><Text style={s.tagT}>{label}</Text></View>
+                : newBill ? null
                 : <Chip label={guessed ? `${label}?` : label} colour={c?.c || C.muted} icon={c?.i} onPress={() => setPicking(i)} />}
               <View style={{ flex: 1 }} />
-              {isCash ? <>
+              {newBill && !i.dup ? <>
+                <Btn label="Skip" small onPress={() => skip(i)} />
+                <Btn label="One-off" small onPress={() => add([i])} />
+                <Btn label="Make it a bill" small primary onPress={() => setMaking({ i, name: t.merchant || '', type: i.p.reason === 'Repayment' ? 'debt' : 'bill' })} />
+              </> : isCash ? <>
                 <Btn label="Cash to spend" small onPress={() => cashToSpend(i)} />
                 <Btn label="Add" small primary onPress={() => add([i])} />
               </> : i.dup ? <>
@@ -368,6 +388,25 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
         </View>
       )}
 
+      <Sheet open={!!making} onClose={() => setMaking(null)} title="Make it a bill">
+        {making && (() => {
+          const t = txFor(making.i) as Tx, d = parseInt(t.date.slice(8), 10);
+          const nth = d + (d % 10 === 1 && d !== 11 ? 'st' : d % 10 === 2 && d !== 12 ? 'nd' : d % 10 === 3 && d !== 13 ? 'rd' : 'th');
+          return <>
+            <Text style={s.hint}>{money(t.amt, cur)} by Direct Debit around the {nth} of each month. Kitty marks this one paid and ticks off the next ones itself.</Text>
+            <Label>What is it?</Label>
+            <TextInput value={making.name} onChangeText={(name) => setMaking({ ...making, name })} placeholder="e.g. TV licence" placeholderTextColor={C.faint}
+              style={s.field} autoFocus accessibilityLabel="Bill name" returnKeyType="done" onSubmitEditing={makeBill} />
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {([['bill', 'Bill', 'receipt'], ['sub', 'Subscription', 'calendar'], ['debt', 'Debt repayment', 'credit']] as const).map(([id, n, ic]) => (
+                <Chip key={id} label={n} icon={ic} colour={C.bill} on={making.type === id} onPress={() => setMaking({ ...making, type: id })} />
+              ))}
+            </View>
+            <Btn label="Add to my bills" primary disabled={!making.name.trim()} onPress={makeBill} />
+          </>;
+        })()}
+      </Sheet>
+
       <Sheet open={!!picking} onClose={() => setPicking(null)} title="Pick a category">
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {picking && (txFor(picking)?.kind === 'in' ? inTypes(S.settings) : categories(S.settings)).map((c) => (
@@ -387,6 +426,7 @@ const s = StyleSheet.create({
   h2: { color: C.fg, fontSize: 16, fontWeight: '700' },
   sub: { color: C.muted, fontSize: 13, marginTop: 3 },
   hint: { color: C.muted, fontSize: 13.5, lineHeight: 19 },
+  field: { backgroundColor: C.surface2, borderRadius: 12, height: 46, paddingHorizontal: 12, color: C.fg, fontSize: 16 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   name: { color: C.fg, fontSize: 16, fontWeight: '700' },
   meta: { color: C.muted, fontSize: 12.5, marginTop: 2 },

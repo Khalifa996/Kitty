@@ -11,7 +11,7 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | P2 | 2 Nov | Ask "What's your business called?" when side income is switched on, so the first payment from it is spotted as "Paid myself" without the person marking it |
 | P2 | 2 Nov | Some banks only send text messages. Reading texts is blocked (private), so offer a sender-only option later: read texts from named bank senders and nothing else |
 | P1 | 2 Nov | A big one-off (e.g. a £400 cash withdrawal) goes straight into the daily budget and cuts every day after it. Anything over a few days' budget should ask: day to day, side income, a pot, or spread it |
-| P2 | 2 Nov | Day view: "£X over" gives no reason. Name the biggest entry and what it does to the days left. Fold the day's Direct Debits into one line, they don't touch the daily budget |
+| P2 | 2 Nov | Day view: "£X over" gives no reason. Name the biggest entry and what it does to the days left |
 | P2 | 2 Nov | Entries named "Payment sent", "Money in" or just the category mean nothing later. Use the payee in the alert, or ask once in Review |
 | P2 | 2 Nov | Cash withdrawals are named after the machine ("Ec East Ham GBP"). Call them "Cash · <place>" |
 | P2 | 2 Nov | Plan: paid bills make a long list (fold into one line), and each row shows the due date in the box and the paid date underneath |
@@ -47,6 +47,11 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | P3 | Light theme |
 
 ## Changelog
+**App 0.8.1, 2 Nov 2026: Direct Debits without a name**
+- Barclays doesn't say who a Direct Debit is paid to. Kitty now matches one to a bill due in the last five days with a close amount (a Sunday bill taken on Monday, an energy bill a little under the usual), and offers to update what it ticked off
+- A Direct Debit that matches nothing gets "Make it a bill": name it once and it goes into Plan, paid, and is expected every month. "One-off" and "Skip" are still there. These stay out of Add all and aren't sent to Smart sorting
+- Day view: two or more bills fold into one line, and money moved between your own accounts is shown apart from money that came in
+
 **App 0.8, 2 Nov 2026: debts with interest, paying yourself**
 - Debts can have an interest rate. Plan then gives the real payoff date and the interest it costs, says plainly when a payment doesn't cover the interest, and shows what moving a payment from a debt that's about to finish would do
 - New money-in type "Paid myself" for money moved from your business to your own account: it adds to your daily budget and counts against side income. Once you've marked a payer, Kitty remembers it, even when the alert pairs up as a move between accounts

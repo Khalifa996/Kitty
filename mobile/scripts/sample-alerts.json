@@ -6,6 +6,12 @@
   "ago": 3
  },
  {
+  "pkg": "com.barclays.android.barclaysmobilebanking",
+  "title": "Barclays",
+  "text": "Pers acct - Your £14.50 Direct Debit was paid from your account ending 1111.",
+  "ago": 20
+ },
+ {
   "pkg": "com.google.android.apps.walletnfcrel",
   "title": "SumUp  *CAFFE DARTE LTD",
   "text": "£11.40 with Revolut Visa ••1234",

@@ -38,6 +38,7 @@ export function InsightsScreen() {
   const [view, setView] = useState<'day' | 'month'>('day');
   const [day, setDay] = useState(() => prevDay(today));
   const [back, setBack] = useState(0); // pay months back from this one
+  const [showBills, setShowBills] = useState(false);
   const cur = S.settings.currency;
   const cats = categories(S.settings), ins = inTypes(S.settings);
 
@@ -47,8 +48,11 @@ export function InsightsScreen() {
   // ---- Day ----
   const di = useMemo(() => dayInfo(S, day), [S, day]);
   const dayTx = useMemo(() => S.tx.filter((t) => t.date === day).sort((a, b) => a.time.localeCompare(b.time)), [S.tx, day]);
-  const dayIn = dayTx.filter((t) => t.kind === 'in').reduce((a, t) => a + t.amt, 0);
-  const dayBills = dayTx.filter((t) => t.kind === 'out' && t.billId).reduce((a, t) => a + t.amt, 0);
+  // Money moved between your own accounts isn't money coming in, and bills never touch the daily budget, so they're kept apart
+  const dayIn = dayTx.filter((t) => t.kind === 'in' && t.cat !== 'transfer').reduce((a, t) => a + t.amt, 0);
+  const dayMoved = dayTx.filter((t) => t.kind === 'in' && t.cat === 'transfer').reduce((a, t) => a + t.amt, 0);
+  const billTx = dayTx.filter((t) => t.kind === 'out' && t.billId), dayBills = billTx.reduce((a, t) => a + t.amt, 0);
+  const fold = billTx.length > 1, listTx = fold ? dayTx.filter((t) => !(t.kind === 'out' && t.billId)) : dayTx;
   const diff = di.allowance - di.todaySpent, isToday = day === today;
 
   // ---- Pay month ----
@@ -92,11 +96,11 @@ export function InsightsScreen() {
             <Label>{isToday ? 'So far today' : 'How it went'}</Label>
             <Text style={[s.big, { color: diff >= 0 ? C.good : C.bad }]}>{moneyS(Math.abs(diff), cur)} {diff >= 0 ? (isToday ? 'left' : 'under') : 'over'}</Text>
             <Text style={s.hint}>Spent {money(di.todaySpent, cur)} of {money(Math.max(0, di.allowance), cur)} budget for the day.{!isToday && di.tomorrow !== null ? ` Next day's budget became ${money(Math.max(0, di.tomorrow), cur)}.` : ''}</Text>
-            {(dayIn > 0 || dayBills > 0) && <Text style={s.hint}>{[dayIn ? `${money(dayIn, cur)} came in` : '', dayBills ? `${money(dayBills, cur)} of bills went out` : ''].filter(Boolean).join(' · ')}</Text>}
+            {(dayIn > 0 || dayBills > 0 || dayMoved > 0) && <Text style={s.hint}>{[dayIn ? `${money(dayIn, cur)} came in` : '', dayMoved ? `${money(dayMoved, cur)} moved between your accounts` : '', dayBills ? `${money(dayBills, cur)} of bills went out` : ''].filter(Boolean).join(' · ')}</Text>}
           </Card>
           {dayTx.length === 0 ? <Text style={s.hint}>Nothing logged on this day.</Text> : (
             <View style={s.list}>
-              {dayTx.map((t, i) => (
+              {[...listTx, ...(fold && showBills ? billTx : [])].map((t, i) => (
                 <View key={t.id} style={[s.row, i > 0 && s.sep]}>
                   <CatIcon icon={icon(t)} colour={colour(t)} size={32} />
                   <View style={{ flex: 1, minWidth: 0 }}>
@@ -106,6 +110,17 @@ export function InsightsScreen() {
                   <Text style={[s.amt, t.kind === 'in' && { color: C.good }]}>{t.kind === 'in' ? '+' : ''}{money(t.amt, cur)}</Text>
                 </View>
               ))}
+              {fold && (
+                <Pressable accessibilityRole="button" accessibilityLabel={showBills ? 'Hide bills' : 'Show bills'} onPress={() => setShowBills(!showBills)}
+                  style={[s.row, (listTx.length > 0 || showBills) && s.sep]}>
+                  <CatIcon icon="receipt" colour={C.bill} size={32} />
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={s.name} numberOfLines={1}>{billTx.length} bills</Text>
+                    <Text style={s.meta} numberOfLines={1}>{showBills ? 'Hide' : 'Paid from bill money, not your daily budget'}</Text>
+                  </View>
+                  <Text style={s.amt}>{money(dayBills, cur)}</Text>
+                </Pressable>
+              )}
             </View>
           )}
         </>
