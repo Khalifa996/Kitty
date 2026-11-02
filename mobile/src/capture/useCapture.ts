@@ -2,9 +2,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppState } from 'react-native';
 import { KittyNotifications } from '../../modules/kitty-notifications';
-import { parseAll, type ParsedAlert, type RawAlert } from '../parse/bankAlerts';
+import { neverRead, parseAll, type ParsedAlert, type RawAlert } from '../parse/bankAlerts';
 import { getItem, setItem } from '../store/kv';
-import { logAlerts } from '../store/storage';
+import { logAlerts, pruneLog } from '../store/storage';
 
 const DEMO = 'kitty.demoAlerts';
 
@@ -36,14 +36,30 @@ function readApps(): { spotted: OtherApp[]; watched: OtherApp[] } {
   if (!K) return { spotted: [], watched: [] };
   try {
     const name = (pkg: string) => ({ pkg, label: K.getAppLabel ? K.getAppLabel(pkg) : pkg });
-    return { spotted: K.getCandidates().map(name), watched: K.getExtraApps().map(name) };
+    const ok = (pkg: string) => !neverRead(pkg);
+    return { spotted: K.getCandidates().filter(ok).map(name), watched: K.getExtraApps().filter(ok).map(name) };
   } catch {
     return { spotted: [], watched: [] };
   }
 }
 
+/** Stop reading chat, email and similar apps if they were ever turned on, and delete what was kept from them. */
+function forgetNeverRead() {
+  const K = KittyNotifications;
+  try {
+    if (K) {
+      const extra = K.getExtraApps();
+      const ok = extra.filter((p) => !neverRead(p));
+      if (ok.length !== extra.length) K.setExtraApps(ok);
+    }
+    const bad = readRaw().filter((r) => neverRead(r.pkg)).map((r) => r.key);
+    if (bad.length) removeRaw(bad);
+    pruneLog((r) => !neverRead(r.pkg || ''));
+  } catch { /* best effort */ }
+}
+
 export function useCapture() {
-  const [raw, setRaw] = useState<RawAlert[]>(readRaw);
+  const [raw, setRaw] = useState<RawAlert[]>(() => { forgetNeverRead(); return readRaw(); });
   const [apps, setApps] = useState(readApps);
   const refresh = useCallback(() => { setRaw(readRaw()); setApps(readApps()); }, []);
 
@@ -66,7 +82,7 @@ export function useCapture() {
   /** Start or stop reading alerts from another app (a bank Kitty doesn't know yet). Only the person can turn this on. */
   const watchApp = useCallback((pkg: string, on: boolean) => {
     const K = KittyNotifications;
-    if (!K) return;
+    if (!K || (on && neverRead(pkg))) return;
     const cur = K.getExtraApps().filter((p) => p !== pkg);
     K.setExtraApps(on ? [...cur, pkg] : cur);
     refresh();

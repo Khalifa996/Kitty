@@ -25,6 +25,12 @@ export type ParsedAlert = {
   emoji?: string;       // the bank's own category symbol (Revolut and Monzo start alerts with one)
 };
 
+// Apps Kitty never reads, even if someone turns them on: chats, email, texts and social apps carry private messages,
+// and marketplaces, app stores and ride or delivery apps only repeat money that's counted when it reaches your bank.
+// Kept in step with NEVER in CaptureStore.kt.
+const NEVER_PKG = /whatsapp|telegram|thoughtcrime|signal|messag|\.mms|\bsms|mail|android\.gm$|outlook|snapchat|instagram|facebook|discord|slack|teams|viber|naver\.line|skype|twitter|linkedin|musically|tiktok|reddit|dynamite|airtasker|amazon|samsungapps|android\.vending|vinted|ebay|ubercab|deliveroo|justeat|depop|etsy/i;
+export const neverRead = (pkg: string) => !(pkg in BANK_APPS) && NEVER_PKG.test(pkg);
+
 export const BANK_APPS: Record<string, string> = {
   'com.revolut.revolut': 'Revolut',
   'com.barclays.android.barclaysmobilebanking': 'Barclays',

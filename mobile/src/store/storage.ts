@@ -31,6 +31,12 @@ export function logAlerts(items: unknown[]): void {
   try { list = JSON.parse(getItem(LOG) || '[]'); } catch { list = []; }
   setItem(LOG, JSON.stringify([...list, ...items].slice(-200)));
 }
+/** Drop logged alerts that shouldn't be kept (from apps Kitty no longer reads). */
+export function pruneLog(keep: (r: { pkg?: string }) => boolean): void {
+  const list = alertLog() as { pkg?: string }[];
+  const next = list.filter(keep);
+  if (next.length !== list.length) setItem(LOG, JSON.stringify(next));
+}
 export function alertLog(): unknown[] {
   try { return JSON.parse(getItem(LOG) || '[]'); } catch { return []; }
 }

@@ -13,7 +13,7 @@ import { alertLog, parseBackup } from '../store/storage';
 import { Btn, Card, Label } from '../ui/kit';
 import { C } from '../ui/theme';
 
-const VERSION = '0.7.1';
+const VERSION = '0.7.2';
 
 export function MoreScreen({ cap, onDone }: { cap: Capture; onDone: (msg: string) => void }) {
   const { S, replace, update } = useKitty();
@@ -50,7 +50,7 @@ export function MoreScreen({ cap, onDone }: { cap: Capture; onDone: (msg: string
           <Text style={s.hint}>Reading bank alerts only works in the Android app.</Text>
         ) : cap.enabled ? (
           <>
-            <Text style={s.hint}>On. Kitty reads payment alerts from the main UK banks and card apps, and from Google Wallet. They never leave your phone.</Text>
+            <Text style={s.hint}>On. Kitty reads payment alerts from the main UK banks and card apps, and from Google Wallet. They never leave your phone. It never reads chats, texts, email or social apps.</Text>
             {cap.watched.map((a) => (
               <View key={a.pkg} style={[s.row, { alignItems: 'center' }]}>
                 <Text style={[s.hint, { flex: 1, color: C.fg }]}>Also reading {a.label}</Text>

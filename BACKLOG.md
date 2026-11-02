@@ -7,6 +7,8 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 ## Snags
 | Pri | Found | Snag |
 |---|---|---|
+| P2 | 2 Nov | Some banks only send text messages. Reading texts is blocked (private), so offer a sender-only option later: read texts from named bank senders and nothing else |
+| P1 | 2 Nov | Overdrafts and debts where the payment is mostly interest: payoff dates are wrong. Ask for the rate, and say plainly when a payment doesn't cover the interest |
 | P1 | 2 Nov | A big one-off (e.g. a £400 cash withdrawal) goes straight into the daily budget and cuts every day after it. Anything over a few days' budget should ask: day to day, side income, a pot, or spread it |
 | P2 | 2 Nov | Day view: "£X over" gives no reason. Name the biggest entry and what it does to the days left. Fold the day's Direct Debits into one line, they don't touch the daily budget |
 | P2 | 2 Nov | Entries named "Payment sent", "Money in" or just the category mean nothing later. Use the payee in the alert, or ask once in Review |
@@ -46,6 +48,10 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | P3 | Light theme |
 
 ## Changelog
+**App 0.7.2, 2 Nov 2026: never reads chats or email**
+- Kitty can no longer read chat, text, email or social apps, or marketplaces and app stores, even if they were turned on. Anything it kept from them is deleted when the app opens
+- The alert log keeps bank alerts only, so "Copy alerts for Claude" isn't crowded out by chats
+
 **App 0.7.1, 2 Nov 2026: Review fixes**
 - A category or "side income" you pick on a Review card is kept when you leave the tab, until the card is added or skipped
 - Smart sorting only changes a category when it's reasonably sure and names a real one; a shrug ("Other", low confidence) leaves Kitty's own guess alone. "AI" no longer shows on a card you've set yourself

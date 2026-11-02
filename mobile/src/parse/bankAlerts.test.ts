@@ -1,5 +1,5 @@
 /// <reference types="jest" />
-import { parseAlert, parseAll, tidyName, RawAlert } from './bankAlerts';
+import { neverRead, parseAlert, parseAll, tidyName, RawAlert } from './bankAlerts';
 
 const REV = 'com.revolut.revolut';
 const BAR = 'com.barclays.android.barclaysmobilebanking';
@@ -216,5 +216,15 @@ describe('apps that are not banks', () => {
   it('still asks about a bank alert it cannot read if money moved', () => {
     expect(parseAlert({ key: 'q', pkg: 'com.revolut.revolut', title: 'Revolut', text: 'A transaction of £12 is on hold', time: 1 })).toMatchObject({ unsure: true });
     expect(parseAlert({ key: 'r', pkg: 'com.revolut.revolut', title: 'Deal of the day', text: 'Cashback up to £12', time: 1 }).unsure).toBeUndefined();
+  });
+});
+
+describe('apps Kitty never reads', () => {
+  it('blocks chats, email, texts and platforms, but not banks or wallets', () => {
+    for (const pkg of ['com.whatsapp', 'com.google.android.apps.messaging', 'com.samsung.android.messaging', 'com.google.android.gm', 'com.microsoft.office.outlook',
+      'org.telegram.messenger', 'au.com.airtasker', 'com.amazon.mShop.android.shopping', 'com.sec.android.app.samsungapps', 'com.ebay.mobile'])
+      expect(neverRead(pkg)).toBe(true);
+    for (const pkg of ['co.uk.getmondo', 'com.revolut.revolut', 'com.paypal.android.p2pmobile', 'com.google.android.apps.walletnfcrel', 'com.tideplatform.banking'])
+      expect(neverRead(pkg)).toBe(false);
   });
 });
