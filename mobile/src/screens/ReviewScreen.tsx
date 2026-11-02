@@ -10,11 +10,19 @@ import { useSmartSort } from '../ai/useSmartSort';
 import { amountIn, clean, isGenericTitle, tidyName, type ParsedAlert } from '../parse/bankAlerts';
 import { hm, ymd } from '../engine/dates';
 import { useKitty } from '../store/KittyState';
+import { getItem, setItem } from '../store/kv';
 import { Btn, Card, Chip, Label, Sheet } from '../ui/kit';
 import { Icon } from '../ui/Icon';
 import { C, money } from '../ui/theme';
 
 type Item = { p: ParsedAlert; sug: Suggestion; dup?: Tx };
+
+// Categories and "side income" picked on a card are kept until it's added or skipped, so leaving the tab doesn't lose them
+type Picks = { cats: Record<string, string>; side: Record<string, boolean> };
+const PICKS = 'kitty.picks';
+const loadPicks = (): Picks => {
+  try { const p = JSON.parse(getItem(PICKS) || '{}'); return { cats: p.cats || {}, side: p.side || {} }; } catch { return { cats: {}, side: {} }; }
+};
 
 /** Use the AI's answer for an alert Kitty couldn't read, or a shop it couldn't place. Kitty's own rules and your history win otherwise. */
 function withAi(i: Item, r: AiResult | undefined, S: State): Item {
@@ -29,7 +37,8 @@ function withAi(i: Item, r: AiResult | undefined, S: State): Item {
       date: ymd(d), time: hm(d), biz: cat === 'side', billId: null, source: 'alert', bank: i.p.bank };
     return { ...i, sug: { action: 'add', tx, guessed: !sure, ai: true, hint: `Smart sorting: ${r.note.replace(/\.$/, "")}` } };
   }
-  if (i.sug.action === 'add' && i.sug.guessed && valid(r.category, i.sug.tx.kind)) {
+  // A shop Kitty couldn't place: only take the AI's answer if it names a real category and isn't a shrug
+  if (i.sug.action === 'add' && i.sug.guessed && valid(r.category, i.sug.tx.kind) && r.category !== 'other' && r.confidence !== 'low') {
     return { ...i, sug: { ...i.sug, ai: true, guessed: !sure, tx: { ...i.sug.tx, cat: r.category, biz: r.category === 'side', merchant: i.sug.tx.merchant || r.name } } };
   }
   return i;
@@ -48,8 +57,17 @@ const when = (ms: number) => {
 
 export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (msg: string, undo?: () => void) => void; goSetup: () => void }) {
   const { S, update } = useKitty();
-  const [cats, setCats] = useState<Record<string, string>>({});
-  const [side, setSide] = useState<Record<string, boolean>>({});
+  const [picks, setPicks] = useState<Picks>(loadPicks);
+  const { cats, side } = picks;
+  const keep = (next: Picks) => {
+    const live = new Set(cap.raw.map((r) => r.key));
+    const prune = <T,>(m: Record<string, T>) => Object.fromEntries(Object.entries(m).filter(([k]) => live.has(k)));
+    const tidy = { cats: prune(next.cats), side: prune(next.side) };
+    setPicks(tidy);
+    try { setItem(PICKS, JSON.stringify(tidy)); } catch { /* best effort */ }
+  };
+  const setCats = (c: Record<string, string>) => keep({ ...picks, cats: c });
+  const setSide = (v: Record<string, boolean>) => keep({ ...picks, side: v });
   const [picking, setPicking] = useState<Item | null>(null);
   const [showSkipped, setShowSkipped] = useState(false);
   const [showNotices, setShowNotices] = useState(false);
@@ -242,7 +260,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
         const isCash = i.sug.action === 'add' && !!i.sug.cash;
         const list = isIn ? inTypes(S.settings) : categories(S.settings);
         const c = list.find((x) => x.id === t.cat);
-        const label = (i.sug.action === 'pay-bill' ? `Bill: ${i.sug.billName}` : isIn ? inName(t.cat) : (c?.n || 'Other')) + (t.fromSide ? ' · side income' : '') + (i.sug.action === 'add' && i.sug.ai ? ' · AI' : '');
+        const label = (i.sug.action === 'pay-bill' ? `Bill: ${i.sug.billName}` : isIn ? inName(t.cat) : (c?.n || 'Other')) + (t.fromSide ? ' · side income' : '') + (i.sug.action === 'add' && i.sug.ai && !cats[i.p.key] ? ' · AI' : '');
         const guessed = i.sug.action === 'add' && i.sug.guessed && !cats[i.p.key];
         return (
           <Card key={i.p.key} style={{ gap: 10 }}>

@@ -193,6 +193,8 @@ describe('warnings and bank notices', () => {
   it("skips the bank's own budget updates and reports", () => {
     expect(a('com.revolut.revolut', 'A quick budget update', "You've used 50% of your £1,000 monthly budget, with 3 day(s) left")).toMatchObject({ kind: 'ignore', reason: 'Summary from your bank' });
     expect(a('co.uk.getmondo', 'Your spending report is in', "Each month's different")).toMatchObject({ kind: 'ignore' });
+    expect(a('com.revolut.revolut', 'You stayed under budget', "With £123.45 left to spare in this month's cycle. Tap to see more")).toMatchObject({ kind: 'ignore', reason: 'Summary from your bank' });
+    expect(a('com.revolut.revolut', "You've gone over your Eating out budget", 'Tap to see where it went')).toMatchObject({ kind: 'ignore', reason: 'Summary from your bank' });
   });
   it('picks up an overdraft charge as real money', () => {
     expect(a('co.uk.getmondo', '£12.34 charge for using your overdraft in October', 'You were overdrawn for 9 days this month.')).toMatchObject({ kind: 'spent', amount: 1234, merchant: 'Monzo charges', reason: 'Bank charge' });

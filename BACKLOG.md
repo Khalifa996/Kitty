@@ -7,6 +7,12 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 ## Snags
 | Pri | Found | Snag |
 |---|---|---|
+| P1 | 2 Nov | A big one-off (e.g. a £400 cash withdrawal) goes straight into the daily budget and cuts every day after it. Anything over a few days' budget should ask: day to day, side income, a pot, or spread it |
+| P2 | 2 Nov | Day view: "£X over" gives no reason. Name the biggest entry and what it does to the days left. Fold the day's Direct Debits into one line, they don't touch the daily budget |
+| P2 | 2 Nov | Entries named "Payment sent", "Money in" or just the category mean nothing later. Use the payee in the alert, or ask once in Review |
+| P2 | 2 Nov | Cash withdrawals are named after the machine ("Ec East Ham GBP"). Call them "Cash · <place>" |
+| P2 | 2 Nov | "Paid from side income" can add up to more than the side income that came in. Show what's left, warn when it runs out |
+| P2 | 2 Nov | Plan: paid bills make a long list (fold into one line), and each row shows the due date in the box and the paid date underneath |
 | P1 | 29 Oct | App: balance check-ins, Settings (change pay, categories, side income switch) still only in the web app |
 | P2 | 1 Nov | Intelligence: on-device AI (Gemini Nano via ML Kit Prompt API, beta, newer flagships only) to read unclear alerts and name shops; falls back to rules and learning on other phones |
 | P1 | 1 Nov | Setup that fits each person before testers: other income sources, regular spending, which banks, fixed amounts; essentials first, the rest as prompts in week one (ROADMAP phase 2c) |
@@ -40,6 +46,11 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | P3 | Light theme |
 
 ## Changelog
+**App 0.7.1, 2 Nov 2026: Review fixes**
+- A category or "side income" you pick on a Review card is kept when you leave the tab, until the card is added or skipped
+- Smart sorting only changes a category when it's reasonably sure and names a real one; a shrug ("Other", low confidence) leaves Kitty's own guess alone. "AI" no longer shows on a card you've set yourself
+- A bank telling you you stayed under (or went over) a budget is a summary, not a payment, so it can't be added by mistake
+
 **App 0.7, 1 Nov 2026: smart sorting (opt-in AI)**
 - Optional Smart sorting in More: alerts Kitty can't read, and shops it can't place, are sorted by Claude (Anthropic's AI) through Kitty's own small service. Only those alerts are sent, with account numbers, sort codes and emails removed. Off unless you turn it on
 - AI answers are marked "AI" in Review and never override your own history; low-confidence answers still show a question mark and stay out of Add all

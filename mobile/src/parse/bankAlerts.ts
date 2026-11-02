@@ -110,7 +110,7 @@ const PLATFORM = /airtasker|vinted|ebay|depop|etsy|fiverr|upwork|checkatrade|myb
 
 const IGNORE: [RegExp, string][] = [
   [/\btask in\b|we found a task|new task|job (alert|offer|request)|quote request|new lead\b|requests? a quote/i, 'Job alert, not a payment'],
-  [/budget update|of your [^.]*budget|spending report|monthly summary|weekly summary|your year in/i, 'Summary from your bank'],
+  [/budget update|of your [^.]*budget|\b(stayed|stay|are|you're|went|gone|still) (well )?(under|over|within) (your |the )?(\w+ ){0,3}budget|left to spare|spending report|monthly summary|weekly summary|your year in/i, 'Summary from your bank'],
   [/\bverify\b|tap to verify|approve (this|the) payment/i, 'Payment check, not a payment'],
   [/authori[sz]ed for future payments/i, 'Card saved with a shop, not a payment'],
   [/one[- ]time (pass)?code|\bOTP\b|security code|passcode/i, 'Security code'],
