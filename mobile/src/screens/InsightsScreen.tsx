@@ -140,8 +140,10 @@ export function InsightsScreen() {
                 <View style={s.cell}><Label>Keep for tax</Label><Text style={[s.mid, { color: C.warn }]}>{moneyS(sideYear.tax, cur)}</Text>
                   <Text style={s.meta}>{sideYear.rate}% of profit</Text></View>
               </View>
-              <Text style={[s.hint, sideYear.left < 0 && { color: C.bad }]}>
-                {sideYear.left >= 0
+              <Text style={[s.hint, sideYear.left < 0 && sideYear.drawn > 0 && { color: C.bad }]}>
+                {sideYear.profit <= 0
+                  ? `The business has spent ${money(-sideYear.profit, cur)} more than it made since ${short(ty)}${sideYear.drawn > 0 ? `, and you've paid yourself ${money(sideYear.drawn, cur)}` : ''}. No tax to keep back yet.`
+                  : sideYear.left >= 0
                   ? `After tax and ${money(sideYear.drawn, cur)} paid to yourself, ${money(sideYear.left, cur)} is still yours to take from the business.`
                   : `You've paid yourself ${money(-sideYear.left, cur)} more than the business made after tax. The tax bill would come from your pay.`}
               </Text>

@@ -52,6 +52,7 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 - New money-in type "Paid myself" for money moved from your business to your own account: it adds to your daily budget and counts against side income. Once you've marked a payer, Kitty remembers it, even when the alert pairs up as a move between accounts
 - "Paid from side income" is gone (older entries keep it and can turn it off). Insights shows what you've paid yourself and what's still yours to take after tax
 - Business income is always flagged as business, including older entries
+- Insights says when the business has spent more than it made, instead of saying you paid yourself too much. Interest figures on Plan are rounded to the pound
 
 **App 0.7.2, 2 Nov 2026: never reads chats or email**
 - Kitty can no longer read chat, text, email or social apps, or marketplaces and app stores, even if they were turned on. Anything it kept from them is deleted when the app opens

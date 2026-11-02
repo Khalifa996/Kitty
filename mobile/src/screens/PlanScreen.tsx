@@ -190,10 +190,11 @@ export function PlanScreen({ onDone, openMore }: { onDone: (msg: string, undo?: 
                 <Label>Debt repayments</Label>
                 {debts.map((b) => {
                   const f = debtFree(S, b, today);
+                  const about = (n: number) => moneyS(Math.round(n / 100) * 100, cur);
                   const line = f === null ? 'Add the balance for a payoff date'
                     : f.left === 0 ? 'Paid off'
-                    : f.never ? `${moneyS(f.left, cur)} left. ${moneyS(b.amt, cur)} a month doesn't cover the interest (about ${moneyS(f.monthlyInterest, cur)}), so it won't go down`
-                    : b.rate ? `${moneyS(f.left, cur)} left at ${b.rate}% · clear by ${monthLabel(f.by as string)} · about ${moneyS(f.interest, cur)} interest`
+                    : f.never ? `${moneyS(f.left, cur)} left. ${moneyS(b.amt, cur)} a month doesn't cover the interest (about ${about(f.monthlyInterest)}), so it won't go down`
+                    : b.rate ? `${moneyS(f.left, cur)} left at ${b.rate}% · clear by ${monthLabel(f.by as string)} · about ${about(f.interest)} interest`
                     : `${moneyS(f.left, cur)} left · clear by ${monthLabel(f.by as string)} before interest`;
                   return (
                     <Pressable key={b.id} style={s.row} onPress={() => editBill(b)} accessibilityRole="button">
@@ -207,7 +208,7 @@ export function PlanScreen({ onDone, openMore }: { onDone: (msg: string, undo?: 
                   );
                 })}
                 {tip && <Text style={[s.hint, { color: C.fg }]}>{tip.kind === 'move'
-                  ? `When ${tip.from.name} is paid off in ${monthLabel(tip.fromBy)}, putting its ${moneyS(tip.extra, cur)} a month into ${tip.to.name} would clear it by ${monthLabel(tip.by)}${tip.saved ? ` and save about ${moneyS(tip.saved, cur)} in interest` : ''}.`
+                  ? `When ${tip.from.name} is paid off in ${monthLabel(tip.fromBy)}, putting its ${moneyS(tip.extra, cur)} a month into ${tip.to.name} would clear it by ${monthLabel(tip.by)}${tip.saved ? ` and save about ${moneyS(Math.round(tip.saved / 100) * 100, cur)} in interest` : ''}.`
                   : `${moneyS(tip.pay, cur)} a month would clear ${tip.to.name} in ${tip.years} years.`}</Text>}
                 {debts.some((b) => b.balance && !b.rate) && <Text style={s.meta}>Dates without a rate leave out interest. Tap a debt to add its rate: your lender's app or statement shows it.</Text>}
               </Card>
