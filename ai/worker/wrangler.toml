@@ -1,4 +1,4 @@
-# Kitty's AI service: sorts bank alerts the phone couldn't, using Claude. Deployed by .github/workflows/ai-worker.yml
+# Kitty's AI service: sorts bank alerts the phone couldn't, using Claude. Deployed by .github/workflows/ai-worker.yml on every change here.
 name = "kitty-ai"
 main = "src/index.js"
 compatibility_date = "2026-10-01"
