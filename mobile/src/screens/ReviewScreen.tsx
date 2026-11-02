@@ -291,14 +291,9 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
             <View style={s.row}>
               {i.sug.action === 'pay-bill'
                 ? <View style={s.tag}><Icon name="receipt" size={15} colour={C.bill} /><Text style={s.tagT}>{label}</Text></View>
-                : newBill ? null
-                : <Chip label={guessed ? `${label}?` : label} colour={c?.c || C.muted} icon={c?.i} onPress={() => setPicking(i)} />}
+                : <Chip label={guessed && !newBill ? `${label}?` : label} colour={c?.c || C.muted} icon={c?.i} onPress={() => setPicking(i)} />}
               <View style={{ flex: 1 }} />
-              {newBill && !i.dup ? <>
-                <Btn label="Skip" small onPress={() => skip(i)} />
-                <Btn label="One-off" small onPress={() => add([i])} />
-                <Btn label="Make it a bill" small primary onPress={() => setMaking({ i, name: t.merchant || '', type: i.p.reason === 'Repayment' ? 'debt' : 'bill' })} />
-              </> : isCash ? <>
+              {newBill && !i.dup ? null : isCash ? <>
                 <Btn label="Cash to spend" small onPress={() => cashToSpend(i)} />
                 <Btn label="Add" small primary onPress={() => add([i])} />
               </> : i.dup ? <>
@@ -309,6 +304,13 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
                 <Btn label={i.sug.action === 'pay-bill' ? (i.sug.replaces ? 'Update' : 'Mark paid') : 'Add'} small primary onPress={() => add([i])} />
               </>}
             </View>
+            {newBill && !i.dup && (
+              <View style={[s.row, { justifyContent: 'flex-end' }]}>
+                <Btn label="Skip" small onPress={() => skip(i)} />
+                <Btn label="One-off" small onPress={() => add([i])} />
+                <Btn label="Make it a bill" small primary onPress={() => setMaking({ i, name: t.merchant || '', type: i.p.reason === 'Repayment' ? 'debt' : 'bill' })} />
+              </View>
+            )}
           </Card>
         );
       })}

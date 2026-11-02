@@ -1,7 +1,7 @@
 // Looking back: how a single day went, and a pay month at a glance.
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { cycleOf, cycleSummary, dayInfo, sideSummary, taxYearStart } from '../engine/budget';
+import { cycleOf, cycleSummary, dayInfo, isSpread, sideSummary, taxYearStart } from '../engine/budget';
 import { catName, categories, inName, inTypes } from '../engine/cats';
 import { diffDays, nextDay, parse, prevDay } from '../engine/dates';
 import type { Tx } from '../engine/types';
@@ -52,6 +52,7 @@ export function InsightsScreen() {
   const dayIn = dayTx.filter((t) => t.kind === 'in' && t.cat !== 'transfer').reduce((a, t) => a + t.amt, 0);
   const dayMoved = dayTx.filter((t) => t.kind === 'in' && t.cat === 'transfer').reduce((a, t) => a + t.amt, 0);
   const billTx = dayTx.filter((t) => t.kind === 'out' && t.billId), dayBills = billTx.reduce((a, t) => a + t.amt, 0);
+  const spreadTx = dayTx.filter(isSpread);
   const fold = billTx.length > 1, listTx = fold ? dayTx.filter((t) => !(t.kind === 'out' && t.billId)) : dayTx;
   const diff = di.allowance - di.todaySpent, isToday = day === today;
 
@@ -96,6 +97,9 @@ export function InsightsScreen() {
             <Label>{isToday ? 'So far today' : 'How it went'}</Label>
             <Text style={[s.big, { color: diff >= 0 ? C.good : C.bad }]}>{moneyS(Math.abs(diff), cur)} {diff >= 0 ? (isToday ? 'left' : 'under') : 'over'}</Text>
             <Text style={s.hint}>Spent {money(di.todaySpent, cur)} of {money(Math.max(0, di.allowance), cur)} budget for the day.{!isToday && di.tomorrow !== null ? ` Next day's budget became ${money(Math.max(0, di.tomorrow), cur)}.` : ''}</Text>
+            {spreadTx.map((t) => (
+              <Text key={t.id} style={s.hint}>{t.merchant || catName(S.settings, t.cat)} ({money(t.amt, cur)}) is spread over the {di.daysLeft} {di.daysLeft === 1 ? 'day' : 'days'} left in the pay month, about {money(Math.round(t.amt / di.daysLeft), cur)} a day.</Text>
+            ))}
             {(dayIn > 0 || dayBills > 0 || dayMoved > 0) && <Text style={s.hint}>{[dayIn ? `${money(dayIn, cur)} came in` : '', dayMoved ? `${money(dayMoved, cur)} moved between your accounts` : '', dayBills ? `${money(dayBills, cur)} of bills went out` : ''].filter(Boolean).join(' · ')}</Text>}
           </Card>
           {dayTx.length === 0 ? <Text style={s.hint}>Nothing logged on this day.</Text> : (

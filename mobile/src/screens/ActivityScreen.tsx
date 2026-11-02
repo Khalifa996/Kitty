@@ -20,9 +20,9 @@ const dayLabel = (d: string) => {
 export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => void) => void }) {
   const { S, update } = useKitty();
   const [open, setOpen] = useState<Tx | null>(null);
-  const [form, setForm] = useState({ name: '', amt: '', cat: '', all: true, side: false, pot: '' });
+  const [form, setForm] = useState({ name: '', amt: '', cat: '', all: true, side: false, pot: '', spread: false, debt: '' });
   const cur = S.settings.currency;
-  const openTx = (t: Tx) => { setOpen(t); setForm({ name: t.merchant, amt: (t.amt / 100).toFixed(2), cat: t.cat, all: true, side: !!t.fromSide, pot: t.potId || '' }); };
+  const openTx = (t: Tx) => { setOpen(t); setForm({ name: t.merchant, amt: (t.amt / 100).toFixed(2), cat: t.cat, all: true, side: !!t.fromSide, pot: t.potId || '', spread: !!t.spread, debt: t.debtId || '' }); };
 
   const sections = useMemo(() => {
     const list = [...S.tx].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).slice(0, 400);
@@ -47,7 +47,7 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
       : bill ? (t.auto ? 'Direct Debit' : { bill: 'Bill', sub: 'Subscription', debt: 'Debt repayment' }[bill.type])
       : t.kind === 'in' ? inName(t.cat)
       : (t.sub || (t.merchant ? catName(S.settings, t.cat) : ''));
-    return [first, t.time, t.fromSide ? 'Side income' : '', t.bank, t.note].filter(Boolean).join(' · ');
+    return [first, t.time, t.fromSide ? 'Side income' : '', t.spread ? 'Spread' : '', t.bank, t.note].filter(Boolean).join(' · ');
   };
 
   const del = (t: Tx) => {
@@ -82,6 +82,8 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
       if (t.kind === 'out' && !t.billId && !t.biz) { if (form.side) t.fromSide = true; else delete t.fromSide; }
       if (t.kind === 'out' && !t.billId && !t.potIn) { if (form.pot) t.potId = form.pot; else delete t.potId; }
       if (!t.billId && form.cat) { t.cat = form.cat; t.biz = t.kind === 'in' ? form.cat === 'side' : t.biz; }
+      if (t.kind === 'out' && !t.billId) { if (form.spread && !form.pot && t.cat !== 'bills') t.spread = true; else delete t.spread; }
+      if (t.kind === 'in') { if (t.cat === 'borrowed' && form.debt) t.debtId = form.debt; else delete t.debtId; }
     });
     setOpen(null);
     onDone(others.length ? `Saved, and ${others.length} more from ${was.merchant}` : 'Saved', () => update((d) => {
@@ -137,6 +139,17 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
             <Chip label="Daily budget" on={!form.pot} onPress={() => setForm({ ...form, pot: '' })} />
             {S.pots.filter((p) => !p.closed).map((p) => <Chip key={p.id} label={`Pot: ${p.name}`} icon="piggy" colour={C.pot} on={form.pot === p.id} onPress={() => setForm({ ...form, pot: p.id })} />)}
           </View>
+        </>}
+        {open && open.kind === 'out' && !open.billId && !open.potIn && !form.pot && (form.cat === 'bills'
+          ? <Text style={s.hint}>One-off bills come off every day left in this pay month, not all on one day.</Text>
+          : <Chip label="Spread it over the rest of the pay month" on={form.spread} onPress={() => setForm({ ...form, spread: !form.spread })} />)}
+        {open && open.kind === 'in' && form.cat === 'borrowed' && S.bills.some((b) => b.type === 'debt') && <>
+          <Label>Added to which debt?</Label>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            <Chip label="None" on={!form.debt} onPress={() => setForm({ ...form, debt: '' })} />
+            {S.bills.filter((b) => b.type === 'debt').map((b) => <Chip key={b.id} label={b.name} icon="credit" colour={C.warn} on={form.debt === b.id} onPress={() => setForm({ ...form, debt: b.id })} />)}
+          </View>
+          <Text style={s.hint}>Its balance goes up by this amount, so the payoff date stays honest.</Text>
         </>}
         {open && open.fromSide && open.kind === 'out' && !open.billId && !open.biz && (
           <Chip label="Paid from side income (old setting)" on={form.side} onPress={() => setForm({ ...form, side: !form.side })} />

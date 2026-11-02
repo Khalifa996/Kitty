@@ -90,9 +90,14 @@ export const planDays = (S: State, c: Cycle) => { const o = openingFor(S, c); re
 // ---------- Today's number ----------
 export type SafeInfo = { c: Cycle; P: number; daysLeft: number; dayN: number; allowance: number; todaySpent: number; safe: number; left: number; tomorrow: number | null };
 
+/** A one-off bill, or a spend the person chose to spread: it comes off every day left in the pay month, not just the day it happened. */
+export const isSpread = (t: Tx) => t.kind === 'out' && !t.billId && (!!t.spread || t.cat === 'bills');
+
 export function safeInfo(S: State, today: string): SafeInfo {
   const c = cycleOf(today, S.settings), L = txIn(S, c), P = pot(S, c);
-  const before = flexNet(L.filter((x) => x.date < today)), todaySpent = flexNet(L.filter((x) => x.date === today));
+  // Spread entries from today count as if they came off at the start of the day, so today's allowance already allows for them
+  const before = flexNet(L.filter((x) => x.date < today || (x.date === today && isSpread(x))));
+  const todaySpent = flexNet(L.filter((x) => x.date === today && !isSpread(x)));
   const daysLeft = diffDays(today, c.end) + 1;
   const allowance = Math.round((P - before) / daysLeft);
   const left = P - before - todaySpent;

@@ -67,6 +67,7 @@ export type Tx = {
   source?: string; // e.g. 'alert' when captured from a bank notification
   bank?: string;   // which bank's alert it came from
   fromSide?: boolean; // personal spending paid from side income: off the daily budget, not a business cost
+  spread?: boolean;   // a big one-off spread over the rest of the pay month instead of landing on one day (one-off bills always are)
 };
 
 export type Pot = { id: string; name: string; perPay: number; target: number; opening: number; start: string; end?: string; closed?: string };

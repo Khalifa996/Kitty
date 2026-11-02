@@ -10,7 +10,9 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | P1 | 2 Nov | Monzo personal and Monzo Business alerts come from the same app. Until Kitty can tell them apart, money moved from the business to the personal account may show as a spend as well as "Paid myself". Needs real (anonymised) alerts from both |
 | P2 | 2 Nov | Ask "What's your business called?" when side income is switched on, so the first payment from it is spotted as "Paid myself" without the person marking it |
 | P2 | 2 Nov | Some banks only send text messages. Reading texts is blocked (private), so offer a sender-only option later: read texts from named bank senders and nothing else |
-| P1 | 2 Nov | A big one-off (e.g. a £400 cash withdrawal) goes straight into the daily budget and cuts every day after it. Anything over a few days' budget should ask: day to day, side income, a pot, or spread it |
+| P2 | 2 Nov | Big one-offs: one-off bills are spread now, and Activity can spread any spend. Still to do: offer "Spread it" on the keypad and in Review when an amount is several days' budget |
+| P2 | 2 Nov | Business costs paid from a personal account (fuel card, tools): they should still count against the daily budget, but also as a business cost for tax. There's no switch for spending yet |
+| P2 | 2 Nov | The web prototype doesn't know about spread entries or interest on debts yet |
 | P2 | 2 Nov | Day view: "£X over" gives no reason. Name the biggest entry and what it does to the days left |
 | P2 | 2 Nov | Entries named "Payment sent", "Money in" or just the category mean nothing later. Use the payee in the alert, or ask once in Review |
 | P2 | 2 Nov | Cash withdrawals are named after the machine ("Ec East Ham GBP"). Call them "Cash · <place>" |
@@ -47,6 +49,11 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | P3 | Light theme |
 
 ## Changelog
+**App 0.8.2, 2 Nov 2026: big one-offs**
+- One-off bills (a surprise fee, a fine) come off every day left in the pay month instead of putting one day hundreds of pounds in the red. Activity can spread any big spend the same way. The Day view says what it did to each day
+- Money in marked Borrowed can be linked to a debt in Activity, so the debt's balance goes up by itself
+- An unknown Direct Debit keeps its category button, so a fuel card can go in as Transport
+
 **App 0.8.1, 2 Nov 2026: Direct Debits without a name**
 - Barclays doesn't say who a Direct Debit is paid to. Kitty now matches one to a bill due in the last five days with a close amount (a Sunday bill taken on Monday, an energy bill a little under the usual), and offers to update what it ticked off
 - A Direct Debit that matches nothing gets "Make it a bill": name it once and it goes into Plan, paid, and is expected every month. "One-off" and "Skip" are still there. These stay out of Add all and aren't sent to Smart sorting

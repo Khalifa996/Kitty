@@ -183,3 +183,21 @@ it('adds money you pay yourself from your business to the budget, and counts it 
   const side = sideSummary(S, '2026-10-27', '2026-11-26');
   expect(side).toMatchObject({ income: 50000, drawn: 20000, tax: 10000, left: 20000 });
 });
+
+it('spreads a one-off bill over the rest of the pay month instead of putting today deep in the red', () => {
+  const S = blankState();
+  S.settings.payday = 27; S.settings.income = 300000; S.settings.savings = 0; S.settings.setupDone = true;
+  const tx = (o: Partial<Tx>): Tx => ({ id: Math.random().toString(36).slice(2), kind: 'out', amt: 0, cat: 'food', merchant: '', note: '', date: '2026-11-02', time: '10:00', biz: false, billId: null, ...o });
+  S.tx.push(tx({ kind: 'in', cat: 'salary', amt: 300000, date: '2026-10-27' }));
+  const plain = safeInfo(S, '2026-11-02');
+  S.tx.push(tx({ cat: 'bills', amt: 50000, merchant: 'Surprise charge' }));
+  const after = safeInfo(S, '2026-11-02');
+  expect(after.todaySpent).toBe(0);
+  expect(after.safe).toBe(Math.round((plain.left - 50000) / plain.daysLeft));
+  expect(after.safe).toBeGreaterThan(0);
+  // A big spend the person chose to spread works the same way; an ordinary one lands on today
+  S.tx.push(tx({ cat: 'shopping', amt: 20000, spread: true }), tx({ cat: 'food', amt: 900 }));
+  const both = safeInfo(S, '2026-11-02');
+  expect(both.todaySpent).toBe(900);
+  expect(both.allowance).toBe(Math.round((plain.left - 70000) / plain.daysLeft));
+});
