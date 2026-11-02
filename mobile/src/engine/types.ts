@@ -40,6 +40,7 @@ export type Bill = {
   ddFrom?: string;
   balance?: number | null;
   balanceAt?: string | null;
+  rate?: number | null;     // debts: interest, % a year, as the lender quotes it (UK APR and EAR both include compounding)
 };
 
 export type Tx = {

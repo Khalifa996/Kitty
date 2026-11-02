@@ -7,13 +7,13 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 ## Snags
 | Pri | Found | Snag |
 |---|---|---|
+| P1 | 2 Nov | Monzo personal and Monzo Business alerts come from the same app. Until Kitty can tell them apart, money moved from the business to the personal account may show as a spend as well as "Paid myself". Needs real (anonymised) alerts from both |
+| P2 | 2 Nov | Ask "What's your business called?" when side income is switched on, so the first payment from it is spotted as "Paid myself" without the person marking it |
 | P2 | 2 Nov | Some banks only send text messages. Reading texts is blocked (private), so offer a sender-only option later: read texts from named bank senders and nothing else |
-| P1 | 2 Nov | Overdrafts and debts where the payment is mostly interest: payoff dates are wrong. Ask for the rate, and say plainly when a payment doesn't cover the interest |
 | P1 | 2 Nov | A big one-off (e.g. a £400 cash withdrawal) goes straight into the daily budget and cuts every day after it. Anything over a few days' budget should ask: day to day, side income, a pot, or spread it |
 | P2 | 2 Nov | Day view: "£X over" gives no reason. Name the biggest entry and what it does to the days left. Fold the day's Direct Debits into one line, they don't touch the daily budget |
 | P2 | 2 Nov | Entries named "Payment sent", "Money in" or just the category mean nothing later. Use the payee in the alert, or ask once in Review |
 | P2 | 2 Nov | Cash withdrawals are named after the machine ("Ec East Ham GBP"). Call them "Cash · <place>" |
-| P2 | 2 Nov | "Paid from side income" can add up to more than the side income that came in. Show what's left, warn when it runs out |
 | P2 | 2 Nov | Plan: paid bills make a long list (fold into one line), and each row shows the due date in the box and the paid date underneath |
 | P1 | 29 Oct | App: balance check-ins, Settings (change pay, categories, side income switch) still only in the web app |
 | P2 | 1 Nov | Intelligence: on-device AI (Gemini Nano via ML Kit Prompt API, beta, newer flagships only) to read unclear alerts and name shops; falls back to rules and learning on other phones |
@@ -29,7 +29,6 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | P3 | 27 Oct | Closed pots disappear completely. Add a "closed pots" list |
 | P2 | 27 Oct | "Last working day" pay ignores bank holidays (UK employers usually pay the day before) |
 | P2 | 27 Oct | With non-monthly pay, bills track by calendar month. A bill paid early on the 30th counts for the wrong month |
-| P2 | 27 Oct | Debt payoff dates ignore interest. Add an optional interest rate |
 | P2 | 27 Oct | Turning side income off leaves old business items excluded from the budget with no way to see them |
 | P3 | 27 Oct | Date input shows the phone's own format (fine on UK phones, US format elsewhere) |
 | P3 | 27 Oct | Debt and business suggestions only recognise UK lender and insurer names |
@@ -48,6 +47,12 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | P3 | Light theme |
 
 ## Changelog
+**App 0.8, 2 Nov 2026: debts with interest, paying yourself**
+- Debts can have an interest rate. Plan then gives the real payoff date and the interest it costs, says plainly when a payment doesn't cover the interest, and shows what moving a payment from a debt that's about to finish would do
+- New money-in type "Paid myself" for money moved from your business to your own account: it adds to your daily budget and counts against side income. Once you've marked a payer, Kitty remembers it, even when the alert pairs up as a move between accounts
+- "Paid from side income" is gone (older entries keep it and can turn it off). Insights shows what you've paid yourself and what's still yours to take after tax
+- Business income is always flagged as business, including older entries
+
 **App 0.7.2, 2 Nov 2026: never reads chats or email**
 - Kitty can no longer read chat, text, email or social apps, or marketplaces and app stores, even if they were turned on. Anything it kept from them is deleted when the app opens
 - The alert log keeps bank alerts only, so "Copy alerts for Claude" isn't crowded out by chats

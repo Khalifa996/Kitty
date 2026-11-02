@@ -61,6 +61,7 @@ await session('sample', true, [
   ['8-insights-day', tab('Insights')],
   ['9-insights-month', (p) => p.getByText('Pay month', { exact: true }).click()],
   ['7-plan', tab('Plan')],
+  ['7a-plan-debts', (p) => p.getByText('Debt repayments', { exact: true }).scrollIntoViewIfNeeded()],
   ['7b-pots', (p) => p.getByText('Pots', { exact: true }).click()],
   ['7c-more', (p) => p.getByLabel('Settings and backups').click()],
   ['1b-log-date', async (p) => { await tab('Log')(p); await p.getByLabel(/^Date:/).click(); }],

@@ -196,3 +196,17 @@ it('stops asking about alerts the person keeps skipping', () => {
   S.settings.learned = { skip: { Revolut: 2 }, keep: { Revolut: 1 } };
   expect(suggest(S, p, 'n28').action).toBe('ask');
 });
+
+it('counts money from your own business as paying yourself, once Kitty has seen you mark it', () => {
+  const S = withHistory();
+  S.settings.sideIncome = true;
+  S.tx.push({ id: 'd', kind: 'in', amt: 10000, cat: 'draw', merchant: 'Acme Repairs', note: '', date: '2026-10-20', time: '10:00', biz: false, billId: null });
+  // Paired with the business account's "sent" alert, it would normally be skipped as a move between accounts
+  const moved = suggest(S, alert({ kind: 'transfer', amount: 25000, merchant: 'Acme Repairs', reason: 'Moved from your Monzo' }), 'n40');
+  expect(moved).toMatchObject({ action: 'add', guessed: false, tx: { kind: 'in', cat: 'draw', amt: 25000, biz: false } });
+  const plain = suggest(S, alert({ kind: 'received', amount: 5000, merchant: 'Acme Repairs' }), 'n41');
+  expect(plain).toMatchObject({ action: 'add', tx: { cat: 'draw' } });
+  // The sending half stays a move, and other transfers are still skipped
+  expect(suggest(S, alert({ kind: 'transfer', sent: true, amount: 25000, merchant: 'Acme Repairs' }), 'n42').action).toBe('skip');
+  expect(suggest(S, alert({ kind: 'transfer', amount: 18000, merchant: 'Savings' }), 'n43').action).toBe('skip');
+});

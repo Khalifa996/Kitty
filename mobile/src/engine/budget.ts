@@ -51,7 +51,7 @@ export function billDue(bill: Pick<Bill, 'day'>, c: Cycle): string {
 
 // ---------- What counts ----------
 const IN_FX: Record<string, 'pay' | 'add' | 'refund' | 'none' | 'biz'> = {
-  salary: 'pay', extra: 'add', borrowed: 'add', savings: 'add', refund: 'refund', expenses: 'add', gift: 'add', transfer: 'none', side: 'biz',
+  salary: 'pay', extra: 'add', borrowed: 'add', savings: 'add', refund: 'refund', expenses: 'add', gift: 'add', transfer: 'none', side: 'biz', draw: 'add',
 };
 export const inEffect = (cat: string) => IN_FX[cat] || 'none';
 export const addsIn = (t: Tx) => t.kind === 'in' && !t.biz && inEffect(t.cat) === 'add';
@@ -213,12 +213,13 @@ export function taxYearStart(today: string, currency = 'GBP'): string {
 
 export type SideSummary = { income: number; costs: number; profit: number; tax: number; rate: number; drawn: number; left: number };
 
-/** Side income between two dates: what came in, business costs, tax to keep back, what you paid out of it for yourself. */
+/** Side income between two dates: what came in, business costs, tax to keep back, and what you paid yourself from it
+ *  (money moved from the business to your own accounts, plus older entries marked "paid from side income"). */
 export function sideSummary(S: State, from: string, to: string): SideSummary {
   const L = S.tx.filter((t) => t.date >= from && t.date <= to);
   const income = sum(L.filter((t) => t.kind === 'in' && t.biz), (t) => t.amt);
   const costs = sum(L.filter((t) => t.kind === 'out' && t.biz), (t) => t.amt);
-  const drawn = sum(L.filter((t) => t.kind === 'out' && t.fromSide && !t.biz), (t) => t.amt);
+  const drawn = sum(L.filter((t) => (t.kind === 'in' && t.cat === 'draw') || (t.kind === 'out' && t.fromSide && !t.biz)), (t) => t.amt);
   const rate = S.settings.sideTaxRate ?? 20, profit = income - costs, tax = Math.max(0, Math.round((profit * rate) / 100));
   return { income, costs, profit, tax, rate, drawn, left: profit - tax - drawn };
 }

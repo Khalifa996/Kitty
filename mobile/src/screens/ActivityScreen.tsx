@@ -74,7 +74,7 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
     const was = open, others = form.all ? same : [];
     const before = new Map(others.map((x) => [x.id, x.cat]));
     update((d) => {
-      for (const x of d.tx) if (before.has(x.id)) x.cat = form.cat;
+      for (const x of d.tx) if (before.has(x.id)) { x.cat = form.cat; if (x.kind === 'in') x.biz = form.cat === 'side'; }
       const t = d.tx.find((x) => x.id === was.id);
       if (!t) return;
       t.merchant = form.name.trim();
@@ -85,7 +85,7 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
     });
     setOpen(null);
     onDone(others.length ? `Saved, and ${others.length} more from ${was.merchant}` : 'Saved', () => update((d) => {
-      d.tx = d.tx.map((x) => (x.id === was.id ? was : before.has(x.id) ? { ...x, cat: before.get(x.id) as string } : x));
+      d.tx = d.tx.map((x) => (x.id === was.id ? was : before.has(x.id) ? { ...x, cat: before.get(x.id) as string, biz: x.kind === 'in' ? before.get(x.id) === 'side' : x.biz } : x));
     }));
   };
   const pickList = open && !open.billId && !open.checkin ? (open.kind === 'in' ? inTypes(S.settings) : categories(S.settings)) : [];
@@ -138,8 +138,8 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
             {S.pots.filter((p) => !p.closed).map((p) => <Chip key={p.id} label={`Pot: ${p.name}`} icon="piggy" colour={C.pot} on={form.pot === p.id} onPress={() => setForm({ ...form, pot: p.id })} />)}
           </View>
         </>}
-        {open && S.settings.sideIncome && open.kind === 'out' && !open.billId && !open.biz && (
-          <Chip label="Paid from side income" on={form.side} onPress={() => setForm({ ...form, side: !form.side })} />
+        {open && open.fromSide && open.kind === 'out' && !open.billId && !open.biz && (
+          <Chip label="Paid from side income (old setting)" on={form.side} onPress={() => setForm({ ...form, side: !form.side })} />
         )}
         {same.length > 0 && (
           <Chip label={`Also change ${same.length} other ${open?.merchant} ${same.length === 1 ? 'entry' : 'entries'}`} on={form.all} onPress={() => setForm({ ...form, all: !form.all })} />

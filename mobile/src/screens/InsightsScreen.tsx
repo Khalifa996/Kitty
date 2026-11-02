@@ -133,7 +133,7 @@ export function InsightsScreen() {
           {sideOn && (
             <Card style={{ gap: 10 }}>
               <Label>Side income</Label>
-              <Text style={s.hint}>This pay month: {money(sideMonth.income, cur)} in, {money(sideMonth.costs, cur)} business costs, {money(sideMonth.drawn, cur)} paid out for you or family.</Text>
+              <Text style={s.hint}>This pay month: {money(sideMonth.income, cur)} in, {money(sideMonth.costs, cur)} business costs, {money(sideMonth.drawn, cur)} paid to yourself.</Text>
               <View style={s.grid}>
                 <View style={s.cell}><Label>Profit this tax year</Label><Text style={s.mid}>{moneyS(sideYear.profit, cur)}</Text>
                   <Text style={s.meta}>Since {short(ty)}</Text></View>
@@ -142,8 +142,8 @@ export function InsightsScreen() {
               </View>
               <Text style={[s.hint, sideYear.left < 0 && { color: C.bad }]}>
                 {sideYear.left >= 0
-                  ? `After tax and ${money(sideYear.drawn, cur)} paid out, ${money(sideYear.left, cur)} of side income is still free.`
-                  : `You've paid out ${money(-sideYear.left, cur)} more than your side income after tax. The tax bill would come from your pay.`}
+                  ? `After tax and ${money(sideYear.drawn, cur)} paid to yourself, ${money(sideYear.left, cur)} is still yours to take from the business.`
+                  : `You've paid yourself ${money(-sideYear.left, cur)} more than the business made after tax. The tax bill would come from your pay.`}
               </Text>
               <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
                 {[20, 26, 40].map((r) => <Chip key={r} label={`${r}%`} on={sideYear.rate === r} onPress={() => update((d) => { d.settings.sideTaxRate = r; })} />)}

@@ -23,5 +23,7 @@ export function migrate(input: unknown): State {
   S.settings.limits = S.settings.limits || { ...DEFAULT_LIMITS };
   S.settings.dismissed = S.settings.dismissed || {};
   S.bills.forEach((b) => { if (!b.type) b.type = 'bill'; });
+  // Business income is always a business item, even if an older version left the flag off
+  S.tx.forEach((t) => { if (t.kind === 'in' && t.cat === 'side') t.biz = true; });
   return S;
 }

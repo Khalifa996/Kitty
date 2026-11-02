@@ -41,6 +41,7 @@ export const IN_TYPES: (Cat & { long: string })[] = [
   { id: 'gift', n: 'Gift', long: 'Gift', c: '#3DD68C', i: 'gift' },
   { id: 'transfer', n: 'Transfer', long: 'Between my accounts', c: '#8D95A1', i: 'swap' },
   { id: 'side', n: 'Business', long: 'Business income', c: '#F2C14E', i: 'briefcase' },
+  { id: 'draw', n: 'Paid myself', long: 'Paid myself from my business', c: '#3DD68C', i: 'wallet' },
 ];
-export const inTypes = (st: Settings) => IN_TYPES.filter((t) => t.id !== 'side' || st.sideIncome);
+export const inTypes = (st: Settings) => IN_TYPES.filter((t) => (t.id !== 'side' && t.id !== 'draw') || st.sideIncome);
 export const inName = (id: string) => IN_TYPES.find((t) => t.id === id)?.long || 'Money in';

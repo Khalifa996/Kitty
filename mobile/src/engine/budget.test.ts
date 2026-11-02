@@ -1,5 +1,6 @@
 /// <reference types="jest" />
 import { billDue, checkinGap, cycleOf, cycleSummary, dayInfo, sideSummary, taxYearStart, dueDirectDebits, pot, potBalance, safeInfo } from './budget';
+import { blankState } from './migrate';
 import type { Bill, Settings, State, Tx } from './types';
 
 const settings = (o: Partial<Settings> = {}): Settings => ({
@@ -169,4 +170,16 @@ describe('side income', () => {
     expect(taxYearStart('2026-11-01')).toBe('2026-04-06');
     expect(taxYearStart('2026-11-01', 'EUR')).toBe('2026-01-01');
   });
+});
+
+it('adds money you pay yourself from your business to the budget, and counts it against side income', () => {
+  const S = blankState();
+  S.settings.payday = 27; S.settings.income = 300000; S.settings.sideIncome = true; S.settings.setupDone = true;
+  const tx = (o: Partial<Tx>): Tx => ({ id: Math.random().toString(36).slice(2), kind: 'in', amt: 0, cat: 'extra', merchant: '', note: '', date: '2026-11-02', time: '10:00', biz: false, billId: null, ...o });
+  S.tx.push(tx({ cat: 'salary', amt: 300000, date: '2026-10-27' }), tx({ cat: 'side', amt: 50000, biz: true, date: '2026-10-28' }));
+  const before = pot(S, cycleOf('2026-11-02', S.settings));
+  S.tx.push(tx({ cat: 'draw', amt: 20000 }));
+  expect(pot(S, cycleOf('2026-11-02', S.settings)) - before).toBe(20000);
+  const side = sideSummary(S, '2026-10-27', '2026-11-26');
+  expect(side).toMatchObject({ income: 50000, drawn: 20000, tax: 10000, left: 20000 });
 });

@@ -409,10 +409,11 @@ const IN_CATS = {
   expenses:{n:'Expenses',i:'briefcase',c:'#3DD68C',fx:'add'},
   gift:{n:'Gift',i:'gift',c:'#3DD68C',fx:'add'},
   transfer:{n:'Transfer',i:'swap',c:'#8D95A1',fx:'none'},
-  side:{n:'Business',i:'briefcase',c:'#F2C14E',fx:'biz'}
+  side:{n:'Business',i:'briefcase',c:'#F2C14E',fx:'biz'},
+  draw:{n:'Paid myself',i:'wallet',c:'#3DD68C',fx:'add'}
 };
-const IN_LONG = {salary:'Pay', extra:'Extra income', borrowed:'Borrowed', savings:'From savings', refund:'Refund', expenses:'Expenses paid back', gift:'Gift', transfer:'Between my accounts', side:'Business income'};
-const inKeys = () => Object.keys(IN_CATS).filter(k => k!=='side' || bizOn());
+const IN_LONG = {salary:'Pay', extra:'Extra income', borrowed:'Borrowed', savings:'From savings', refund:'Refund', expenses:'Expenses paid back', gift:'Gift', transfer:'Between my accounts', side:'Business income', draw:'Paid myself from my business'};
+const inKeys = () => Object.keys(IN_CATS).filter(k => (k!=='side' && k!=='draw') || bizOn());
 const addsIn = t => t.kind==='in' && !t.biz && (IN_CATS[t.cat]||{}).fx==='add';
 const DEFAULT_SETTINGS = {currency:'GBP', payFreq:'monthly', payday:28, payAnchor:null, income:0, savings:0, sideIncome:false, setupDone:false, dismissed:{}, checkEvery:3};
 const DEFAULT_LIMITS = {food:14000,groceries:26000,transport:22000,shopping:15000,fun:8000,health:4000,home:8000,personal:6000,bills:3000,other:5000};

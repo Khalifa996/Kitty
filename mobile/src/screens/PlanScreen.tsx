@@ -1,7 +1,7 @@
 // Looking ahead: bills for this period, and pots for things you're saving towards.
 import { useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { billItems, debtFree, payTx, type BillItem } from '../engine/bills';
+import { billItems, debtFree, debtTip, payTx, type BillItem } from '../engine/bills';
 import { cycleOf, fixedFor, isMonthly, potBalance, safeInfo } from '../engine/budget';
 import { diffDays, hm, nextDay, parse } from '../engine/dates';
 import type { Bill, Pot, Tx } from '../engine/types';
@@ -17,7 +17,7 @@ const dfmt = (d: string) => parse(d).toLocaleDateString('en-GB', { day: 'numeric
 const monthLabel = (d: string) => parse(d).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 const TYPES: { id: Bill['type']; n: string; i: string }[] = [{ id: 'bill', n: 'Bill', i: 'receipt' }, { id: 'sub', n: 'Subscription', i: 'calendar' }, { id: 'debt', n: 'Debt repayment', i: 'credit' }];
 
-type BillForm = { id: string | null; name: string; amt: string; day: number; type: Bill['type']; dd: boolean; balance: string; biz: boolean };
+type BillForm = { id: string | null; name: string; amt: string; day: number; type: Bill['type']; dd: boolean; balance: string; rate: string; biz: boolean };
 type PotForm = { id: string | null; name: string; perPay: string; target: string; balance: string; fromNext: boolean };
 
 export function PlanScreen({ onDone, openMore }: { onDone: (msg: string, undo?: () => void) => void; openMore: () => void }) {
@@ -32,6 +32,7 @@ export function PlanScreen({ onDone, openMore }: { onDone: (msg: string, undo?: 
   const { w, items, total, paidTotal } = billItems(S, today);
   const dueNow = items.filter((i) => !i.paid && i.due <= today), later = items.filter((i) => !i.paid && i.due > today), done = items.filter((i) => i.paid);
   const debts = S.bills.filter((b) => b.type === 'debt'), subs = S.bills.filter((b) => b.type === 'sub');
+  const tip = debtTip(S, today);
   const subsM = subs.reduce((a, b) => a + b.amt, 0), monthly = isMonthly(S.settings), c = cycleOf(today, S.settings);
 
   const pay = (list: Bill[]) => {
@@ -55,8 +56,8 @@ export function PlanScreen({ onDone, openMore }: { onDone: (msg: string, undo?: 
     }));
   };
   const editBill = (b?: Bill) => setBf(b
-    ? { id: b.id, name: b.name, amt: pounds(b.amt), day: b.day, type: b.type, dd: !!b.dd, balance: pounds(b.balance), biz: !!b.biz }
-    : { id: null, name: '', amt: '', day: 1, type: 'bill', dd: true, balance: '', biz: false });
+    ? { id: b.id, name: b.name, amt: pounds(b.amt), day: b.day, type: b.type, dd: !!b.dd, balance: pounds(b.balance), rate: b.rate ? String(b.rate) : '', biz: !!b.biz }
+    : { id: null, name: '', amt: '', day: 1, type: 'bill', dd: true, balance: '', rate: '', biz: false });
   const saveBill = () => {
     if (!bf || !bf.name.trim() || !pence(bf.amt)) return;
     const f = bf, bal = pence(f.balance);
@@ -68,6 +69,8 @@ export function PlanScreen({ onDone, openMore }: { onDone: (msg: string, undo?: 
         sub: f.type === 'sub' ? 'Subscription' : f.type === 'debt' ? 'Debt repayment' : f.name.trim() });
       if (f.dd && !b.ddFrom) b.ddFrom = today;
       if (f.type === 'debt' && balChanged) { b.balance = bal || null; b.balanceAt = bal ? `${today} ${now()}` : null; }
+      const rate = parseFloat(f.rate.replace('%', ''));
+      b.rate = f.type === 'debt' && rate > 0 && rate < 1000 ? rate : null;
       const id = b.id;
       for (const t of d.tx) if (t.billId === id) t.biz = f.biz;
     });
@@ -187,18 +190,26 @@ export function PlanScreen({ onDone, openMore }: { onDone: (msg: string, undo?: 
                 <Label>Debt repayments</Label>
                 {debts.map((b) => {
                   const f = debtFree(S, b, today);
+                  const line = f === null ? 'Add the balance for a payoff date'
+                    : f.left === 0 ? 'Paid off'
+                    : f.never ? `${moneyS(f.left, cur)} left. ${moneyS(b.amt, cur)} a month doesn't cover the interest (about ${moneyS(f.monthlyInterest, cur)}), so it won't go down`
+                    : b.rate ? `${moneyS(f.left, cur)} left at ${b.rate}% · clear by ${monthLabel(f.by as string)} · about ${moneyS(f.interest, cur)} interest`
+                    : `${moneyS(f.left, cur)} left · clear by ${monthLabel(f.by as string)} before interest`;
                   return (
                     <Pressable key={b.id} style={s.row} onPress={() => editBill(b)} accessibilityRole="button">
                       <CatIcon icon="credit" colour={C.warn} size={30} />
                       <View style={{ flex: 1 }}>
                         <Text style={s.name}>{b.name}</Text>
-                        <Text style={s.meta}>{f === null ? 'Add the balance for a payoff date' : f.left === 0 ? 'Paid off' : `${moneyS(f.left, cur)} left · clear by ${monthLabel(f.by as string)}`}</Text>
+                        <Text style={[s.meta, f?.never && { color: C.warn }]}>{line}</Text>
                       </View>
                       <Text style={s.amt}>{moneyS(b.amt, cur)}/mo</Text>
                     </Pressable>
                   );
                 })}
-                <Text style={s.meta}>Payoff dates leave out interest, so they're a best case.</Text>
+                {tip && <Text style={[s.hint, { color: C.fg }]}>{tip.kind === 'move'
+                  ? `When ${tip.from.name} is paid off in ${monthLabel(tip.fromBy)}, putting its ${moneyS(tip.extra, cur)} a month into ${tip.to.name} would clear it by ${monthLabel(tip.by)}${tip.saved ? ` and save about ${moneyS(tip.saved, cur)} in interest` : ''}.`
+                  : `${moneyS(tip.pay, cur)} a month would clear ${tip.to.name} in ${tip.years} years.`}</Text>}
+                {debts.some((b) => b.balance && !b.rate) && <Text style={s.meta}>Dates without a rate leave out interest. Tap a debt to add its rate: your lender's app or statement shows it.</Text>}
               </Card>
             )}
             {subs.length > 0 && <Card><Text style={s.hint}>{subs.length} subscription{subs.length === 1 ? '' : 's'}: {money(subsM, cur)} a month is <Text style={{ color: C.fg, fontWeight: '700' }}>{moneyS(subsM * 12, cur)}</Text> a year.</Text></Card>}
@@ -259,6 +270,9 @@ export function PlanScreen({ onDone, openMore }: { onDone: (msg: string, undo?: 
           {bf.type === 'debt' && <>
             <Label>Balance left (optional)</Label>
             <TextInput value={bf.balance} onChangeText={(balance) => setBf({ ...bf, balance })} keyboardType="decimal-pad" placeholder="For a payoff date" placeholderTextColor={C.faint} style={s.field} accessibilityLabel="Debt balance" />
+            <Label>Interest rate, % a year (optional)</Label>
+            <TextInput value={bf.rate} onChangeText={(rate) => setBf({ ...bf, rate })} keyboardType="decimal-pad" placeholder="e.g. 29.9" placeholderTextColor={C.faint} style={s.field} accessibilityLabel="Interest rate" />
+            <Text style={s.hint}>Your lender's app or statement shows it (APR or EAR). With it, the payoff date includes interest.</Text>
           </>}
           <Chip label="Paid by Direct Debit (ticks itself off)" on={bf.dd} onPress={() => setBf({ ...bf, dd: !bf.dd })} />
           {S.settings.sideIncome && <Chip label="Business cost" on={bf.biz} onPress={() => setBf({ ...bf, biz: !bf.biz })} />}

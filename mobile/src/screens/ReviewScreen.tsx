@@ -17,7 +17,7 @@ import { C, money } from '../ui/theme';
 
 type Item = { p: ParsedAlert; sug: Suggestion; dup?: Tx };
 
-// Categories and "side income" picked on a card are kept until it's added or skipped, so leaving the tab doesn't lose them
+// Categories picked on a card are kept until it's added or skipped, so leaving the tab doesn't lose them
 type Picks = { cats: Record<string, string>; side: Record<string, boolean> };
 const PICKS = 'kitty.picks';
 const loadPicks = (): Picks => {
@@ -67,7 +67,6 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
     try { setItem(PICKS, JSON.stringify(tidy)); } catch { /* best effort */ }
   };
   const setCats = (c: Record<string, string>) => keep({ ...picks, cats: c });
-  const setSide = (v: Record<string, boolean>) => keep({ ...picks, side: v });
   const [picking, setPicking] = useState<Item | null>(null);
   const [showSkipped, setShowSkipped] = useState(false);
   const [showNotices, setShowNotices] = useState(false);
@@ -376,12 +375,6 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
               onPress={() => { setCats({ ...cats, [picking.p.key]: c.id }); setPicking(null); }} />
           ))}
         </View>
-        {picking && S.settings.sideIncome && txFor(picking)?.kind === 'out' && (
-          <View style={{ gap: 6 }}>
-            <Chip label="Paid from side income" on={!!side[picking.p.key]} onPress={() => setSide({ ...side, [picking.p.key]: !side[picking.p.key] })} />
-            <Text style={s.hint}>Personal spending paid with money from your side income. It stays off your daily budget and isn't a business cost.</Text>
-          </View>
-        )}
       </Sheet>
     </ScrollView>
   );

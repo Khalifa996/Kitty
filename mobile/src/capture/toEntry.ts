@@ -98,10 +98,13 @@ export function suggest(S: State, p: ParsedAlert, id: string): Suggestion {
     return { action: 'ask', reason: p.reason || 'Kitty couldn\'t tell what this one is' };
   }
   if (p.kind === 'ignore') return { action: 'skip', reason: p.reason || 'Not a payment' };
-  if (p.kind === 'transfer') return { action: 'skip', reason: p.reason || 'Moved between your accounts' };
+  // Money moved from your business to your own account is paying yourself: it counts as money to spend
+  const fromBiz = (p.kind === 'transfer' && !p.sent) || p.kind === 'received' ? guessIncome(S, p.merchant) === 'draw' : false;
+  if (p.kind === 'transfer' && !fromBiz) return { action: 'skip', reason: p.reason || 'Moved between your accounts' };
   if (!p.amount) return { action: 'skip', reason: 'No amount' };
   const d = new Date(p.time), date = ymd(d), time = hm(d);
   const base = { id, amt: p.amount, merchant: p.merchant || '', note: '', date, time, biz: false, billId: null, source: 'alert', bank: p.bank } as const;
+  if (fromBiz) return { action: 'add', guessed: false, hint: 'From your business: paying yourself adds to your daily budget', tx: { ...base, kind: 'in', cat: 'draw', sub: null } };
 
   if (p.kind === 'bill' || p.kind === 'spent') {
     const win = billWindowAt(date, S.settings);
