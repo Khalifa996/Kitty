@@ -160,7 +160,7 @@ export function suggest(S: State, p: ParsedAlert, id: string): Suggestion {
   return { action: 'add', guessed: !mine && !known, tx: { ...base, kind: 'out', cat: cat || 'other', sub: null } };
 }
 
-/** Something close to this amount was already logged by hand around the same day (a round £225 for £225.76, say). */
+/** Something close to this amount was already logged by hand around the same day (a round £230 for £231.40, say). */
 export function alreadyLogged(S: State, p: ParsedAlert): Tx | undefined {
   if (!p.amount || (p.kind !== 'spent' && p.kind !== 'received')) return undefined;
   const kind = p.kind === 'spent' ? 'out' : 'in', day = ymd(new Date(p.time)), amt = p.amount;

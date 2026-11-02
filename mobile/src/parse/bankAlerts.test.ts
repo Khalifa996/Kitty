@@ -93,7 +93,7 @@ describe('Other banks (generic wording until we have real samples)', () => {
 describe('real alerts, 27 to 29 Oct (names changed)', () => {
   const MON = 'co.uk.getmondo';
   it('reads Barclays money in, not as spending', () => {
-    expect(parseAlert(a(BAR, 'Barclays', "Pers acct - You've been paid £225.76 to your account ending 1111. This credit may take up to 24 hours to show."))).toMatchObject({ kind: 'received', amount: 22576 });
+    expect(parseAlert(a(BAR, 'Barclays', "Pers acct - You've been paid £231.40 to your account ending 1111. This credit may take up to 24 hours to show."))).toMatchObject({ kind: 'received', amount: 23140 });
   });
   it('reads Revolut money in, with the amount in the title', () => {
     expect(parseAlert(a(REV, 'You received £85.58', 'Payment received from Airtasker Uk Limited. Tap for details'))).toMatchObject({ kind: 'received', amount: 8558, merchant: 'Airtasker' });
