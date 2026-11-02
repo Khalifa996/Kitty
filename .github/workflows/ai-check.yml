@@ -1,0 +1,26 @@
+name: AI service check
+
+# Sends one made-up alert to the AI service and reports what came back. Run it from the Actions tab any time.
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/ai-check.yml']
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ask the service about a made-up alert
+        env:
+          KEY: ${{ secrets.KITTY_AI_KEY }}
+        run: |
+          addr=$(tr -d '[:space:]' < ai/worker/url.txt)
+          sleep 20
+          health=$(curl -sS -m 20 "$addr/health" || true)
+          echo "::notice::Health: $health"
+          body='{"alerts":[{"id":"a0","app":"Revolut","title":"Pret A Manger","text":"You spent £4.50"},{"id":"a1","app":"Airtasker","title":"Task in Hackney","text":"Assemble a bed - £70"}],"categories":[{"id":"food","name":"Eating out"},{"id":"groceries","name":"Groceries"},{"id":"other","name":"Other"}],"inTypes":[{"id":"extra","name":"Extra income"}]}'
+          out=$(curl -sS -m 60 -X POST "$addr/v1/sort" -H 'content-type: application/json' -H "x-kitty-key: $KEY" -H 'x-kitty-install: ci0check0install01' -d "$body" || true)
+          echo "::notice::Sort: $out"
+          echo "$out" | grep -q '"results"' || { echo "::error::The service did not sort the test alerts"; exit 1; }
