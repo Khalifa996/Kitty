@@ -1,6 +1,7 @@
 // Looking ahead: bills for this period, and pots for things you're saving towards.
 import { useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { billRange } from '../engine/billAmounts';
 import { billItems, debtFree, debtTip, payTx, type BillItem } from '../engine/bills';
 import { cycleOf, fixedFor, isMonthly, potBalance, safeInfo } from '../engine/budget';
 import { diffDays, hm, nextDay, parse } from '../engine/dates';
@@ -17,7 +18,8 @@ const dfmt = (d: string) => parse(d).toLocaleDateString('en-GB', { day: 'numeric
 const monthLabel = (d: string) => parse(d).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 const TYPES: { id: Bill['type']; n: string; i: string }[] = [{ id: 'bill', n: 'Bill', i: 'receipt' }, { id: 'sub', n: 'Subscription', i: 'calendar' }, { id: 'debt', n: 'Debt repayment', i: 'credit' }];
 
-type BillForm = { id: string | null; name: string; amt: string; day: number; type: Bill['type']; dd: boolean; balance: string; rate: string; biz: boolean };
+// vary: null until the person taps the chip, so Kitty keeps deciding for itself
+type BillForm = { id: string | null; name: string; amt: string; day: number; type: Bill['type']; dd: boolean; balance: string; rate: string; biz: boolean; vary: boolean | null };
 type PotForm = { id: string | null; name: string; perPay: string; target: string; balance: string; fromNext: boolean };
 
 export function PlanScreen({ onDone, openMore }: { onDone: (msg: string, undo?: () => void) => void; openMore: () => void }) {
@@ -56,8 +58,13 @@ export function PlanScreen({ onDone, openMore }: { onDone: (msg: string, undo?: 
     }));
   };
   const editBill = (b?: Bill) => setBf(b
-    ? { id: b.id, name: b.name, amt: pounds(b.amt), day: b.day, type: b.type, dd: !!b.dd, balance: pounds(b.balance), rate: b.rate ? String(b.rate) : '', biz: !!b.biz }
-    : { id: null, name: '', amt: '', day: 1, type: 'bill', dd: true, balance: '', rate: '', biz: false });
+    ? { id: b.id, name: b.name, amt: pounds(b.amt), day: b.day, type: b.type, dd: !!b.dd, balance: pounds(b.balance), rate: b.rate ? String(b.rate) : '', biz: !!b.biz, vary: null }
+    : { id: null, name: '', amt: '', day: 1, type: 'bill', dd: true, balance: '', rate: '', biz: false, vary: null });
+  // The bill being edited, what Kitty has learned about its amount, and whether the amount is Kitty's to work out
+  const editing = bf?.id ? S.bills.find((b) => b.id === bf.id) : undefined;
+  const range = editing ? billRange(S, bf?.vary == null ? editing : { ...editing, vary: bf.vary }, today) : null;
+  const varies = bf ? bf.vary ?? (range?.varies || false) : false;
+  const learned = !!(varies && range && range.n >= 2);
   const saveBill = () => {
     if (!bf || !bf.name.trim() || !pence(bf.amt)) return;
     const f = bf, bal = pence(f.balance);
@@ -65,8 +72,10 @@ export function PlanScreen({ onDone, openMore }: { onDone: (msg: string, undo?: 
       let b = f.id ? d.bills.find((x) => x.id === f.id) : undefined;
       if (!b) { b = { id: 'b' + uid(), name: '', amt: 0, day: 1, type: 'bill', ddFrom: today }; d.bills.push(b); }
       const balChanged = (b.balance || 0) !== bal;
-      Object.assign(b, { name: f.name.trim(), amt: pence(f.amt), day: f.day, type: f.type, dd: f.dd, biz: f.biz,
+      // When Kitty has learned a varying bill's range, the amount is its to keep up to date
+      Object.assign(b, { name: f.name.trim(), amt: learned ? b.amt : pence(f.amt), day: f.day, type: f.type, dd: f.dd, biz: f.biz,
         sub: f.type === 'sub' ? 'Subscription' : f.type === 'debt' ? 'Debt repayment' : f.name.trim() });
+      if (f.vary !== null) b.vary = f.vary;
       if (f.dd && !b.ddFrom) b.ddFrom = today;
       if (f.type === 'debt' && balChanged) { b.balance = bal || null; b.balanceAt = bal ? `${today} ${now()}` : null; }
       const rate = parseFloat(f.rate.replace('%', ''));
@@ -89,7 +98,7 @@ export function PlanScreen({ onDone, openMore }: { onDone: (msg: string, undo?: 
     const n = diffDays(today, i.due), b = i.b;
     const line = i.paid ? (i.paid.pre ? 'Paid before you started' : `Paid ${dfmt(i.paid.date)}${i.paid.auto ? ' · Direct Debit' : ''}`)
       : n < 0 ? `Overdue by ${-n} day${n === -1 ? '' : 's'}` : n === 0 ? 'Due today' : n === 1 ? 'Due tomorrow' : `Due in ${n} days`;
-    const kind = [b.biz ? 'Business' : '', b.type === 'sub' ? 'Subscription' : b.type === 'debt' ? 'Debt' : ''].filter(Boolean).join(' · ');
+    const kind = [b.biz ? 'Business' : '', b.type === 'sub' ? 'Subscription' : b.type === 'debt' ? 'Debt' : '', !i.paid && billRange(S, b, today).varies ? 'Varies' : ''].filter(Boolean).join(' · ');
     return (
       <View style={s.brow}>
         <View style={s.dbox}><Text style={s.dboxN}>{parse(i.due).getDate()}</Text><Text style={s.dboxM}>{parse(i.due).toLocaleDateString('en-GB', { month: 'short' })}</Text></View>
@@ -98,7 +107,7 @@ export function PlanScreen({ onDone, openMore }: { onDone: (msg: string, undo?: 
           <Text style={[s.meta, !i.paid && n < 0 && { color: C.bad }, !i.paid && n >= 0 && n <= 3 && !b.dd && { color: C.warn }]} numberOfLines={1}>{[kind, line].filter(Boolean).join(' · ')}</Text>
         </Pressable>
         <View style={{ alignItems: 'flex-end', gap: 4 }}>
-          <Text style={[s.amt, i.paid && { color: C.muted }]}>{money(b.amt, cur)}</Text>
+          <Text style={[s.amt, i.paid && { color: C.muted }]}>{money(i.paid ? i.paid.amt : b.amt, cur)}</Text>
           {i.paid ? <Pressable accessibilityRole="button" accessibilityLabel={`${b.name} paid. Tap to undo`} onPress={() => unpay(b)} style={s.paidTag}><Icon name="check" size={12} colour={C.good} /><Text style={[s.tagT, { color: C.good }]}>Paid</Text></Pressable>
             : b.dd && n > 0 ? <Text style={s.autoT}>Auto-pays</Text>
             : <Pressable accessibilityRole="button" onPress={() => pay([b])} style={s.payBtn}><Text style={s.tagT}>Mark paid</Text></Pressable>}
@@ -260,8 +269,16 @@ export function PlanScreen({ onDone, openMore }: { onDone: (msg: string, undo?: 
         {bf && <>
           <Label>Name</Label>
           <TextInput value={bf.name} onChangeText={(name) => setBf({ ...bf, name })} placeholder="e.g. Council tax" placeholderTextColor={C.faint} style={s.field} accessibilityLabel="Bill name" />
-          <Label>Amount each month</Label>
-          <TextInput value={bf.amt} onChangeText={(amt) => setBf({ ...bf, amt })} keyboardType="decimal-pad" placeholder="0" placeholderTextColor={C.faint} style={s.field} accessibilityLabel="Bill amount" />
+          {learned && range ? <>
+            <Label>Set aside each month</Label>
+            <Text style={s.big}>{money(range.setAside, cur)}</Text>
+            <Text style={s.hint}>{range.low === range.high ? `Lately ${money(range.low, cur)}` : `Lately ${money(range.low, cur)} to ${money(range.high, cur)}`}{range.lastYear && range.lastYear > range.high ? `, and ${money(range.lastYear, cur)} this time last year` : ''}. Kitty sets aside the most, and what isn't used goes back into your daily budget.</Text>
+          </> : <>
+            <Label>{varies ? 'Amount each month (a rough guess is fine)' : 'Amount each month'}</Label>
+            <TextInput value={bf.amt} onChangeText={(amt) => setBf({ ...bf, amt })} keyboardType="decimal-pad" placeholder="0" placeholderTextColor={C.faint} style={s.field} accessibilityLabel="Bill amount" />
+            {varies && <Text style={s.hint}>Kitty sets aside at least this until it has seen two payments, then learns the range from them.</Text>}
+          </>}
+          <Chip label="Amount changes month to month" on={varies} onPress={() => setBf({ ...bf, vary: !varies })} />
           <Label>Due on the</Label>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }} keyboardShouldPersistTaps="handled">
             {Array.from({ length: 31 }, (_, k) => k + 1).map((n) => <Chip key={n} label={ord(n)} on={bf.day === n} onPress={() => setBf({ ...bf, day: n })} />)}

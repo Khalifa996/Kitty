@@ -18,7 +18,7 @@ it('knows what is paid, due and coming up this period', () => {
   const r = billItems(S, '2026-11-02');
   expect(r.items.map((i) => [i.b.id, i.due, !!i.paid])).toEqual([['ee', '2026-10-28', true], ['rent', '2026-11-01', true], ['gym', '2026-11-05', false]]);
   expect([r.total, r.paidTotal]).toEqual([85000, 82000]);
-  expect(paidIn(S, S.bills[0], r.w)).toEqual({ date: '2026-10-27', auto: false, pre: true });
+  expect(paidIn(S, S.bills[0], r.w)).toEqual({ date: '2026-10-27', auto: false, pre: true, amt: 80000 });
 });
 
 it('works out what is left on a debt and when it clears', () => {

@@ -41,6 +41,8 @@ export type Bill = {
   balance?: number | null;
   balanceAt?: string | null;
   rate?: number | null;     // debts: interest, % a year, as the lender quotes it (UK APR and EAR both include compounding)
+  vary?: boolean | null;    // the person says the amount changes month to month (true) or stays the same (false); unset: Kitty decides from what's been paid
+  amtFrom?: string | null;  // payments before this date are left out of what Kitty learns (set when the person accepts a new amount)
 };
 
 export type Tx = {
@@ -68,6 +70,8 @@ export type Tx = {
   bank?: string;   // which bank's alert it came from
   fromSide?: boolean; // personal spending paid from side income: off the daily budget, not a business cost
   spread?: boolean;   // a big one-off spread over the rest of the pay month instead of landing on one day (one-off bills always are)
+  planned?: number;   // bill payments: what Kitty had set aside for the bill. Any difference from amt goes back to (or comes off) the rest of the pay month
+  oneOff?: boolean;   // bill payments: an unusual amount the person said was just this once, so Kitty doesn't learn from it
 };
 
 export type Pot = { id: string; name: string; perPay: number; target: number; opening: number; start: string; end?: string; closed?: string };

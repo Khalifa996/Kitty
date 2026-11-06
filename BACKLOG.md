@@ -49,6 +49,13 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | P3 | Light theme |
 
 ## Changelog
+**App 0.8.3: bills that vary**
+- Kitty learns each bill's range from what the bank really took. Energy, water and credit card payments that move are marked Varies: Kitty sets aside the most of the last three payments (and the same month last year, once it has a year), so a dear month never catches you out
+- Whatever a bill comes in under goes back into the rest of the pay month, and anything over comes off it, spread over the days left. Plan shows paid bills at what was really paid
+- An unnamed Direct Debit matches a bill that varies anywhere in its range, and a fixed bill within a fifth of the usual amount. Card payments named for a bill match when they're in range
+- Fixed bills take on small changes by themselves. A named payment well away from the usual amount asks: Just once, or New amount
+- Edit bill has "Amount changes month to month" to decide for Kitty, and shows the range it has learned
+
 **App 0.8.2, 2 Nov 2026: big one-offs**
 - One-off bills (a surprise fee, a fine) come off every day left in the pay month instead of putting one day hundreds of pounds in the red. Activity can spread any big spend the same way. The Day view says what it did to each day
 - Money in marked Borrowed can be linked to a debt in Activity, so the debt's balance goes up by itself

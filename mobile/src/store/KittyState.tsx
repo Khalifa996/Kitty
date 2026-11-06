@@ -1,6 +1,7 @@
 // Holds Kitty's data for the whole app and saves every change.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { AppState } from 'react-native';
+import { settleBills } from '../engine/billAmounts';
 import { dueDirectDebits } from '../engine/budget';
 import { ymd } from '../engine/dates';
 import type { State } from '../engine/types';
@@ -17,11 +18,12 @@ type Ctx = {
 const KittyCtx = createContext<Ctx | null>(null);
 const copy = (S: State): State => JSON.parse(JSON.stringify(S));
 
-/** Direct Debits that have come due are ticked off whenever the app opens. */
+/** Whenever the app opens: bills that vary are set to what Kitty sets aside for them, then Direct Debits that have
+ *  come due are ticked off at that figure. */
 function withDirectDebits(S: State, today: string): State {
-  const due = dueDirectDebits(S, today);
-  if (!due.length) return S;
   const next = copy(S);
+  const settled = settleBills(next, today), due = dueDirectDebits(next, today);
+  if (!settled && !due.length) return S;
   next.tx.push(...due);
   saveState(next);
   return next;
@@ -42,7 +44,8 @@ export function KittyProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const update = useCallback((fn: (d: State) => void) => {
-    setS((cur) => { const next = copy(cur); fn(next); saveState(next); return next; });
+    // Any change can teach a varying bill something (a payment added, edited or deleted), so settle them every time
+    setS((cur) => { const next = copy(cur); fn(next); settleBills(next, ymd(new Date())); saveState(next); return next; });
   }, []);
   const replace = useCallback((next: State) => { saveState(next); setS(withDirectDebits(next, ymd(new Date()))); }, []);
 

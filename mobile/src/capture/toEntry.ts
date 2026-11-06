@@ -1,4 +1,5 @@
 // Turns a parsed bank alert into a Kitty entry, using what the person has logged before.
+import { bigChange, distance, inBand } from '../engine/billAmounts';
 import { billDue, billWindowAt } from '../engine/budget';
 import { diffDays, hm, ymd } from '../engine/dates';
 import type { State, Tx } from '../engine/types';
@@ -86,7 +87,8 @@ export function sameName(a?: string, b?: string): boolean {
 
 export type Suggestion =
   | { action: 'add'; tx: Tx; guessed: boolean; hint?: string; cash?: boolean; ai?: boolean; newBill?: boolean }
-  | { action: 'pay-bill'; billId: string; billName: string; tx: Tx; replaces?: Tx }
+  // usual: set when a fixed bill comes in far from its usual amount, so Review asks whether it's a one-off or the new amount
+  | { action: 'pay-bill'; billId: string; billName: string; tx: Tx; replaces?: Tx; usual?: number }
   | { action: 'ask'; reason: string }
   | { action: 'skip'; reason: string };
 
@@ -110,14 +112,17 @@ export function suggest(S: State, p: ParsedAlert, id: string, others: ParsedAler
     const win = billWindowAt(date, S.settings);
     const paidTx = (b: { id: string }) => S.tx.find((t) => t.billId === b.id && t.date >= win.start && t.date <= win.end);
     const named = (b: { name: string }) => sameName(b.name, p.merchant);
+    // What was set aside: the bill's amount now, or what Kitty ticked it off at if it's replacing its own tick
     const asBill = (b: (typeof S.bills)[number], replaces?: Tx): Suggestion =>
-      ({ action: 'pay-bill', billId: b.id, billName: b.name, replaces, tx: { ...base, kind: 'out', cat: 'bills', sub: b.sub || b.name, merchant: b.name, billId: b.id, biz: !!b.biz } });
+      ({ action: 'pay-bill', billId: b.id, billName: b.name, replaces, usual: bigChange(S, b, p.amount as number, date) ? b.amt : undefined,
+        tx: { ...base, kind: 'out', cat: 'bills', sub: b.sub || b.name, merchant: b.name, billId: b.id, biz: !!b.biz, planned: replaces ? replaces.planned ?? replaces.amt : b.amt } });
 
     // Not paid yet: a matching amount (Direct Debits, or a card payment for a bill like rent), or the same name for repayments
     // that differ from the usual amount (Monzo Flex £495.50 against a £500 bill)
     const open = S.bills.filter((b) => !paidTx(b));
     const byAmt = open.filter((b) => b.amt === p.amount).sort((x, y) => Math.abs(billDue(x, win).localeCompare(date)) - Math.abs(billDue(y, win).localeCompare(date)));
-    const b = byAmt.find(named) || (p.kind === 'bill' ? byAmt[0] || open.find(named) : byAmt[0]);
+    // A card payment named for a bill counts when the amount is in that bill's usual range (Thames Water £38 against a £30 bill)
+    const b = byAmt.find(named) || (p.kind === 'bill' ? byAmt[0] || open.find(named) : byAmt[0] || open.find((x) => named(x) && inBand(S, x, p.amount as number, date)));
     if (b) return asBill(b);
 
     // Already ticked off. If Kitty ticked it off itself (Direct Debit day), the bank's figure is the real one
@@ -129,18 +134,17 @@ export function suggest(S: State, p: ParsedAlert, id: string, others: ParsedAler
     }
 
     // The bank didn't say who it's paid to (Barclays never does for Direct Debits): a Direct Debit bill due in the last few days
-    // with a close amount. Due dates on a weekend or bank holiday are collected the next working day, and amounts drift
+    // with an amount in its usual range. Due dates on a weekend or bank holiday are collected the next working day, fixed bills
+    // drift a little, and bills that vary (energy, water, credit cards) can land anywhere in the range they've shown
     if (p.kind === 'bill' && !p.merchant) {
       // Never before the due date, and not a bill another alert already matches exactly
+      const amt = p.amount;
       const exact = (x: { amt: number }) => others.some((q) => q.key !== p.key && q.kind === 'bill' && q.amount === x.amt && Math.abs(q.time - p.time) <= 5 * 864e5);
       const near = S.bills
-        .filter((x) => { const gap = diffDays(billDue(x, win), date); return x.dd && gap >= 0 && gap <= 5 && !exact(x) && Math.abs(x.amt - (p.amount as number)) <= Math.max(200, x.amt * 0.05); })
-        .sort((x, y) => Math.abs(x.amt - (p.amount as number)) - Math.abs(y.amt - (p.amount as number)))[0];
-      if (near) {
-        const t = paidTx(near);
-        if (!t) return asBill(near);
-        if (t.amt === near.amt && t.amt !== p.amount) return asBill(near, t);
-      }
+        .filter((x) => { const gap = diffDays(billDue(x, win), date); return x.dd && gap >= 0 && gap <= 5 && !exact(x) && inBand(S, x, amt, date); })
+        .filter((x) => { const t = paidTx(x); return !t || (t.auto && t.amt !== amt); })
+        .sort((x, y) => distance(S, x, amt, date) - distance(S, y, amt, date))[0];
+      if (near) return asBill(near, paidTx(near));
     }
 
     if (p.kind === 'bill') {
