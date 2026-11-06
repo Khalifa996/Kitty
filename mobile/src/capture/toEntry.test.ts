@@ -230,3 +230,36 @@ it('counts money from your own business as paying yourself, once Kitty has seen 
   expect(suggest(S, alert({ kind: 'transfer', sent: true, amount: 25000, merchant: 'Acme Repairs' }), 'n42').action).toBe('skip');
   expect(suggest(S, alert({ kind: 'transfer', amount: 18000, merchant: 'Savings' }), 'n43').action).toBe('skip');
 });
+
+it('matches an unnamed Direct Debit for a bill that varies anywhere in its range', () => {
+  const S = withHistory();
+  S.bills.push({ id: 'wat', name: 'Water', amt: 4600, day: 1, type: 'bill', dd: true });
+  const pay = (id: string, amt: number, date: string) => S.tx.push({ id, kind: 'out', amt, cat: 'bills', merchant: 'Water', note: '', date, time: '09:00', biz: false, billId: 'wat', source: 'alert' });
+  pay('w1', 3100, '2026-09-01'); pay('w2', 4550, '2026-10-01');
+  S.tx.push({ id: 'ddw', kind: 'out', amt: 4600, cat: 'bills', merchant: 'Water', note: '', date: '2026-11-01', time: '06:00', biz: false, billId: 'wat', auto: true, planned: 4600 });
+  // £58.90 is far from the £46 set aside, but inside what this bill has done (£31 to £45.50, plus half again)
+  const s = suggest(S, alert({ kind: 'bill', amount: 5890, bank: 'Barclays', time: at('2026-11-02T09:30:00') }), 'v1');
+  expect(s).toMatchObject({ action: 'pay-bill', billId: 'wat', replaces: { id: 'ddw' }, tx: { amt: 5890, planned: 4600 } });
+  // In range for a bill that varies, so no question
+  expect(s.action === 'pay-bill' && s.usual).toBeUndefined();
+});
+
+it('takes a fixed bill that moved a little, and asks when a named one moved a lot', () => {
+  const S = withHistory();
+  S.bills.push({ id: 'loan', name: 'Pay Later', amt: 4000, day: 28, type: 'debt', dd: true });
+  S.tx.push({ id: 'ddl', kind: 'out', amt: 4000, cat: 'bills', merchant: 'Pay Later', note: '', date: '2026-10-28', time: '06:00', biz: false, billId: 'loan', auto: true, planned: 4000 });
+  // Unnamed, five days after the due date, a fifth more: still this bill, no question
+  const s = suggest(S, alert({ kind: 'bill', amount: 4800, bank: 'Barclays', time: at('2026-11-02T07:30:00') }), 'f1');
+  expect(s).toMatchObject({ action: 'pay-bill', billId: 'loan', replaces: { id: 'ddl' }, tx: { amt: 4800, planned: 4000 } });
+  expect(s.action === 'pay-bill' && s.usual).toBeUndefined();
+  // Named, and well over the usual amount: Review asks whether it's just this once
+  const big = suggest(S, alert({ kind: 'bill', amount: 9000, merchant: 'Pay Later', bank: 'Monzo', reason: 'Repayment', time: at('2026-11-02T07:30:00') }), 'f2');
+  expect(big).toMatchObject({ action: 'pay-bill', billId: 'loan', usual: 4000 });
+});
+
+it('matches a card payment named for a bill when it is in range', () => {
+  const S = withHistory();
+  S.bills.push({ id: 'h2o', name: 'River Water', amt: 3000, day: 5, type: 'bill' });
+  expect(suggest(S, alert({ amount: 3400, merchant: 'RIVER WATER', bank: 'Barclays', time: at('2026-11-05T10:00:00') }), 'c1')).toMatchObject({ action: 'pay-bill', billId: 'h2o', tx: { planned: 3000 } });
+  expect(suggest(S, alert({ amount: 9000, merchant: 'RIVER WATER', bank: 'Barclays', time: at('2026-11-05T10:00:00') }), 'c2').action).toBe('add');
+});

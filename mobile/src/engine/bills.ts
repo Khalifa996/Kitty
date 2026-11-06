@@ -3,13 +3,13 @@ import { billDue, billWindowAt } from './budget';
 import { parse, ymd } from './dates';
 import type { Bill, Cycle, State, Tx } from './types';
 
-export type BillPaid = { date: string; auto: boolean; pre: boolean } | null;
+export type BillPaid = { date: string; auto: boolean; pre: boolean; amt: number } | null;
 
-/** Paid in this bill period: a payment linked to the bill, or due before you started using Kitty. */
+/** Paid in this bill period: a payment linked to the bill, or due before you started using Kitty. `amt` is what was paid. */
 export function paidIn(S: State, b: Bill, w: Cycle): BillPaid {
   const t = S.tx.find((x) => x.billId === b.id && x.date >= w.start && x.date <= w.end);
-  if (t) return { date: t.date, auto: !!t.auto, pre: false };
-  return (S.settings.prepaid || {})[b.id] === w.start ? { date: w.start, auto: false, pre: true } : null;
+  if (t) return { date: t.date, auto: !!t.auto, pre: false, amt: t.amt };
+  return (S.settings.prepaid || {})[b.id] === w.start ? { date: w.start, auto: false, pre: true, amt: b.amt } : null;
 }
 
 export type BillItem = { b: Bill; due: string; paid: BillPaid };
@@ -17,13 +17,14 @@ export function billItems(S: State, today: string): { w: Cycle; items: BillItem[
   const w = billWindowAt(today, S.settings);
   const items = S.bills.map((b) => ({ b, due: billDue(b, w), paid: paidIn(S, b, w) }))
     .sort((x, y) => x.due.localeCompare(y.due) || x.b.name.localeCompare(y.b.name));
-  const total = items.reduce((a, i) => a + i.b.amt, 0), paidTotal = items.filter((i) => i.paid).reduce((a, i) => a + i.b.amt, 0);
+  // Paid bills count at what was really paid, the rest at what's set aside for them
+  const total = items.reduce((a, i) => a + (i.paid ? i.paid.amt : i.b.amt), 0), paidTotal = items.reduce((a, i) => a + (i.paid ? i.paid.amt : 0), 0);
   return { w, items, total, paidTotal };
 }
 
 /** A payment for a bill, dated today. */
 export const payTx = (b: Bill, id: string, date: string, time: string): Tx =>
-  ({ id, kind: 'out', amt: b.amt, cat: 'bills', sub: b.sub || b.name, merchant: b.name, note: '', date, time, biz: !!b.biz, billId: b.id });
+  ({ id, kind: 'out', amt: b.amt, cat: 'bills', sub: b.sub || b.name, merchant: b.name, note: '', date, time, biz: !!b.biz, billId: b.id, planned: b.amt });
 
 /** A yearly interest rate as a monthly one. UK APR and EAR already include compounding, so this is exact for both. */
 export const monthlyRate = (rate?: number | null) => (rate && rate > 0 ? Math.pow(1 + rate / 100, 1 / 12) - 1 : 0);

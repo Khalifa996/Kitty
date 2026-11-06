@@ -66,6 +66,9 @@ export function flexNet(list: Tx[]): number {
 export const extraIn = (list: Tx[]) => sum(list.filter(addsIn), (t) => t.amt);
 /** Refunds are money back, spread over the rest of the cycle rather than counted against one day. */
 export const refundsIn = (list: Tx[]) => sum(list.filter((t) => t.kind === 'in' && t.cat === 'refund' && !t.biz), (t) => t.amt);
+/** Bills that came in under (+) or over (−) what was set aside for them. It goes back to, or comes off, the rest of the
+ *  pay month from the day it's paid, the same way a refund does. Older payments without a figure set aside count as 0. */
+export const billDiff = (list: Tx[]) => sum(list.filter((t) => t.kind === 'out' && t.billId && t.planned != null), (t) => (t.planned as number) - t.amt);
 
 // ---------- The pot for a cycle ----------
 export const fixedTotal = (S: State) => sum(S.bills, (b) => b.amt);
@@ -82,7 +85,8 @@ export const potsAside = (S: State, c: Cycle) => sum(S.pots.filter((p) => p.star
 export function pot(S: State, c: Cycle): number {
   const o = openingFor(S, c);
   const base = o ? o.pot : incomeFor(S, c) - fixedFor(S, c) - S.settings.savings;
-  return base + extraIn(txIn(S, c)) + refundsIn(txIn(S, c)) - potsAside(S, c);
+  const L = txIn(S, c);
+  return base + extraIn(L) + refundsIn(L) + billDiff(L) - potsAside(S, c);
 }
 export const savingsFor = (S: State, c: Cycle) => (openingFor(S, c) ? 0 : S.settings.savings);
 export const planDays = (S: State, c: Cycle) => { const o = openingFor(S, c); return o ? diffDays(o.date, c.end) + 1 : c.days; };
@@ -163,7 +167,7 @@ export function dueDirectDebits(S: State, today: string, now = '06:00'): Tx[] {
       const due = billDue(b, win);
       const paid = S.tx.some((x) => x.billId === b.id && x.date >= win.start && x.date <= win.end) || pre[b.id] === win.start || out.some((x) => x.billId === b.id && x.date >= win.start && x.date <= win.end);
       if (due > today || due < (b.ddFrom || '') || skip[`${b.id}:${win.start}`] || paid) continue;
-      out.push({ id: `dd-${b.id}-${win.start}`, kind: 'out', amt: b.amt, cat: 'bills', sub: b.sub || b.name, merchant: b.name, note: '', date: due, time: now, biz: !!b.biz, billId: b.id, auto: true });
+      out.push({ id: `dd-${b.id}-${win.start}`, kind: 'out', amt: b.amt, cat: 'bills', sub: b.sub || b.name, merchant: b.name, note: '', date: due, time: now, biz: !!b.biz, billId: b.id, auto: true, planned: b.amt });
     }
   }
   return out;

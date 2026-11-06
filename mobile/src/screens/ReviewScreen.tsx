@@ -8,6 +8,7 @@ import type { Bill, State, Tx } from '../engine/types';
 import type { AiResult } from '../ai/cloud';
 import { useSmartSort } from '../ai/useSmartSort';
 import { amountIn, clean, isGenericTitle, tidyName, type ParsedAlert } from '../parse/bankAlerts';
+import { learnAmount } from '../engine/billAmounts';
 import { hm, ymd } from '../engine/dates';
 import { uid, useKitty } from '../store/KittyState';
 import { getItem, setItem } from '../store/kv';
@@ -56,7 +57,7 @@ const when = (ms: number) => {
 };
 
 export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (msg: string, undo?: () => void) => void; goSetup: () => void }) {
-  const { S, update } = useKitty();
+  const { S, today, update } = useKitty();
   const [picks, setPicks] = useState<Picks>(loadPicks);
   const { cats, side } = picks;
   const keep = (next: Picks) => {
@@ -112,16 +113,23 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
     return t;
   };
 
-  const add = (list: Item[]) => {
+  /** Add payments. For a bill that came in far from its usual amount, `how` says whether it was just this once or is the new amount. */
+  const add = (list: Item[], how?: 'once' | 'new') => {
     const txs = list.map(txFor).filter((t): t is Tx => !!t);
     if (!txs.length) return;
+    if (how === 'once') txs.forEach((t) => { if (t.billId) t.oneOff = true; });
     // A Direct Debit Kitty ticked off with the usual amount is swapped for the bank's real figure
     const old = list.flatMap((i) => (i.sug.action === 'pay-bill' && i.sug.replaces ? [i.sug.replaces] : []));
     const oldIds = new Set(old.map((t) => t.id));
-    update((d) => { d.tx = d.tx.filter((t) => !oldIds.has(t.id)); d.tx.push(...txs); });
+    const before = S.bills.map((b) => ({ ...b }));
+    update((d) => {
+      d.tx = d.tx.filter((t) => !oldIds.has(t.id)); d.tx.push(...txs);
+      // Bills learn from what the bank really took: small changes quietly, big ones only when you say it's the new amount
+      for (const t of txs) if (t.billId) learnAmount(d, t.billId, t, today, how === 'new');
+    });
     cap.done(list.flatMap((i) => keysFor(i.p, cap.parsed)));
     onDone(txs.length === 1 ? `${old.length ? 'Updated' : 'Added'} ${money(txs[0].amt, cur)}${txs[0].merchant ? ' · ' + txs[0].merchant : ''}` : `Added ${txs.length} payments`,
-      () => update((d) => { const ids = new Set(txs.map((t) => t.id)); d.tx = d.tx.filter((t) => !ids.has(t.id)); d.tx.push(...old); }));
+      () => update((d) => { const ids = new Set(txs.map((t) => t.id)); d.tx = d.tx.filter((t) => !ids.has(t.id)); d.tx.push(...old); d.bills = before; }));
   };
   /** Remember what the person did with alerts Kitty couldn't read, so it asks less over time. */
   const learn = (bank: string, how: 'skip' | 'keep') => update((d) => {
@@ -141,7 +149,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
     const t = txFor(making.i) as Tx, name = making.name.trim(), id = 'b' + uid();
     const sub = making.type === 'sub' ? 'Subscription' : making.type === 'debt' ? 'Debt repayment' : name;
     const bill: Bill = { id, name, amt: t.amt, day: parseInt(t.date.slice(8), 10), type: making.type, sub, dd: true, ddFrom: t.date };
-    const tx: Tx = { ...t, cat: 'bills', sub, merchant: name, billId: id };
+    const tx: Tx = { ...t, cat: 'bills', sub, merchant: name, billId: id, planned: t.amt };
     update((d) => { d.bills.push(bill); d.tx.push(tx); });
     cap.done(keysFor(making.i.p, cap.parsed));
     setMaking(null);
@@ -182,7 +190,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
   };
   const clearSkipped = () => { cap.done(skipped.flatMap((i) => keysFor(i.p, cap.parsed))); setShowSkipped(false); };
   // Things that need you: not sure what they are, or cash. Everything else can be added in one go
-  const easy = todo.filter((i) => !i.dup && i.sug.action !== 'ask' && !(i.sug.action === 'add' && (i.sug.cash || i.sug.newBill || (i.sug.ai && i.sug.guessed))));
+  const easy = todo.filter((i) => !i.dup && i.sug.action !== 'ask' && !(i.sug.action === 'pay-bill' && i.sug.usual != null) && !(i.sug.action === 'add' && (i.sug.cash || i.sug.newBill || (i.sug.ai && i.sug.guessed))));
   const notices = skipped.filter((i) => i.p.kind === 'ignore' && !i.p.amount);
   const skippedPay = skipped.filter((i) => !notices.includes(i));
   const dupText = (t: Tx) => `${t.merchant || (t.kind === 'in' ? inName(t.cat) : catName(S.settings, t.cat))}, ${money(t.amt, cur)}, ${when(new Date(t.date + 'T' + (t.time || '12:00')).getTime())}`;
@@ -287,13 +295,19 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
             </View>
             {i.dup && <Text style={[s.hint, { color: C.warn }]}>Looks like you already logged this: {dupText(i.dup)}.</Text>}
             {i.sug.action === 'add' && i.sug.hint && <Text style={s.hint}>{i.sug.hint}.{newBill ? ' If it comes every month, make it a bill and Kitty will expect it from now on.' : ''}</Text>}
-            {i.sug.action === 'pay-bill' && i.sug.replaces && <Text style={s.hint}>Kitty ticked this off as {money(i.sug.replaces.amt, cur)} on the day. Your bank says {money(t.amt, cur)}.</Text>}
+            {i.sug.action === 'pay-bill' && (i.sug.usual != null
+              ? <Text style={s.hint}>{i.sug.billName} is usually {money(i.sug.usual, cur)}. Your bank says {money(t.amt, cur)}. Is this the new amount, or just this once?</Text>
+              : t.planned != null && t.planned !== t.amt ? <Text style={s.hint}>Kitty set aside {money(t.planned, cur)} for this. Your bank says {money(t.amt, cur)}, so {t.amt < t.planned ? `${money(t.planned - t.amt, cur)} goes back into` : `${money(t.amt - t.planned, cur)} comes off`} the rest of this pay month.</Text> : null)}
             <View style={s.row}>
               {i.sug.action === 'pay-bill'
                 ? <View style={s.tag}><Icon name="receipt" size={15} colour={C.bill} /><Text style={s.tagT}>{label}</Text></View>
                 : <Chip label={guessed && !newBill ? `${label}?` : label} colour={c?.c || C.muted} icon={c?.i} onPress={() => setPicking(i)} />}
               <View style={{ flex: 1 }} />
-              {newBill && !i.dup ? null : isCash ? <>
+              {newBill && !i.dup ? null : i.sug.action === 'pay-bill' && i.sug.usual != null && !i.dup ? <>
+                <Btn label="Skip" small onPress={() => skip(i)} />
+                <Btn label="Just once" small onPress={() => add([i], 'once')} />
+                <Btn label="New amount" small primary onPress={() => add([i], 'new')} />
+              </> : isCash ? <>
                 <Btn label="Cash to spend" small onPress={() => cashToSpend(i)} />
                 <Btn label="Add" small primary onPress={() => add([i])} />
               </> : i.dup ? <>
