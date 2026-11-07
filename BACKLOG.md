@@ -59,6 +59,7 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 - Activity spots something you added by hand that a bank alert added too: "Same payment twice?" with Keep both or Remove mine
 - Typing a name on the keypad that Kitty already picks up from your bank alerts says so, so it isn't logged twice
 - The listener catches up on bank notifications still in the shade after a gap, and asks Android to reconnect if it was dropped. Review says when a bank that usually sends alerts has gone quiet for three days
+- 0.10.1: Insights' pay month counts side income in "Money in" and no longer says it's kept out of the budget
 
 **App 0.9.1, 7 Nov 2026: Monzo Business**
 - With more than one Monzo account, Monzo puts the account's name in the title ("Acme Ltd") and "£75.20 from Jobsite" in the text. Kitty read that as spending at a shop called Acme Ltd. It now reads money in and spending properly, and never takes the account name for a shop or payer

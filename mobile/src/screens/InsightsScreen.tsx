@@ -135,15 +135,15 @@ export function InsightsScreen() {
             onNext={back > 0 ? () => setBack(back - 1) : undefined} />
           <Card style={{ gap: 12 }}>
             <View style={s.grid}>
-              <View style={s.cell}><Label>Money in</Label><Text style={[s.mid, { color: C.good }]}>{moneyS(m.pay + m.extra, cur)}</Text>
-                <Text style={s.meta}>{[m.pay ? `Pay ${moneyS(m.pay, cur)}` : '', m.extra ? `other ${moneyS(m.extra, cur)}` : ''].filter(Boolean).join(', ') || 'Nothing yet'}</Text></View>
+              <View style={s.cell}><Label>Money in</Label><Text style={[s.mid, { color: C.good }]}>{moneyS(m.pay + m.extra + m.business, cur)}</Text>
+                <Text style={s.meta}>{[m.pay ? `Pay ${moneyS(m.pay, cur)}` : '', m.business ? `side income ${moneyS(m.business, cur)}` : '', m.extra ? `other ${moneyS(m.extra, cur)}` : ''].filter(Boolean).join(', ') || 'Nothing yet'}</Text></View>
               <View style={s.cell}><Label>Bills paid</Label><Text style={s.mid}>{moneyS(m.bills, cur)}</Text></View>
               <View style={s.cell}><Label>Day to day</Label><Text style={s.mid}>{moneyS(m.spent, cur)}</Text>
                 <Text style={s.meta}>of {moneyS(m.plan, cur)} to spend</Text></View>
               <View style={s.cell}><Label>{isNow ? 'Left to spend' : m.plan - m.spent >= 0 ? 'Under plan' : 'Over plan'}</Label>
                 <Text style={[s.mid, { color: m.plan - m.spent >= 0 ? C.good : C.bad }]}>{moneyS(Math.abs(m.plan - m.spent), cur)}</Text></View>
             </View>
-            {m.business > 0 && <Text style={s.meta}>Business income {money(m.business, cur)}, kept out of your budget.</Text>}
+            {m.business > 0 && <Text style={s.meta}>Side income counts towards what you have to spend, less {money(sideMonth.tax, cur)} kept back for tax.</Text>}
             {back < MONTHS_BACK && prev.days.length > 0 && (
               <Text style={s.hint}>{isNow ? `By day ${n}` : 'In total'}, that's {moneyS(Math.abs(m.spent - prevSoFar), cur)} {m.spent <= prevSoFar ? 'less' : 'more'} than the pay month before.</Text>
             )}
