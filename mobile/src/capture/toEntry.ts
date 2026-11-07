@@ -1,5 +1,5 @@
 // Turns a parsed bank alert into a Kitty entry, using what the person has logged before.
-import { billDue, billWindowAt } from '../engine/budget';
+import { billDue, billWindowAt, cycleOf, planDays, pot } from '../engine/budget';
 import { diffDays, hm, ymd } from '../engine/dates';
 import type { State, Tx } from '../engine/types';
 import { cardBankOf, type ParsedAlert } from '../parse/bankAlerts';
@@ -70,8 +70,6 @@ function guessIncome(S: State, merchant?: string): string | null {
 // Platforms that pay for work, card readers that pay out takings, and ones that pay out when you sell your own things
 const WORK = /^(airtasker|mybuilder|checkatrade|bark|taskrabbit|rated ?people|fiverr|upwork)$/i;
 const TAKINGS = /^(stripe|sumup|square|zettle|izettle|paypal payouts?|tide)\b/i;
-// Account names that read like a business (a Monzo Business account is named after the business)
-const BIZ_NAME = /\b(ltd|limited|llp|plc|services|repairs|maintenance|trading|business|solutions|consulting|studio|cleaning|building|electrical|plumbing|handyman|decorating|construction)\b|&/i;
 const SELLING = /^(vinted|ebay|depop|facebook marketplace|gumtree)$/i;
 
 // Words that say nothing about who a bill is with
@@ -87,7 +85,7 @@ export function sameName(a?: string, b?: string): boolean {
 }
 
 export type Suggestion =
-  | { action: 'add'; tx: Tx; guessed: boolean; hint?: string; cash?: boolean; ai?: boolean; newBill?: boolean }
+  | { action: 'add'; tx: Tx; guessed: boolean; hint?: string; cash?: boolean; ai?: boolean; newBill?: boolean; big?: boolean }
   | { action: 'pay-bill'; billId: string; billName: string; tx: Tx; replaces?: Tx }
   | { action: 'ask'; reason: string }
   | { action: 'skip'; reason: string };
@@ -107,7 +105,7 @@ export const settleMinutes = (p: ParsedAlert) => (p.bank === 'Google Wallet' ? 6
 export function isSure(p: ParsedAlert, sug: Suggestion, dup?: Tx | null): boolean {
   if (dup || p.duplicateOf || p.unsure || p.warning) return false;
   if (sug.action === 'pay-bill') return !sug.replaces;
-  if (sug.action !== 'add' || sug.cash || sug.newBill) return false;
+  if (sug.action !== 'add' || sug.cash || sug.newBill || sug.big) return false;
   if (sug.tx.kind === 'in') return !sug.guessed && sug.tx.cat !== 'transfer' && sug.tx.cat !== 'borrowed';
   return true;
 }
@@ -138,16 +136,9 @@ export function suggest(S: State, p: ParsedAlert, id: string, others: ParsedAler
   const base = { id, amt: p.amount, merchant: p.merchant || '', note: lateTravel ? 'Charged the next morning' : '', date, time, biz: false, billId: null, source: 'alert', bank: p.bank,
     ...(p.accountName ? { accountName: p.accountName } : {}) } as const;
 
-  // A business account in the same bank app (Monzo Business): money in is side income and spending is a business cost,
-  // so neither touches the daily budget until you pay yourself from it
-  const bizAcct = !!p.accountName && !!S.settings.sideIncome && (BIZ_NAME.test(p.accountName) || S.tx.some((t) => t.accountName === p.accountName && t.biz));
-  if (bizAcct && p.kind === 'received') {
-    return { action: 'add', guessed: false, hint: `Into ${p.accountName}: business income, kept out of your daily budget until you pay yourself`,
-      tx: { ...base, kind: 'in', cat: 'side', sub: WORK.test(p.merchant || '') ? 'Job' : null, biz: true } };
-  }
-  if (bizAcct && p.kind === 'spent') {
-    const c = guessCategory(S, p.merchant) || knownCategory(p.merchant) || emojiCategory(p.emoji) || wordCategory(p.merchant) || 'other';
-    return { action: 'add', guessed: false, hint: `From ${p.accountName}: a business cost, not your daily budget`, tx: { ...base, kind: 'out', cat: c, sub: null, biz: true } };
+  // Money from another of your own accounts (one Kitty has seen alerts from by name) is a move, not money in
+  if (p.kind === 'received' && p.merchant && S.tx.some((t) => t.accountName && sameName(t.accountName, p.merchant as string))) {
+    return { action: 'skip', reason: `Moved from your ${p.merchant}` };
   }
   if (fromBiz) return { action: 'add', guessed: false, hint: 'From your business: paying yourself adds to your daily budget', tx: { ...base, kind: 'in', cat: 'draw', sub: null } };
 
@@ -219,7 +210,22 @@ export function suggest(S: State, p: ParsedAlert, id: string, others: ParsedAler
   // Your own history first, then shops Kitty knows, then the bank's category, then words in the name
   const mine = guessCategory(S, p.merchant), known = knownCategory(p.merchant);
   const cat = mine || known || emojiCategory(p.emoji) || wordCategory(p.merchant);
-  return { action: 'add', guessed: !mine && !known, tx: { ...base, kind: 'out', cat: cat || 'other', sub: null } };
+  const big = isBigOneOff(S, p.amount, p.merchant, date);
+  return { action: 'add', guessed: !mine && !known, big: big || undefined,
+    hint: big ? 'Bigger than your usual spending here. If it came from savings or money you put aside, it can stay out of this month' : undefined,
+    tx: { ...base, kind: 'out', cat: cat || 'other', sub: null } };
+}
+
+/**
+ * A spend big enough to matter (three days' worth of budget, and at least £75) that isn't usual for this name.
+ * Kitty can't know whether it came from this month's money or from savings, so it asks instead of guessing.
+ */
+export function isBigOneOff(S: State, amt: number, name: string | undefined, date: string): boolean {
+  const c = cycleOf(date, S.settings), days = Math.max(1, planDays(S, c));
+  const daily = Math.max(0, pot(S, c)) / days;
+  if (amt < Math.max(7500, daily * 3)) return false;
+  const since = ymd(new Date(new Date(date + 'T12:00:00').getTime() - 120 * 864e5));
+  return !S.tx.some((t) => t.kind === 'out' && t.date >= since && t.amt >= amt * 0.6 && !!name && sameName(t.merchant, name));
 }
 
 /** Something close to this amount was already logged by hand around the same day (a round £230 for £231.40, say). */

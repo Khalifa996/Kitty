@@ -141,12 +141,13 @@ describe('looking back', () => {
     const d = dayInfo(S, '2026-10-27');
     expect(d.allowance).toBe(Math.round(200000 / 31));
     expect(d.todaySpent).toBe(3000);
-    // 28 Oct: what was left after the 27th, over 30 days; later spending does not change it
-    expect(dayInfo(S, '2026-10-28').allowance).toBe(Math.round((200000 - 3000) / 30));
+    // 28 Oct: what was left after the 27th, plus that day's £200 side income less 20% for tax, over 30 days;
+    // later spending does not change it
+    expect(dayInfo(S, '2026-10-28').allowance).toBe(Math.round((200000 + 16000 - 3000) / 30));
   });
   it('sums up a pay month', () => {
     const m = cycleSummary(S, cycleOf('2026-10-27', S.settings), '2026-10-29');
-    expect([m.pay, m.business, m.spent, m.bills, m.plan]).toEqual([300000, 20000, 13500, 100000, 200000]);
+    expect([m.pay, m.business, m.spent, m.bills, m.plan]).toEqual([300000, 20000, 13500, 100000, 216000]);
     expect(m.byCat).toEqual([{ cat: 'fun', amt: 9000 }, { cat: 'food', amt: 4500 }]);
     expect(m.days.map((d) => d.spent)).toEqual([3000, 9000, 1500]);
   });
@@ -162,8 +163,16 @@ describe('side income', () => {
   it('keeps money paid from side income off the daily budget', () => {
     expect(safeInfo(S, '2026-10-29').todaySpent).toBe(0);
   });
-  it('shows what is left of side income after tax and what you paid out', () => {
-    expect(sideSummary(S, '2026-04-06', '2026-10-29')).toEqual({ income: 50000, costs: 10000, profit: 40000, tax: 8000, rate: 20, drawn: 30000, left: 2000 });
+  it('works out profit and the tax to keep back', () => {
+    expect(sideSummary(S, '2026-04-06', '2026-10-29')).toEqual({ income: 50000, costs: 10000, profit: 40000, tax: 8000, rate: 20 });
+  });
+  it('counts side income as money in, wherever it lands, less the tax kept back, and counts business costs as spending', () => {
+    const plain = state({ settings: settings({ sideIncome: true, savings: 0 }), tx: [tx({ kind: 'in', cat: 'salary', amt: 300000, date: '2026-10-27' })] });
+    const c = cycleOf('2026-10-29', plain.settings);
+    const withSide = state({ settings: settings({ sideIncome: true, savings: 0 }), tx: S.tx.filter((t) => !t.fromSide) });
+    // £500 in, £100 of costs: 20% of the £400 profit is kept back, so the pot grows by £500 less £80
+    expect(pot(withSide, c) - pot(plain, c)).toBe(42000);
+    expect(safeInfo(withSide, '2026-10-29').left).toBe(safeInfo(plain, '2026-10-29').left + 42000 - 10000);
   });
   it('starts the UK tax year on 6 April', () => {
     expect(taxYearStart('2026-04-05')).toBe('2025-04-06');
@@ -181,7 +190,7 @@ it('adds money you pay yourself from your business to the budget, and counts it 
   S.tx.push(tx({ cat: 'draw', amt: 20000 }));
   expect(pot(S, cycleOf('2026-11-02', S.settings)) - before).toBe(20000);
   const side = sideSummary(S, '2026-10-27', '2026-11-26');
-  expect(side).toMatchObject({ income: 50000, drawn: 20000, tax: 10000, left: 20000 });
+  expect(side).toMatchObject({ income: 50000, tax: 10000 });
 });
 
 it('spreads a one-off bill over the rest of the pay month instead of putting today deep in the red', () => {

@@ -43,6 +43,10 @@ class KittyNotificationsModule : Module() {
     }
 
     Function("getCaptured") { CaptureStore.all(ctx) }
+    // Ask Android to reconnect the listener if it was dropped (after an update, or to save battery)
+    Function("rebind") {
+      try { android.service.notification.NotificationListenerService.requestRebind(android.content.ComponentName(ctx, KittyNotificationListener::class.java)) } catch (e: Exception) { }
+    }
     Function("removeCaptured") { keys: List<String> -> CaptureStore.remove(ctx, keys) }
     Function("getCandidates") { CaptureStore.candidates(ctx) }
     Function("getExtraApps") { CaptureStore.extraApps(ctx).toList() }

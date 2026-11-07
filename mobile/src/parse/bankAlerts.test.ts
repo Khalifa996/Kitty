@@ -109,6 +109,15 @@ describe('real alerts, 27 to 29 Oct (names changed)', () => {
     // The account name is never taken for the shop or the payer
     expect(parseAlert(a(MON, 'Acme Fixes & Co', 'You received £30.00')).merchant).not.toBe('Acme Fixes & Co');
   });
+  it('pairs a move between two accounts in the same bank app', () => {
+    const out = parseAll([
+      a(MON, 'Acme Fixes & Co', '£50.00 to Sam Taylor', 0),
+      a(MON, '£50 from Acme Fixes & Co', '', 30 * 1000),
+    ]);
+    expect(out.map((p) => p.kind)).toEqual(['transfer', 'transfer']);
+    expect(out[0].reason).toBe('Moved to your Monzo');
+    expect(out[1].reason).toBe('Moved from your Acme Fixes & Co');
+  });
   it('drops the Google Wallet copy of a Monzo payment', () => {
     const out = parseAll([a(MON, '🍏 £1 at Co-op', '', 1000), a(GW, 'WELCOME', '£1.00 with Monzo Mastercard ••1234', 6000)]);
     expect(out.map((p) => p.kind)).toEqual(['spent', 'ignore']);

@@ -12,6 +12,7 @@ import { hm, ymd } from '../engine/dates';
 import { uid, useKitty } from '../store/KittyState';
 import { getItem, setItem } from '../store/kv';
 import { Btn, Card, CatIcon, Chip, Label, Sheet } from '../ui/kit';
+import { quietBanks } from '../engine/checks';
 import { Icon } from '../ui/Icon';
 import { C, money } from '../ui/theme';
 
@@ -87,6 +88,8 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
   const ai = useSmartSort(S, needHelp);
   const items: Item[] = useMemo(() => base.map((i) => withAi(i, ai.results[i.p.key], S)), [base, ai.results, S]);
   const todo = items.filter((i) => i.sug.action !== 'skip' && !i.p.duplicateOf);
+  // Banks that usually send alerts but have gone quiet: their notifications may be off, or the phone put Kitty to sleep
+  const quiet = useMemo(() => quietBanks(S, ymd(new Date()), [...new Set<string>(cap.parsed.filter((p) => Date.now() - p.time < 3 * 864e5).map((p) => p.bank))]), [S, cap.parsed]);
   const addedByKitty = useMemo(() => S.tx.filter((t) => t.autoAdded && t.autoAdded > (S.settings.autoSeen || ''))
     .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)), [S]);
   const fixCat = (cat: string) => {
@@ -131,8 +134,8 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
     return t;
   };
 
-  const add = (list: Item[]) => {
-    const txs = list.map(txFor).filter((t): t is Tx => !!t);
+  const add = (list: Item[], patch?: Partial<Tx>) => {
+    const txs = list.map(txFor).filter((t): t is Tx => !!t).map((t) => (patch ? { ...t, ...patch } : t));
     if (!txs.length) return;
     // A Direct Debit Kitty ticked off with the usual amount is swapped for the bank's real figure
     const old = list.flatMap((i) => (i.sug.action === 'pay-bill' && i.sug.replaces ? [i.sug.replaces] : []));
@@ -201,7 +204,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
   };
   const clearSkipped = () => { cap.done(skipped.flatMap((i) => keysFor(i.p, cap.parsed))); setShowSkipped(false); };
   // Things that need you: not sure what they are, or cash. Everything else can be added in one go
-  const easy = todo.filter((i) => !i.dup && i.sug.action !== 'ask' && !(i.sug.action === 'add' && (i.sug.cash || i.sug.newBill || (i.sug.ai && i.sug.guessed))));
+  const easy = todo.filter((i) => !i.dup && i.sug.action !== 'ask' && !(i.sug.action === 'add' && (i.sug.cash || i.sug.newBill || i.sug.big || (i.sug.ai && i.sug.guessed))));
   const notices = skipped.filter((i) => i.p.kind === 'ignore' && !i.p.amount);
   const skippedPay = skipped.filter((i) => !notices.includes(i));
   const dupText = (t: Tx) => `${t.merchant || (t.kind === 'in' ? inName(t.cat) : catName(S.settings, t.cat))}, ${money(t.amt, cur)}, ${when(new Date(t.date + 'T' + (t.time || '12:00')).getTime())}`;
@@ -229,6 +232,16 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
         </View>
         {easy.length > 1 && <Btn label={`Add all ${easy.length}`} primary small onPress={() => add(easy)} />}
       </View>
+
+      {quiet.map((q) => (
+        <Card key={q.bank} style={{ gap: 8, borderWidth: 1, borderColor: C.warn }}>
+          <Text style={s.h2}>No alerts from {q.bank} since {new Date(q.last + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long' })}</Text>
+          <Text style={s.hint}>Kitty usually hears from {q.bank} most days. If you've used it since, check {q.bank}'s notifications are switched on in your phone's settings, and that your phone isn't putting Kitty to sleep to save battery.</Text>
+          <View style={[s.row, { justifyContent: 'flex-end' }]}>
+            <Btn label="Got it" small onPress={() => update((d) => { d.settings.dismissed = { ...(d.settings.dismissed || {}), [`quiet:${q.bank}:${q.last}`]: true }; })} />
+          </View>
+        </Card>
+      ))}
 
       {addedByKitty.length > 0 && (
         <Card style={{ gap: 6 }}>
@@ -315,6 +328,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
         const t = txFor(i) as Tx, isIn = t.kind === 'in';
         const isCash = i.sug.action === 'add' && !!i.sug.cash;
         const newBill = i.sug.action === 'add' && !!i.sug.newBill;
+        const big = i.sug.action === 'add' && !!i.sug.big;
         const list = isIn ? inTypes(S.settings) : categories(S.settings);
         const c = list.find((x) => x.id === t.cat);
         const label = (i.sug.action === 'pay-bill' ? `Bill: ${i.sug.billName}` : isIn ? inName(t.cat) : (c?.n || 'Other')) + (t.fromSide ? ' · side income' : '') + (i.sug.action === 'add' && i.sug.ai && !cats[i.p.key] ? ' · AI' : '');
@@ -336,7 +350,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
                 ? <View style={s.tag}><Icon name="receipt" size={15} colour={C.bill} /><Text style={s.tagT}>{label}</Text></View>
                 : <Chip label={guessed && !newBill ? `${label}?` : label} colour={c?.c || C.muted} icon={c?.i} onPress={() => setPicking(i)} />}
               <View style={{ flex: 1 }} />
-              {newBill && !i.dup ? null : isCash ? <>
+              {(newBill || big) && !i.dup ? null : isCash ? <>
                 <Btn label="Cash to spend" small onPress={() => cashToSpend(i)} />
                 <Btn label="Add" small primary onPress={() => add([i])} />
               </> : i.dup ? <>
@@ -347,6 +361,13 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
                 <Btn label={i.sug.action === 'pay-bill' ? (i.sug.replaces ? 'Update' : 'Mark paid') : 'Add'} small primary onPress={() => add([i])} />
               </>}
             </View>
+            {big && !i.dup && (
+              <View style={[s.row, { justifyContent: 'flex-end' }]}>
+                <Btn label="Skip" small onPress={() => skip(i)} />
+                <Btn label="From savings" small onPress={() => add([i], { outside: true })} />
+                <Btn label="This month" small primary onPress={() => add([i], { spread: true })} />
+              </View>
+            )}
             {newBill && !i.dup && (
               <View style={[s.row, { justifyContent: 'flex-end' }]}>
                 <Btn label="Skip" small onPress={() => skip(i)} />

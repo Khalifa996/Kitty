@@ -7,15 +7,13 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 ## Snags
 | Pri | Found | Snag |
 |---|---|---|
-| P1 | 7 Nov | Side income that lands in a personal account (Stripe, Airtasker into Revolut) stays out of the daily budget, but the spending it pays for counts. Proposal to Mo: count it as paying yourself, keeping back the tax share |
-| P2 | 7 Nov | Paying yourself from a Monzo Business account into Monzo personal: both alerts come from the same app, so they don't pair as a move. Needs real (anonymised) alerts the first time it happens |
+| P2 | 7 Nov | A balance check now and then ("What's in your accounts?") to catch anything no alert covered. The web prototype has check-ins; bring them across once testers have tried 0.10 |
+| P2 | 7 Nov | The web prototype still leaves side income out of the budget and doesn't know `outside` or `spread` |
+| P2 | 7 Nov | Big one-offs on the keypad: Review asks, Activity has the switches, but the keypad doesn't offer "From savings" yet |
 | P2 | 7 Nov | Credit card spending (seen through Google Wallet) counts against the daily budget, and the card's monthly repayment is a bill too. Fine for now, but think about cards paid in full |
-| P2 | 7 Nov | Flag likely duplicates already in Activity (same amount in on the same day, one from an alert and one by hand) |
 | P1 | 2 Nov | Monzo personal and Monzo Business alerts come from the same app. Until Kitty can tell them apart, money moved from the business to the personal account may show as a spend as well as "Paid myself". Needs real (anonymised) alerts from both |
 | P2 | 2 Nov | Ask "What's your business called?" when side income is switched on, so the first payment from it is spotted as "Paid myself" without the person marking it |
 | P2 | 2 Nov | Some banks only send text messages. Reading texts is blocked (private), so offer a sender-only option later: read texts from named bank senders and nothing else |
-| P2 | 2 Nov | Big one-offs: one-off bills are spread now, and Activity can spread any spend. Still to do: offer "Spread it" on the keypad and in Review when an amount is several days' budget |
-| P2 | 2 Nov | Business costs paid from a personal account (fuel card, tools): they should still count against the daily budget, but also as a business cost for tax. There's no switch for spending yet |
 | P2 | 2 Nov | The web prototype doesn't know about spread entries or interest on debts yet |
 | P2 | 2 Nov | Day view: "£X over" gives no reason. Name the biggest entry and what it does to the days left |
 | P2 | 2 Nov | Entries named "Payment sent", "Money in" or just the category mean nothing later. Use the payee in the alert, or ask once in Review |
@@ -53,6 +51,15 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | P3 | Light theme |
 
 ## Changelog
+**App 0.10, 7 Nov 2026: simpler and for everyone**
+- Principle 6: build for everyone, test on Mo. Kitty doesn't try to track every move between accounts. It needs this pay month's money in and what was spent
+- Side income is money in, wherever it lands, with a share kept back for tax (20% by default, of income minus business costs). Business costs count as spending; marking one only lowers the tax kept back. "Paid myself" stays for business accounts Kitty can't read
+- No more guessing a business account from its name. A second account is like any other, and money from one Kitty has seen into another is a move between your accounts (also paired when both are in the same bank app)
+- A big spend that's unusual for that name (three days' budget and at least £75) waits in Review: "This month" spreads it, "From savings" leaves it out. Activity has "Paid from savings, leave it out" and "Business cost"
+- Activity spots something you added by hand that a bank alert added too: "Same payment twice?" with Keep both or Remove mine
+- Typing a name on the keypad that Kitty already picks up from your bank alerts says so, so it isn't logged twice
+- The listener catches up on bank notifications still in the shade after a gap, and asks Android to reconnect if it was dropped. Review says when a bank that usually sends alerts has gone quiet for three days
+
 **App 0.9.1, 7 Nov 2026: Monzo Business**
 - With more than one Monzo account, Monzo puts the account's name in the title ("Acme Ltd") and "£75.20 from Jobsite" in the text. Kitty read that as spending at a shop called Acme Ltd. It now reads money in and spending properly, and never takes the account name for a shop or payer
 - A business account (side income on and a business-like name, or one that has had side income before): money in is side income and spending is a business cost, both kept out of the daily budget until you pay yourself. Review and Activity show which account

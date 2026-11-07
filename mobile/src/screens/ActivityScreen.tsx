@@ -2,6 +2,8 @@
 import { useMemo, useState } from 'react';
 import { Pressable, SectionList, StyleSheet, Text, TextInput, View } from 'react-native';
 import { billWindowAt } from '../engine/budget';
+import { likelyDuplicates } from '../engine/checks';
+import { ymd } from '../engine/dates';
 import { categories, catName, inName, inTypes } from '../engine/cats';
 import type { Tx } from '../engine/types';
 import { useKitty } from '../store/KittyState';
@@ -20,9 +22,11 @@ const dayLabel = (d: string) => {
 export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => void) => void }) {
   const { S, update } = useKitty();
   const [open, setOpen] = useState<Tx | null>(null);
-  const [form, setForm] = useState({ name: '', amt: '', cat: '', all: true, side: false, pot: '', spread: false, debt: '' });
+  const [form, setForm] = useState({ name: '', amt: '', cat: '', all: true, side: false, pot: '', spread: false, debt: '', outside: false, biz: false });
+  // Something added by hand that a bank alert added too
+  const dups = useMemo(() => likelyDuplicates(S, ymd(new Date())), [S]);
   const cur = S.settings.currency;
-  const openTx = (t: Tx) => { setOpen(t); setForm({ name: t.merchant, amt: (t.amt / 100).toFixed(2), cat: t.cat, all: true, side: !!t.fromSide, pot: t.potId || '', spread: !!t.spread, debt: t.debtId || '' }); };
+  const openTx = (t: Tx) => { setOpen(t); setForm({ name: t.merchant, amt: (t.amt / 100).toFixed(2), cat: t.cat, all: true, side: !!t.fromSide, pot: t.potId || '', spread: !!t.spread, debt: t.debtId || '', outside: !!t.outside, biz: t.kind === 'out' && !!t.biz }); };
 
   const sections = useMemo(() => {
     const list = [...S.tx].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).slice(0, 400);
@@ -31,7 +35,7 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
       let g = out[out.length - 1];
       if (!g || g.title !== t.date) { g = { title: t.date, spent: 0, bills: 0, data: [] }; out.push(g); }
       g.data.push(t);
-      if (t.kind === 'out') { if (t.billId) g.bills += t.amt; else g.spent += t.amt; }
+      if (t.kind === 'out') { if (t.billId) g.bills += t.amt; else if (!t.outside && !t.potId) g.spent += t.amt; }
     }
     return out;
   }, [S.tx]);
@@ -47,7 +51,8 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
       : bill ? (t.auto ? 'Direct Debit' : { bill: 'Bill', sub: 'Subscription', debt: 'Debt repayment' }[bill.type])
       : t.kind === 'in' ? inName(t.cat)
       : (t.sub || (t.merchant ? catName(S.settings, t.cat) : ''));
-    return [first, t.time, t.fromSide ? 'Side income' : '', t.spread ? 'Spread' : '', t.accountName ? `${t.bank} ${t.accountName}` : t.bank, t.note].filter(Boolean).join(' · ');
+    return [first, t.time, t.fromSide ? 'Side income' : '', t.outside ? 'Left out' : t.spread ? 'Spread' : '', t.kind === 'out' && t.biz && !t.billId ? 'Business' : '',
+      t.accountName ? `${t.bank} ${t.accountName}` : t.bank, t.note].filter(Boolean).join(' · ');
   };
 
   const del = (t: Tx) => {
@@ -82,7 +87,11 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
       if (t.kind === 'out' && !t.billId && !t.biz) { if (form.side) t.fromSide = true; else delete t.fromSide; }
       if (t.kind === 'out' && !t.billId && !t.potIn) { if (form.pot) t.potId = form.pot; else delete t.potId; }
       if (!t.billId && form.cat) { t.cat = form.cat; t.biz = t.kind === 'in' ? form.cat === 'side' : t.biz; }
-      if (t.kind === 'out' && !t.billId) { if (form.spread && !form.pot && t.cat !== 'bills') t.spread = true; else delete t.spread; }
+      if (t.kind === 'out' && !t.billId) {
+        if (form.spread && !form.pot && !form.outside && t.cat !== 'bills') t.spread = true; else delete t.spread;
+        if (form.outside && !form.pot) t.outside = true; else delete t.outside;
+        t.biz = !!S.settings.sideIncome && form.biz;
+      }
       if (t.kind === 'in') { if (t.cat === 'borrowed' && form.debt) t.debtId = form.debt; else delete t.debtId; }
     });
     setOpen(null);
@@ -99,7 +108,22 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
         keyExtractor={(t) => t.id}
         stickySectionHeadersEnabled={false}
         contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
-        ListHeaderComponent={<View style={{ marginBottom: 6 }}><Text style={s.h1}>Activity</Text>{S.tx.length > 0 && <Text style={s.hint}>Swipe left to delete, right to edit</Text>}</View>}
+        ListHeaderComponent={<View style={{ marginBottom: 6, gap: 10 }}>
+          <View><Text style={s.h1}>Activity</Text>{S.tx.length > 0 && <Text style={s.hint}>Swipe left to delete, right to edit</Text>}</View>
+          {dups.length > 0 && (() => {
+            const [mine, bank] = dups[0], d = (t: Tx) => `${t.date.slice(8)}/${t.date.slice(5, 7)}`;
+            return (
+              <View style={s.dup}>
+                <Text style={s.dupH}>Same payment twice?{dups.length > 1 ? ` (1 of ${dups.length})` : ''}</Text>
+                <Text style={s.hint}>You added {mine.merchant || (mine.kind === 'in' ? inName(mine.cat) : catName(S.settings, mine.cat))} ({money(mine.amt, cur)}, {d(mine)}), and {bank.bank || 'a bank alert'} added {bank.merchant || 'a payment'} ({money(bank.amt, cur)}, {d(bank)}). If they're the same, one should go.</Text>
+                <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'flex-end' }}>
+                  <Btn label="Keep both" small onPress={() => update((x) => { x.settings.dismissed = { ...(x.settings.dismissed || {}), [`dup:${mine.id}:${bank.id}`]: true }; })} />
+                  <Btn label="Remove mine" small primary onPress={() => del(mine)} />
+                </View>
+              </View>
+            );
+          })()}
+        </View>}
         ListEmptyComponent={<Text style={s.hint}>Nothing logged yet.</Text>}
         renderSectionHeader={({ section }) => (
           <View style={s.ghd}>
@@ -140,9 +164,15 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
             {S.pots.filter((p) => !p.closed).map((p) => <Chip key={p.id} label={`Pot: ${p.name}`} icon="piggy" colour={C.pot} on={form.pot === p.id} onPress={() => setForm({ ...form, pot: p.id })} />)}
           </View>
         </>}
-        {open && open.kind === 'out' && !open.billId && !open.potIn && !form.pot && (form.cat === 'bills'
-          ? <Text style={s.hint}>One-off bills come off every day left in this pay month, not all on one day.</Text>
-          : <Chip label="Spread it over the rest of the pay month" on={form.spread} onPress={() => setForm({ ...form, spread: !form.spread })} />)}
+        {open && open.kind === 'out' && !open.billId && !open.potIn && !form.pot && <>
+          {form.outside ? null : form.cat === 'bills'
+            ? <Text style={s.hint}>One-off bills come off every day left in this pay month, not all on one day.</Text>
+            : <Chip label="Spread it over the rest of the pay month" on={form.spread} onPress={() => setForm({ ...form, spread: !form.spread })} />}
+          <Chip label="Paid from savings, leave it out" on={form.outside} onPress={() => setForm({ ...form, outside: !form.outside })} />
+          {form.outside && <Text style={s.hint}>For something you saved up for or paid with money put aside. It won't touch this month's daily budget.</Text>}
+          {S.settings.sideIncome && <Chip label="Business cost" on={form.biz} onPress={() => setForm({ ...form, biz: !form.biz })} />}
+          {S.settings.sideIncome && form.biz && <Text style={s.hint}>Counts as a cost against your side income, so less is kept back for tax. It's still money spent, so it stays in your daily budget.</Text>}
+        </>}
         {open && open.kind === 'in' && form.cat === 'borrowed' && S.bills.some((b) => b.type === 'debt') && <>
           <Label>Added to which debt?</Label>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -167,6 +197,8 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
 }
 
 const s = StyleSheet.create({
+  dup: { backgroundColor: C.surface, borderRadius: 18, padding: 14, gap: 8, borderWidth: 1, borderColor: C.warn },
+  dupH: { color: C.fg, fontSize: 16, fontWeight: '700' },
   h1: { color: C.fg, fontSize: 26, fontWeight: '700', marginBottom: 2 },
   hint: { color: C.muted, fontSize: 13.5, lineHeight: 19 },
   field: { backgroundColor: C.surface2, borderRadius: 12, height: 44, paddingHorizontal: 12, color: C.fg, fontSize: 16 },

@@ -172,6 +172,8 @@ export function parseAlert(a: RawAlert): ParsedAlert {
     const xFrom = body.match(new RegExp('^\\+?' + MONEY + '\\s+from\\s+([^\\n]+)', 'i'));
     if (xAt) return { ...base, kind: 'spent', amount: toPennies(xAt[1]), merchant: tidyName(xAt[2]) };
     if (xFrom) return { ...base, kind: 'received', amount: toPennies(xFrom[1]), merchant: tidyName(xFrom[2]) };
+    const xTo = body.match(new RegExp('^-?' + MONEY + '\\s+to\\s+([^\\n]+)', 'i'));
+    if (xTo) return { ...base, kind: 'spent', sent: true, amount: toPennies(xTo[1]), merchant: tidyName(xTo[2]) };
   }
 
   // Monzo puts the whole alert in the title: "£1 at Co-op", "£20 from Sam", "£495.50 Monzo Flex payment made"
@@ -280,12 +282,14 @@ export function markTransfers(list: ParsedAlert[], windowMs = 15 * 60 * 1000): P
   const sends = out.filter((p) => p.kind === 'spent' && p.sent).sort((a, b) => a.time - b.time);
   for (const s of sends) {
     const r = out
-      .filter((q) => q.kind === 'received' && !q.refund && !used.has(q.key) && q.bank !== s.bank && q.amount === s.amount && Math.abs(q.time - s.time) <= windowMs)
+      // A different bank, or a different account in the same bank app (Monzo business to Monzo personal)
+      .filter((q) => q.kind === 'received' && !q.refund && !used.has(q.key) && (q.bank !== s.bank || (q.accountName || '') !== (s.accountName || '')) &&
+        q.amount === s.amount && Math.abs(q.time - s.time) <= windowMs)
       .sort((a, b) => Math.abs(a.time - s.time) - Math.abs(b.time - s.time))[0];
     if (!r) continue;
     used.add(r.key);
-    s.kind = 'transfer'; s.pairedWith = r.key; s.reason = `Moved to your ${r.bank}`;
-    r.kind = 'transfer'; r.pairedWith = s.key; r.reason = `Moved from your ${s.bank}`;
+    s.kind = 'transfer'; s.pairedWith = r.key; s.reason = `Moved to your ${r.accountName || r.bank}`;
+    r.kind = 'transfer'; r.pairedWith = s.key; r.reason = `Moved from your ${s.accountName || s.bank}`;
   }
   return out;
 }

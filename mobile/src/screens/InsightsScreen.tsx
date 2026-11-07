@@ -152,19 +152,17 @@ export function InsightsScreen() {
           {sideOn && (
             <Card style={{ gap: 10 }}>
               <Label>Side income</Label>
-              <Text style={s.hint}>This pay month: {money(sideMonth.income, cur)} in, {money(sideMonth.costs, cur)} business costs, {money(sideMonth.drawn, cur)} paid to yourself.</Text>
+              <Text style={s.hint}>This pay month: {money(sideMonth.income, cur)} in, {money(sideMonth.costs, cur)} business costs. Side income counts in your daily budget, less {money(sideMonth.tax, cur)} kept back for tax.</Text>
               <View style={s.grid}>
                 <View style={s.cell}><Label>Profit this tax year</Label><Text style={s.mid}>{moneyS(sideYear.profit, cur)}</Text>
                   <Text style={s.meta}>Since {short(ty)}</Text></View>
                 <View style={s.cell}><Label>Keep for tax</Label><Text style={[s.mid, { color: C.warn }]}>{moneyS(sideYear.tax, cur)}</Text>
                   <Text style={s.meta}>{sideYear.rate}% of profit</Text></View>
               </View>
-              <Text style={[s.hint, sideYear.left < 0 && sideYear.drawn > 0 && { color: C.bad }]}>
+              <Text style={s.hint}>
                 {sideYear.profit <= 0
-                  ? `The business has spent ${money(-sideYear.profit, cur)} more than it made since ${short(ty)}${sideYear.drawn > 0 ? `, and you've paid yourself ${money(sideYear.drawn, cur)}` : ''}. No tax to keep back yet.`
-                  : sideYear.left >= 0
-                  ? `After tax and ${money(sideYear.drawn, cur)} paid to yourself, ${money(sideYear.left, cur)} is still yours to take from the business.`
-                  : `You've paid yourself ${money(-sideYear.left, cur)} more than the business made after tax. The tax bill would come from your pay.`}
+                  ? `The business has spent ${money(-sideYear.profit, cur)} more than it made since ${short(ty)}. No tax to keep back yet.`
+                  : `Kitty keeps ${sideYear.rate}% of your side income profit out of your daily budget, so the tax bill is covered when it comes. Since ${short(ty)} that's ${money(sideYear.tax, cur)}.`}
               </Text>
               <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
                 {[20, 26, 40].map((r) => <Chip key={r} label={`${r}%`} on={sideYear.rate === r} onPress={() => update((d) => { d.settings.sideTaxRate = r; })} />)}

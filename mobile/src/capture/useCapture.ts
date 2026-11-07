@@ -59,7 +59,12 @@ function forgetNeverRead() {
 }
 
 export function useCapture() {
-  const [raw, setRaw] = useState<RawAlert[]>(() => { forgetNeverRead(); return readRaw(); });
+  const [raw, setRaw] = useState<RawAlert[]>(() => {
+    forgetNeverRead();
+    // If Android dropped Kitty's listener (after an update, or to save battery), ask for it back
+    try { if (KittyNotifications?.isEnabled()) KittyNotifications.rebind?.(); } catch { /* best effort */ }
+    return readRaw();
+  });
   const [apps, setApps] = useState(readApps);
   const refresh = useCallback(() => { setRaw(readRaw()); setApps(readApps()); }, []);
 

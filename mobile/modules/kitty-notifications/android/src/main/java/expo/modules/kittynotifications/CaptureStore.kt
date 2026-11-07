@@ -15,6 +15,13 @@ object CaptureStore {
   private const val EXTRA = "extra_pkgs"
   private const val SEEN = "seen_pkgs"
   private const val MAX = 300
+  private const val HEARD = "last_heard"
+
+  /** The newest notification Kitty has seen from any app, so a catch-up after a gap reads only what came after it. */
+  fun markHeard(ctx: Context, time: Long) {
+    if (time > lastHeard(ctx)) prefs(ctx).edit().putLong(HEARD, time).apply()
+  }
+  fun lastHeard(ctx: Context): Long = prefs(ctx).getLong(HEARD, 0L)
 
   val BANK_APPS = setOf(
     "com.revolut.revolut",

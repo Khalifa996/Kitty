@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { safeInfo } from '../engine/budget';
 import { places, quickPicks } from '../engine/picks';
+import { sameName } from '../capture/toEntry';
 import { categories, inTypes } from '../engine/cats';
 import { addDays, hm, ymd } from '../engine/dates';
 import type { Tx } from '../engine/types';
@@ -34,6 +35,13 @@ export function LogScreen({ onSaved }: { onSaved: (msg: string, undo: () => void
   const picks = useMemo(() => quickPicks(S, mode, today, new Date().getHours()), [S, mode, today]);
   const q = norm(merchant);
   const sugg: { name: string; cat: string; amt?: number }[] = q ? memory.filter((e) => norm(e.name).includes(q)).slice(0, 8) : picks;
+  // Typing a name Kitty already picks up from bank alerts: logging it by hand would count it twice
+  const tracked = useMemo(() => {
+    if (q.length < 4) return null;
+    const since = ymd(new Date(Date.now() - 45 * 864e5));
+    return S.tx.find((t) => t.source === 'alert' && t.kind === mode && t.date >= since && t.bank &&
+      (norm(t.merchant).startsWith(q) || sameName(t.merchant, merchant))) || null;
+  }, [S, q, mode, merchant]);
 
   const key = (v: string) => {
     let a = amt;
@@ -99,7 +107,9 @@ export function LogScreen({ onSaved }: { onSaved: (msg: string, undo: () => void
       </Text>
       <TextInput value={merchant} onChangeText={typed} placeholder={mode === 'out' ? 'Where? e.g. Lidl' : 'From? e.g. Salary'} placeholderTextColor={C.faint}
         style={s.field} accessibilityLabel="Where" returnKeyType="done" />
-      {sugg.length > 0 && (
+      {tracked ? (
+        <Text style={s.tracked}>Kitty already picks up {tracked.merchant} from your {tracked.bank} alerts, so you don't need to log it.</Text>
+      ) : sugg.length > 0 && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 6 }} keyboardShouldPersistTaps="handled">
           {sugg.map((e) => { const c = cats.find((x) => x.id === e.cat); return <Chip key={e.name} label={e.amt ? `${e.name} · ${moneyS(e.amt, cur)}` : e.name} on={norm(e.name) === q} colour={c?.c || C.muted} icon={c?.i} onPress={() => pick(e.name, e.cat, e.amt)} />; })}
         </ScrollView>
@@ -135,6 +145,7 @@ export function LogScreen({ onSaved }: { onSaved: (msg: string, undo: () => void
 }
 
 const s = StyleSheet.create({
+  tracked: { color: C.warn, fontSize: 13.5, lineHeight: 19, paddingHorizontal: 4 },
   wrap: { flexGrow: 1, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 12, gap: 8 },
   toggles: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
   seg: { flexDirection: 'row', backgroundColor: C.surface, borderRadius: 999, padding: 3 },

@@ -2,7 +2,7 @@
 import { alreadyLogged, emojiCategory, guessCategory, isSure, knownCategory, sameName, suggest, wordCategory } from './toEntry';
 import { blankState } from '../engine/migrate';
 import type { ParsedAlert } from '../parse/bankAlerts';
-import type { State } from '../engine/types';
+import type { State, Tx } from '../engine/types';
 
 const at = (s: string) => new Date(s).getTime();
 const alert = (o: Partial<ParsedAlert>): ParsedAlert => ({ key: 'k', time: at('2026-10-27T12:49:00'), bank: 'Revolut', kind: 'spent', ...o });
@@ -264,14 +264,24 @@ it("skips Google Wallet's extra alert when the card's bank sends its own", () =>
   expect(suggest(S, other, 'n72')).toMatchObject({ action: 'add' });
 });
 
-it('keeps a business account out of the daily budget: money in is side income, spending is a business cost', () => {
+it('treats a second account like any other, and money from it as a move', () => {
   const S = withHistory();
   S.settings.sideIncome = true;
-  const inn = suggest(S, alert({ kind: 'received', amount: 7520, merchant: 'Jobsite UK Limited', bank: 'Monzo', accountName: 'Acme Fixes & Co' }), 'n80');
-  expect(inn).toMatchObject({ action: 'add', guessed: false, tx: { kind: 'in', cat: 'side', biz: true, accountName: 'Acme Fixes & Co' } });
-  const out = suggest(S, alert({ kind: 'spent', amount: 1240, merchant: 'Toolstation', bank: 'Monzo', accountName: 'Acme Fixes & Co' }), 'n81');
-  expect(out).toMatchObject({ action: 'add', tx: { kind: 'out', biz: true } });
-  // A joint account isn't a business
-  const joint = suggest(S, alert({ kind: 'spent', amount: 1240, merchant: 'Toolstation', bank: 'Monzo', accountName: 'Joint account' }), 'n82');
-  expect(joint).toMatchObject({ action: 'add', tx: { biz: false } });
+  // Money into the business account from a job platform is side income, like anywhere else
+  const inn = suggest(S, alert({ kind: 'received', amount: 7520, merchant: 'Airtasker', bank: 'Monzo', accountName: 'Acme Fixes & Co' }), 'n80');
+  expect(inn).toMatchObject({ action: 'add', tx: { kind: 'in', cat: 'side', accountName: 'Acme Fixes & Co' } });
+  S.tx.push((inn as { tx: Tx }).tx);
+  // Later, money from that account into a personal one is a move between your own accounts
+  expect(suggest(S, alert({ kind: 'received', amount: 5000, merchant: 'Acme Fixes & Co', bank: 'Barclays' }), 'n81')).toMatchObject({ action: 'skip' });
+});
+
+it('asks about a big spend that is unusual for that name, but not a usual one', () => {
+  const S = withHistory();
+  const big = suggest(S, alert({ kind: 'spent', amount: 48000, merchant: 'Car Garage Ltd' }), 'n90');
+  expect(big).toMatchObject({ action: 'add', big: true });
+  expect(isSure(alert({ kind: 'spent', amount: 48000, merchant: 'Car Garage Ltd' }), big)).toBe(false);
+  // The weekly shop at the usual place isn't a one-off, however big
+  S.tx.push({ id: 'w', kind: 'out', amt: 9500, cat: 'groceries', merchant: 'Tesco', note: '', date: '2026-10-20', time: '10:00', biz: false, billId: null });
+  const shop = suggest(S, alert({ kind: 'spent', amount: 9800, merchant: 'Tesco', time: at('2026-10-27T10:00:00') }), 'n92') as { big?: boolean };
+  expect(shop.big).toBeUndefined();
 });
