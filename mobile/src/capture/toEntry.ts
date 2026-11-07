@@ -70,6 +70,8 @@ function guessIncome(S: State, merchant?: string): string | null {
 // Platforms that pay for work, card readers that pay out takings, and ones that pay out when you sell your own things
 const WORK = /^(airtasker|mybuilder|checkatrade|bark|taskrabbit|rated ?people|fiverr|upwork)$/i;
 const TAKINGS = /^(stripe|sumup|square|zettle|izettle|paypal payouts?|tide)\b/i;
+// Account names that read like a business (a Monzo Business account is named after the business)
+const BIZ_NAME = /\b(ltd|limited|llp|plc|services|repairs|maintenance|trading|business|solutions|consulting|studio|cleaning|building|electrical|plumbing|handyman|decorating|construction)\b|&/i;
 const SELLING = /^(vinted|ebay|depop|facebook marketplace|gumtree)$/i;
 
 // Words that say nothing about who a bill is with
@@ -133,7 +135,20 @@ export function suggest(S: State, p: ParsedAlert, id: string, others: ParsedAler
   // TfL adds up a day's travel and charges it overnight, so an early-morning charge belongs to the day before
   const d = new Date(p.time), lateTravel = p.kind === 'spent' && /transport for london|\btfl\b/i.test(p.merchant || '') && d.getHours() < 7;
   const date = ymd(lateTravel ? new Date(p.time - 864e5) : d), time = hm(d);
-  const base = { id, amt: p.amount, merchant: p.merchant || '', note: lateTravel ? 'Charged the next morning' : '', date, time, biz: false, billId: null, source: 'alert', bank: p.bank } as const;
+  const base = { id, amt: p.amount, merchant: p.merchant || '', note: lateTravel ? 'Charged the next morning' : '', date, time, biz: false, billId: null, source: 'alert', bank: p.bank,
+    ...(p.accountName ? { accountName: p.accountName } : {}) } as const;
+
+  // A business account in the same bank app (Monzo Business): money in is side income and spending is a business cost,
+  // so neither touches the daily budget until you pay yourself from it
+  const bizAcct = !!p.accountName && !!S.settings.sideIncome && (BIZ_NAME.test(p.accountName) || S.tx.some((t) => t.accountName === p.accountName && t.biz));
+  if (bizAcct && p.kind === 'received') {
+    return { action: 'add', guessed: false, hint: `Into ${p.accountName}: business income, kept out of your daily budget until you pay yourself`,
+      tx: { ...base, kind: 'in', cat: 'side', sub: WORK.test(p.merchant || '') ? 'Job' : null, biz: true } };
+  }
+  if (bizAcct && p.kind === 'spent') {
+    const c = guessCategory(S, p.merchant) || knownCategory(p.merchant) || emojiCategory(p.emoji) || wordCategory(p.merchant) || 'other';
+    return { action: 'add', guessed: false, hint: `From ${p.accountName}: a business cost, not your daily budget`, tx: { ...base, kind: 'out', cat: c, sub: null, biz: true } };
+  }
   if (fromBiz) return { action: 'add', guessed: false, hint: 'From your business: paying yourself adds to your daily budget', tx: { ...base, kind: 'in', cat: 'draw', sub: null } };
 
   if (p.kind === 'bill' || p.kind === 'spent') {

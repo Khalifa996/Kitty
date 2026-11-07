@@ -103,6 +103,12 @@ describe('real alerts, 27 to 29 Oct (names changed)', () => {
     expect(parseAlert(a(MON, '🍏 £1 at Co-op', ''))).toMatchObject({ kind: 'spent', amount: 100, merchant: 'Co-op' });
     expect(parseAlert(a(MON, '🤸🏽 £495.50 Monzo Flex payment made', 'You made your monthly payment'))).toMatchObject({ kind: 'bill', amount: 49550, merchant: 'Monzo Flex', reason: 'Repayment' });
   });
+  it('reads alerts from a second Monzo account, where the title is the account name', () => {
+    expect(parseAlert(a(MON, 'Acme Fixes & Co', '£75.20 from JOBSITE UK LIMITED'))).toMatchObject({ kind: 'received', amount: 7520, merchant: 'Jobsite UK Limited', accountName: 'Acme Fixes & Co' });
+    expect(parseAlert(a(MON, 'Acme Fixes & Co', '🔨 £12.40 at Toolstation'))).toMatchObject({ kind: 'spent', amount: 1240, merchant: 'Toolstation', accountName: 'Acme Fixes & Co' });
+    // The account name is never taken for the shop or the payer
+    expect(parseAlert(a(MON, 'Acme Fixes & Co', 'You received £30.00')).merchant).not.toBe('Acme Fixes & Co');
+  });
   it('drops the Google Wallet copy of a Monzo payment', () => {
     const out = parseAll([a(MON, '🍏 £1 at Co-op', '', 1000), a(GW, 'WELCOME', '£1.00 with Monzo Mastercard ••1234', 6000)]);
     expect(out.map((p) => p.kind)).toEqual(['spent', 'ignore']);

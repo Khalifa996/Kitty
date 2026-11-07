@@ -14,6 +14,7 @@ export type ParsedAlert = {
   merchant?: string;
   balance?: number;     // pennies, when the alert shows it
   account?: string;     // last four digits
+  accountName?: string; // a named account in the same bank app (a Monzo business or joint account)
   refund?: boolean;
   sent?: boolean;       // money you sent to someone (may be one of your own accounts)
   pairedWith?: string;  // key of the other half of a move between your own accounts
@@ -161,6 +162,18 @@ export function parseAlert(a: RawAlert): ParsedAlert {
     return { ...base, reason: `${title}'s card, not yours`, merchant: tidyName((text.match(/\bat\s+(.+?)(?:\s+balance|$)/i) || [])[1] || '') };
   }
 
+  // With more than one Monzo account (a business, a joint account), the title is the account's name and the text
+  // has the rest: "MSK Ltd" / "£75.47 from Airtasker UK Limited". The name is the account, never the shop
+  const named = bank === 'Monzo' && title && !AMOUNT.test(title) && !GENERIC_TITLES.test(title) && AMOUNT.test(text) ? title : undefined;
+  if (named) {
+    base.accountName = named;
+    const body = text.replace(/^[^\w£+-]+/u, '');
+    const xAt = body.match(new RegExp('^\\+?' + MONEY + '\\s+at\\s+([^\\n]+)', 'i'));
+    const xFrom = body.match(new RegExp('^\\+?' + MONEY + '\\s+from\\s+([^\\n]+)', 'i'));
+    if (xAt) return { ...base, kind: 'spent', amount: toPennies(xAt[1]), merchant: tidyName(xAt[2]) };
+    if (xFrom) return { ...base, kind: 'received', amount: toPennies(xFrom[1]), merchant: tidyName(xFrom[2]) };
+  }
+
   // Monzo puts the whole alert in the title: "£1 at Co-op", "£20 from Sam", "£495.50 Monzo Flex payment made"
   const tAt = title.match(new RegExp('^' + MONEY + '\\s+at\\s+(.+)$', 'i'));
   const tFrom = title.match(new RegExp('^' + MONEY + '\\s+from\\s+(.+)$', 'i'));
@@ -192,10 +205,10 @@ export function parseAlert(a: RawAlert): ParsedAlert {
   const fromName = (text.match(/\bfrom\s+(.+?)(?:\s+(?:to|into)\s+your|\.\s|\.$|\s+balance|$)/i) || [])[1];
   const sentYou = text.match(/^(.+?)\s+(?:sent|paid) you\b/i);
   if (/\brefund/i.test(all)) {
-    return { ...out, kind: 'received', refund: true, merchant: tidyName(fromName || (!GENERIC_TITLES.test(title) ? title : '') || 'Refund') };
+    return { ...out, kind: 'received', refund: true, merchant: tidyName(fromName || (!named && !GENERIC_TITLES.test(title) ? title : '') || 'Refund') };
   }
   if (sentYou || /\b(received|paid in|been paid|credited|money in|you've got|deposit(ed)?|incoming)\b/i.test(text) || /^you received\b/i.test(title)) {
-    const who = sentYou ? sentYou[1] : fromName && !/your account/i.test(fromName) ? fromName : !GENERIC_TITLES.test(title) ? title : '';
+    const who = sentYou ? sentYou[1] : fromName && !/your account/i.test(fromName) ? fromName : !named && !GENERIC_TITLES.test(title) ? title : '';
     return { ...out, kind: 'received', merchant: tidyName(who || 'Money in') };
   }
 
@@ -209,7 +222,7 @@ export function parseAlert(a: RawAlert): ParsedAlert {
   if (/\b(spent|paid|payment|purchase|card used|debited|you sent|withdrew|withdrawal)\b/i.test(text) || /^\s*-?£/.test(text)) {
     let merchant: string | undefined = (text.match(/\b(?:at|with|to)\s+(.+?)(?:\s+(?:from|on|using|with)\s+(?:your|a|card)\b|\s+card ending\b|\s+balance\b|\.\s|\.$|$)/i) || [])[1];
     if (merchant && /your account|another account/i.test(merchant)) merchant = undefined;
-    if (!merchant && !GENERIC_TITLES.test(title) && !AMOUNT.test(title)) merchant = title;
+    if (!merchant && !named && !GENERIC_TITLES.test(title) && !AMOUNT.test(title)) merchant = title;
     const sent = /\byou sent\b|transfer sent/i.test(all);
     if (merchant && sent) merchant = merchant.replace(/\.\s.*$/, '');
     if (!merchant && sent) merchant = 'Payment sent';

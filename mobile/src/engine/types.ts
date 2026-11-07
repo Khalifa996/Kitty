@@ -71,6 +71,7 @@ export type Tx = {
   fromSide?: boolean; // personal spending paid from side income: off the daily budget, not a business cost
   spread?: boolean;   // a big one-off spread over the rest of the pay month instead of landing on one day (one-off bills always are)
   autoAdded?: string; // when Kitty added this from a bank alert by itself (ISO time), so Review can show it to check
+  accountName?: string; // the named account the alert came from (a Monzo business or joint account)
 };
 
 export type Pot = { id: string; name: string; perPay: number; target: number; opening: number; start: string; end?: string; closed?: string };

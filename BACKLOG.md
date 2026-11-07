@@ -7,7 +7,8 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 ## Snags
 | Pri | Found | Snag |
 |---|---|---|
-| P2 | 7 Nov | Monzo Business and personal alerts come from one app. "MSK Repairs & Maintenance" entries from Monzo look like the business account's own spending, counted as personal. Needs real (anonymised) Monzo alerts from both accounts |
+| P1 | 7 Nov | Side income that lands in a personal account (Stripe, Airtasker into Revolut) stays out of the daily budget, but the spending it pays for counts. Proposal to Mo: count it as paying yourself, keeping back the tax share |
+| P2 | 7 Nov | Paying yourself from a Monzo Business account into Monzo personal: both alerts come from the same app, so they don't pair as a move. Needs real (anonymised) alerts the first time it happens |
 | P2 | 7 Nov | Credit card spending (seen through Google Wallet) counts against the daily budget, and the card's monthly repayment is a bill too. Fine for now, but think about cards paid in full |
 | P2 | 7 Nov | Flag likely duplicates already in Activity (same amount in on the same day, one from an alert and one by hand) |
 | P1 | 2 Nov | Monzo personal and Monzo Business alerts come from the same app. Until Kitty can tell them apart, money moved from the business to the personal account may show as a spend as well as "Paid myself". Needs real (anonymised) alerts from both |
@@ -52,6 +53,10 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | P3 | Light theme |
 
 ## Changelog
+**App 0.9.1, 7 Nov 2026: Monzo Business**
+- With more than one Monzo account, Monzo puts the account's name in the title ("Acme Ltd") and "£75.20 from Jobsite" in the text. Kitty read that as spending at a shop called Acme Ltd. It now reads money in and spending properly, and never takes the account name for a shop or payer
+- A business account (side income on and a business-like name, or one that has had side income before): money in is side income and spending is a business cost, both kept out of the daily budget until you pay yourself. Review and Activity show which account
+
 **App 0.9, 7 Nov 2026: Kitty adds what it's sure about**
 - Payments Kitty is sure about go in by themselves once they've settled (20 minutes, an hour for Google Wallet, so transfers and twins can pair up first). Spending goes in even with a guessed category. Money in only when Kitty knows what it is. Cash, new Direct Debits, bill amount changes, unclear alerts and anything that looks logged already still wait in Review. More has "Ask me first" to turn it off
 - Review shows "Kitty added N payments" to check: tap one to change its category or take it out, or "Looks right"

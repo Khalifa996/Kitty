@@ -47,7 +47,7 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
       : bill ? (t.auto ? 'Direct Debit' : { bill: 'Bill', sub: 'Subscription', debt: 'Debt repayment' }[bill.type])
       : t.kind === 'in' ? inName(t.cat)
       : (t.sub || (t.merchant ? catName(S.settings, t.cat) : ''));
-    return [first, t.time, t.fromSide ? 'Side income' : '', t.spread ? 'Spread' : '', t.bank, t.note].filter(Boolean).join(' · ');
+    return [first, t.time, t.fromSide ? 'Side income' : '', t.spread ? 'Spread' : '', t.accountName ? `${t.bank} ${t.accountName}` : t.bank, t.note].filter(Boolean).join(' · ');
   };
 
   const del = (t: Tx) => {

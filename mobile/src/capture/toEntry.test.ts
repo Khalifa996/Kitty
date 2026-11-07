@@ -263,3 +263,15 @@ it("skips Google Wallet's extra alert when the card's bank sends its own", () =>
   const other = alert({ kind: 'spent', amount: 1350, merchant: 'Corner Shop', bank: 'Google Wallet', reason: 'Paid with Amex Gold' });
   expect(suggest(S, other, 'n72')).toMatchObject({ action: 'add' });
 });
+
+it('keeps a business account out of the daily budget: money in is side income, spending is a business cost', () => {
+  const S = withHistory();
+  S.settings.sideIncome = true;
+  const inn = suggest(S, alert({ kind: 'received', amount: 7520, merchant: 'Jobsite UK Limited', bank: 'Monzo', accountName: 'Acme Fixes & Co' }), 'n80');
+  expect(inn).toMatchObject({ action: 'add', guessed: false, tx: { kind: 'in', cat: 'side', biz: true, accountName: 'Acme Fixes & Co' } });
+  const out = suggest(S, alert({ kind: 'spent', amount: 1240, merchant: 'Toolstation', bank: 'Monzo', accountName: 'Acme Fixes & Co' }), 'n81');
+  expect(out).toMatchObject({ action: 'add', tx: { kind: 'out', biz: true } });
+  // A joint account isn't a business
+  const joint = suggest(S, alert({ kind: 'spent', amount: 1240, merchant: 'Toolstation', bank: 'Monzo', accountName: 'Joint account' }), 'n82');
+  expect(joint).toMatchObject({ action: 'add', tx: { biz: false } });
+});

@@ -324,7 +324,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
             <View style={s.row}>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={s.name} numberOfLines={1}>{t.merchant || (isIn ? 'Money in' : newBill ? 'Direct Debit' : 'Shop not named')}</Text>
-                <Text style={s.meta} numberOfLines={1}>{i.p.bank} · {when(i.p.time)}</Text>
+                <Text style={s.meta} numberOfLines={1}>{i.p.accountName ? `${i.p.bank} ${i.p.accountName}` : i.p.bank} · {when(i.p.time)}</Text>
               </View>
               <Text style={[s.amt, isIn && { color: C.good }]}>{isIn ? '+' : ''}{money(t.amt, cur)}</Text>
             </View>
