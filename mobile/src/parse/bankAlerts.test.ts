@@ -120,6 +120,14 @@ describe('real alerts, 27 to 29 Oct (names changed)', () => {
     expect(out.map((p) => p.kind)).toEqual(['spent', 'ignore', 'spent', 'spent', 'spent']);
     expect(out[1].duplicateOf).toBe(out[2].key);
   });
+  it("gives a bank alert without a shop the name from Google Wallet's copy", () => {
+    const out = parseAll([
+      a(GW, 'Scoota UK', '£1.35 with Barclays Debit ••2222', 0),
+      a(BAR, 'Barclays', "Pers acct - You've spent £1.35 from your account ending 1111.", 17 * 60 * 1000),
+    ]);
+    expect(out[1]).toMatchObject({ kind: 'spent', merchant: 'Scoota UK' });
+    expect(out[0]).toMatchObject({ kind: 'ignore', duplicateOf: out[1].key });
+  });
   it('cleans card terminal names', () => {
     expect(parseAlert(a(GW, 'SumUp  *CAFFE DARTE LTD', '£12.45 with Revolut Visa ••1234')).merchant).toBe('Caffe Darte Ltd');
   });

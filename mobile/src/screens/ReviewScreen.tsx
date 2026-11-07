@@ -1,7 +1,7 @@
 // Payments Kitty spotted in your bank alerts, ready to add with one tap.
 import { useEffect, useMemo, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { alreadyLogged, guessCategory, knownCategory, suggest, type Suggestion } from '../capture/toEntry';
+import { alertTxId, alreadyLogged, guessCategory, knownCategory, suggest, type Suggestion } from '../capture/toEntry';
 import { isMoneyApp, keysFor, type Capture } from '../capture/useCapture';
 import { catName, categories, inName, inTypes } from '../engine/cats';
 import type { Bill, State, Tx } from '../engine/types';
@@ -11,7 +11,7 @@ import { amountIn, clean, isGenericTitle, tidyName, type ParsedAlert } from '../
 import { hm, ymd } from '../engine/dates';
 import { uid, useKitty } from '../store/KittyState';
 import { getItem, setItem } from '../store/kv';
-import { Btn, Card, Chip, Label, Sheet } from '../ui/kit';
+import { Btn, Card, CatIcon, Chip, Label, Sheet } from '../ui/kit';
 import { Icon } from '../ui/Icon';
 import { C, money } from '../ui/theme';
 
@@ -72,11 +72,14 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
   const [making, setMaking] = useState<{ i: Item; name: string; type: Bill['type'] } | null>(null);
   const [showSkipped, setShowSkipped] = useState(false);
   const [showNotices, setShowNotices] = useState(false);
+  // What Kitty added by itself since the person last looked
+  const [showAdded, setShowAdded] = useState(false);
+  const [fixing, setFixing] = useState<Tx | null>(null);
   const cur = S.settings.currency;
 
   const base: Item[] = useMemo(() => cap.parsed
     .filter((p) => p.kind !== 'ignore' || !p.duplicateOf)
-    .map((p) => ({ p, sug: suggest(S, p, `a-${p.key.replace(/[^a-z0-9]/gi, '').slice(-16)}`, cap.parsed), dup: alreadyLogged(S, p) })), [cap.parsed, S]);
+    .map((p) => ({ p, sug: suggest(S, p, alertTxId(p), cap.parsed), dup: alreadyLogged(S, p) })), [cap.parsed, S]);
 
   // Smart sorting (opt-in): ask the AI about alerts Kitty couldn't read and shops it couldn't place
   const needHelp = useMemo(() => base.filter((i) => !i.p.duplicateOf && !i.dup && (i.sug.action === 'ask' || (i.sug.action === 'add' && i.sug.guessed && !i.sug.cash && !(i.sug.newBill && !i.p.merchant))))
@@ -84,6 +87,22 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
   const ai = useSmartSort(S, needHelp);
   const items: Item[] = useMemo(() => base.map((i) => withAi(i, ai.results[i.p.key], S)), [base, ai.results, S]);
   const todo = items.filter((i) => i.sug.action !== 'skip' && !i.p.duplicateOf);
+  const addedByKitty = useMemo(() => S.tx.filter((t) => t.autoAdded && t.autoAdded > (S.settings.autoSeen || ''))
+    .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)), [S]);
+  const fixCat = (cat: string) => {
+    if (!fixing) return;
+    const id = fixing.id;
+    update((d) => { const t = d.tx.find((x) => x.id === id); if (t) { t.cat = cat; if (t.kind === 'in') t.biz = cat === 'side'; } });
+    setFixing(null);
+    onDone('Changed. Kitty will use this for that name from now on');
+  };
+  const takeOut = () => {
+    if (!fixing) return;
+    const was = fixing;
+    update((d) => { d.tx = d.tx.filter((x) => x.id !== was.id); });
+    setFixing(null);
+    onDone(`Took out ${money(was.amt, cur)}`, () => update((d) => { d.tx.push(was); }));
+  };
   const skipped = items.filter((i) => i.sug.action === 'skip' && !i.p.duplicateOf && !i.p.warning);
   // What your banks are warning you about (overdraft, low balance): newest of each kind per bank, last three days
   const warnings = cap.parsed.filter((p) => p.warning && Date.now() - p.time < 3 * 864e5)
@@ -154,7 +173,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
     const r = rawOf(p), d = new Date(p.time);
     const name = p.merchant || (r && !isGenericTitle(r.title) && !amountIn(r.title) ? tidyName(r.title) : '');
     const cat = kind === 'in' ? 'extra' : guessCategory(S, name) || knownCategory(name) || 'other';
-    const t: Tx = { id: `a-${p.key.replace(/[^a-z0-9]/gi, '').slice(-16)}`, kind, amt, cat, sub: null, merchant: name, note: '', date: ymd(d), time: hm(d), biz: false, billId: null, source: 'alert', bank: p.bank };
+    const t: Tx = { id: alertTxId(p), kind, amt, cat, sub: null, merchant: name, note: '', date: ymd(d), time: hm(d), biz: false, billId: null, source: 'alert', bank: p.bank };
     update((x) => { x.tx.push(t); });
     cap.done(keysFor(p, cap.parsed));
     onDone(`Added ${money(amt, cur)}${name ? ' · ' + name : ''}. Change the category in Activity if it's wrong`, () => update((x) => { x.tx = x.tx.filter((y) => y.id !== t.id); }));
@@ -205,11 +224,35 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
       <View style={s.head}>
         <View style={{ flex: 1 }}>
           <Text style={s.h1}>To review</Text>
-          <Text style={s.sub}>{todo.length ? `${todo.length} payment${todo.length === 1 ? '' : 's'} from your bank alerts` : 'Payments from your bank alerts show up here'}</Text>
+          <Text style={s.sub}>{todo.length ? `${todo.length} payment${todo.length === 1 ? '' : 's'} to check` : S.settings.autoAdd !== false ? 'Kitty adds the payments it\'s sure about. Anything else waits here' : 'Payments from your bank alerts show up here'}</Text>
           {ai.on && (ai.busy || ai.error) ? <Text style={[s.sub, ai.error ? { color: C.warn } : null]}>{ai.busy ? 'Smart sorting the ones Kitty is unsure about…' : ai.error}</Text> : null}
         </View>
         {easy.length > 1 && <Btn label={`Add all ${easy.length}`} primary small onPress={() => add(easy)} />}
       </View>
+
+      {addedByKitty.length > 0 && (
+        <Card style={{ gap: 6 }}>
+          <View style={s.row}>
+            <Text style={[s.h2, { flex: 1 }]}>Kitty added {addedByKitty.length} payment{addedByKitty.length === 1 ? '' : 's'}</Text>
+            <Btn label="Looks right" small onPress={() => update((d) => { d.settings.autoSeen = new Date().toISOString(); })} />
+          </View>
+          <Text style={s.hint}>They're already in your daily figure. Tap one to change its category or take it out.</Text>
+          {(showAdded ? addedByKitty : addedByKitty.slice(0, 4)).map((t) => {
+            const isIn = t.kind === 'in', c = isIn ? inTypes(S.settings).find((x) => x.id === t.cat) : categories(S.settings).find((x) => x.id === t.cat);
+            return (
+              <Pressable key={t.id} style={s.addedRow} accessibilityRole="button" accessibilityLabel={`Change ${t.merchant || 'payment'}`} onPress={() => setFixing(t)}>
+                <CatIcon icon={t.billId ? 'receipt' : c?.i || 'more'} colour={t.billId ? C.bill : c?.c || C.muted} size={30} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={[s.name, { fontSize: 15 }]} numberOfLines={1}>{t.merchant || (isIn ? inName(t.cat) : c?.n || 'Payment')}</Text>
+                  <Text style={s.meta} numberOfLines={1}>{[t.billId ? 'Bill' : isIn ? inName(t.cat) : c?.n || 'Other', t.date === ymd(new Date()) ? t.time : `${t.date.slice(8)}/${t.date.slice(5, 7)} ${t.time}`, t.bank].filter(Boolean).join(' · ')}</Text>
+                </View>
+                <Text style={[s.amt, { fontSize: 15 }, isIn && { color: C.good }]}>{isIn ? '+' : ''}{money(t.amt, cur)}</Text>
+              </Pressable>
+            );
+          })}
+          {addedByKitty.length > 4 && <Pressable accessibilityRole="button" onPress={() => setShowAdded(!showAdded)} style={{ paddingVertical: 6 }}><Text style={s.link}>{showAdded ? 'Show fewer' : `Show all ${addedByKitty.length}`}</Text></Pressable>}
+        </Card>
+      )}
 
       {warnings.length > 0 && (
         <Card style={{ gap: 10, borderWidth: 1, borderColor: C.warn }}>
@@ -390,6 +433,18 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
         </View>
       )}
 
+      <Sheet open={!!fixing} onClose={() => setFixing(null)} title={fixing ? (fixing.merchant || 'Payment') : ''}>
+        {fixing && <>
+          <Text style={s.hint}>{money(fixing.amt, cur)} · {fixing.bank || 'Bank alert'} · {fixing.date.slice(8)}/{fixing.date.slice(5, 7)} {fixing.time}</Text>
+          {!fixing.billId && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {(fixing.kind === 'in' ? inTypes(S.settings) : categories(S.settings)).map((c) => (
+              <Chip key={c.id} label={c.n} icon={c.i} colour={c.c} on={fixing.cat === c.id} onPress={() => fixCat(c.id)} />
+            ))}
+          </View>}
+          <Btn label="Take it out" danger onPress={takeOut} />
+        </>}
+      </Sheet>
+
       <Sheet open={!!making} onClose={() => setMaking(null)} title="Make it a bill">
         {making && (() => {
           const t = txFor(making.i) as Tx, d = parseInt(t.date.slice(8), 10);
@@ -428,6 +483,8 @@ const s = StyleSheet.create({
   h2: { color: C.fg, fontSize: 16, fontWeight: '700' },
   sub: { color: C.muted, fontSize: 13, marginTop: 3 },
   hint: { color: C.muted, fontSize: 13.5, lineHeight: 19 },
+  addedRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
+  link: { color: C.gold, fontSize: 14, fontWeight: '700' },
   field: { backgroundColor: C.surface2, borderRadius: 12, height: 46, paddingHorizontal: 12, color: C.fg, fontSize: 16 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   name: { color: C.fg, fontSize: 16, fontWeight: '700' },

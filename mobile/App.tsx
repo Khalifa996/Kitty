@@ -3,8 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { suggest } from './src/capture/toEntry';
-import { useCapture } from './src/capture/useCapture';
+import { alertTxId, alreadyLogged, isSure, settleMinutes, suggest } from './src/capture/toEntry';
+import { keysFor, useCapture } from './src/capture/useCapture';
 import { ActivityScreen } from './src/screens/ActivityScreen';
 import { InsightsScreen } from './src/screens/InsightsScreen';
 import { LogScreen } from './src/screens/LogScreen';
@@ -38,13 +38,31 @@ export default function App() {
 }
 
 function Shell() {
-  const { S } = useKitty();
+  const { S, update } = useKitty();
   const cap = useCapture();
+  // Payments Kitty is sure about go in by themselves once they've settled, so the number is right without opening Review
+  const [tick, setTick] = useState(0);
+  useEffect(() => { const t = setInterval(() => setTick((n) => n + 1), 5 * 60 * 1000); return () => clearInterval(t); }, []);
+  useEffect(() => {
+    if (!S.settings.setupDone || S.settings.autoAdd === false) return;
+    const now = Date.now();
+    const sure = cap.parsed
+      .filter((p) => now - p.time >= settleMinutes(p) * 60 * 1000)
+      .map((p) => ({ p, sug: suggest(S, p, alertTxId(p), cap.parsed) }))
+      .filter((i) => isSure(i.p, i.sug, alreadyLogged(S, i.p)));
+    if (!sure.length) return;
+    const stamp = new Date().toISOString();
+    update((d) => {
+      const have = new Set(d.tx.map((t) => t.id));
+      for (const i of sure) if (i.sug.action === 'add' || i.sug.action === 'pay-bill') { const t = { ...i.sug.tx, autoAdded: stamp }; if (!have.has(t.id)) d.tx.push(t); }
+    });
+    cap.done(sure.flatMap((i) => keysFor(i.p, cap.parsed)));
+  }, [cap.parsed, tick, S.settings.autoAdd, S.settings.setupDone]); // eslint-disable-line react-hooks/exhaustive-deps
   const [tab, setTab] = useState<Tab>('log');
   const [importing, setImporting] = useState(false);
   const [more, setMore] = useState(false);
   const [toast, setToast] = useState<{ msg: string; undo?: () => void } | null>(null);
-  const update = useUpdate();
+  const newBuild = useUpdate();
   const [later, setLater] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -76,11 +94,11 @@ function Shell() {
 
   return (
     <SafeAreaView style={s.screen} edges={['top', 'left', 'right']}>
-      {update && !later && (
+      {newBuild && !later && (
         <View style={s.update}>
-          <Text style={s.updateT} numberOfLines={1}>A newer Kitty is ready (0.1.{update.build})</Text>
+          <Text style={s.updateT} numberOfLines={1}>A newer Kitty is ready (0.1.{newBuild.build})</Text>
           <Pressable accessibilityRole="button" onPress={() => setLater(true)} hitSlop={8}><Text style={s.updateLater}>Later</Text></Pressable>
-          <Pressable accessibilityRole="button" onPress={() => Linking.openURL(update.url)} hitSlop={8}><Text style={s.updateGo}>Update</Text></Pressable>
+          <Pressable accessibilityRole="button" onPress={() => Linking.openURL(newBuild.url)} hitSlop={8}><Text style={s.updateGo}>Update</Text></Pressable>
         </View>
       )}
       <View style={{ flex: 1 }}>

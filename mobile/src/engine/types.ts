@@ -18,6 +18,8 @@ export type Settings = {
   dismissed: Record<string, boolean>;
   ai?: { on: boolean; install: string }; // smart sorting with cloud AI: off unless the person turns it on
   learned?: { skip?: Record<string, number>; keep?: Record<string, number> }; // what the person did with alerts Kitty couldn't read, by bank
+  autoAdd?: boolean;  // add payments Kitty is sure about without asking (on unless turned off)
+  autoSeen?: string;  // the person has checked what Kitty added up to this time (ISO)
   opening?: { start: string; date: string; pot: number } | null;
   prepaid?: Record<string, string>;
   ddSkip?: Record<string, boolean>;
@@ -68,6 +70,7 @@ export type Tx = {
   bank?: string;   // which bank's alert it came from
   fromSide?: boolean; // personal spending paid from side income: off the daily budget, not a business cost
   spread?: boolean;   // a big one-off spread over the rest of the pay month instead of landing on one day (one-off bills always are)
+  autoAdded?: string; // when Kitty added this from a bank alert by itself (ISO time), so Review can show it to check
 };
 
 export type Pot = { id: string; name: string; perPay: number; target: number; opening: number; start: string; end?: string; closed?: string };

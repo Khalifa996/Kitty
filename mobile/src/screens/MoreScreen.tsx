@@ -13,7 +13,7 @@ import { alertLog, parseBackup } from '../store/storage';
 import { Btn, Card, Label } from '../ui/kit';
 import { C } from '../ui/theme';
 
-const VERSION = '0.8.3';
+const VERSION = '0.9';
 // @ts-ignore process.env is provided by Expo
 const BUILD: string = (process.env.EXPO_PUBLIC_KITTY_BUILD as string | undefined) || '';
 
@@ -53,6 +53,10 @@ export function MoreScreen({ cap, onDone }: { cap: Capture; onDone: (msg: string
         ) : cap.enabled ? (
           <>
             <Text style={s.hint}>On. Kitty reads payment alerts from the main UK banks and card apps, and from Google Wallet. They never leave your phone. It never reads chats, texts, email or social apps.</Text>
+            <View style={[s.row, { alignItems: 'center' }]}>
+              <Text style={[s.hint, { flex: 1, color: C.fg }]}>{S.settings.autoAdd !== false ? 'Adds the payments it\'s sure about by itself. You can check or change them in Review' : 'Waits for you to add every payment in Review'}</Text>
+              <Btn label={S.settings.autoAdd !== false ? 'Ask me first' : 'Add by itself'} small onPress={() => update((d) => { d.settings.autoAdd = d.settings.autoAdd === false; })} />
+            </View>
             {cap.watched.map((a) => (
               <View key={a.pkg} style={[s.row, { alignItems: 'center' }]}>
                 <Text style={[s.hint, { flex: 1, color: C.fg }]}>Also reading {a.label}</Text>

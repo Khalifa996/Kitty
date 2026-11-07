@@ -60,7 +60,7 @@ export function LogScreen({ onSaved }: { onSaved: (msg: string, undo: () => void
   let line: string | undefined;
   if (si && p > 0 && mode === 'out' && !date) {
     const a = si.safe - p;
-    line = a >= 0 ? `${moneyS(a, cur)} left today after this` : si.daysLeft > 1 ? `${moneyS(Math.round((si.left - p) / (si.daysLeft - 1)), cur)}/day from tomorrow` : 'Last day of the cycle';
+    line = si.left < 0 ? `${moneyS(p - si.left, cur)} over after this` : a >= 0 ? `${moneyS(a, cur)} left today after this` : si.daysLeft > 1 ? `${moneyS(Math.round((si.left - p) / (si.daysLeft - 1)), cur)}/day from tomorrow` : 'Last day of the cycle';
   }
 
   const save = () => {

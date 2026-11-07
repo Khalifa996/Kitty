@@ -2,7 +2,7 @@
 import { billDue, billWindowAt } from '../engine/budget';
 import { diffDays, hm, ymd } from '../engine/dates';
 import type { State, Tx } from '../engine/types';
-import type { ParsedAlert } from '../parse/bankAlerts';
+import { cardBankOf, type ParsedAlert } from '../parse/bankAlerts';
 
 const norm = (s: string) => (s || '').toLowerCase().replace(/\b(bill|payment|repayment|ltd|limited|stores?|plc)\b/g, '').replace(/[^a-z0-9]/g, '');
 
@@ -90,6 +90,26 @@ export type Suggestion =
   | { action: 'ask'; reason: string }
   | { action: 'skip'; reason: string };
 
+/** The entry id for an alert, so the same alert can never be added twice. */
+export const alertTxId = (p: ParsedAlert) => `a-${p.key.replace(/[^a-z0-9]/gi, '').slice(-16)}`;
+
+/** Minutes to wait before adding an alert by itself, so its other half (a transfer, Google Wallet's copy) can arrive. */
+export const settleMinutes = (p: ParsedAlert) => (p.bank === 'Google Wallet' ? 65 : 20);
+
+/**
+ * Payments Kitty is sure enough about to add without asking: money has clearly moved and there's nothing to decide.
+ * Spending goes in even when the category is a guess (the money has gone either way). Money in only when Kitty knows
+ * what it is, since a guess there could add money that isn't really yours to spend. Anything that looks logged already,
+ * cash, a new Direct Debit, or a change to a bill's amount waits for the person.
+ */
+export function isSure(p: ParsedAlert, sug: Suggestion, dup?: Tx | null): boolean {
+  if (dup || p.duplicateOf || p.unsure || p.warning) return false;
+  if (sug.action === 'pay-bill') return !sug.replaces;
+  if (sug.action !== 'add' || sug.cash || sug.newBill) return false;
+  if (sug.tx.kind === 'in') return !sug.guessed && sug.tx.cat !== 'transfer' && sug.tx.cat !== 'borrowed';
+  return true;
+}
+
 export function suggest(S: State, p: ParsedAlert, id: string, others: ParsedAlert[] = []): Suggestion {
   if (p.unsure && p.amount) {
     // Learn from what the person did before: skipped two from this bank and never kept one, so stop asking
@@ -98,6 +118,14 @@ export function suggest(S: State, p: ParsedAlert, id: string, others: ParsedAler
     return { action: 'ask', reason: p.reason || 'Kitty couldn\'t tell what this one is' };
   }
   if (p.kind === 'ignore') return { action: 'skip', reason: p.reason || 'Not a payment' };
+  // Google Wallet for a card whose bank sends its own alerts: the bank's alert is the payment, and an extra one from
+  // Google Wallet with no bank twin is usually a hold (scooter and taxi apps take one before the real fare)
+  if (p.bank === 'Google Wallet' && p.kind === 'spent') {
+    const bank = cardBankOf(p), since = ymd(new Date(p.time - 30 * 864e5));
+    if (bank && (others.some((q) => q.bank === bank) || S.tx.some((t) => t.bank === bank && t.date >= since)))
+      return { action: 'skip', reason: `${bank} sends its own alert for this card. This one is usually a hold, not a charge` };
+  }
+
   // Money moved from your business to your own account is paying yourself: it counts as money to spend
   const fromBiz = (p.kind === 'transfer' && !p.sent) || p.kind === 'received' ? guessIncome(S, p.merchant) === 'draw' : false;
   if (p.kind === 'transfer' && !fromBiz) return { action: 'skip', reason: p.reason || 'Moved between your accounts' };

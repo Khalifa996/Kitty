@@ -26,6 +26,22 @@ export function SafeStrip({ extraLine, day }: { extraLine?: string; day?: string
     );
   }
   const si = safeInfo(S, today), cur = S.settings.currency, over = si.safe < 0;
+  // The pay month's money has gone: a minus figure per day means little, so say how far over the month is and when payday comes
+  if (si.left < 0) {
+    const days = si.daysLeft;
+    return (
+      <View style={s.strip} accessibilityLabel={`${moneyS(-si.left, cur)} over for this pay month`}>
+        <View style={{ flexShrink: 0 }}>
+          <Text style={s.k}>Over this pay month</Text>
+          <Text style={[s.big, { color: C.bad }]}>{moneyS(-si.left, cur)}</Text>
+        </View>
+        <View style={{ alignItems: 'flex-end', flexShrink: 1 }}>
+          <Text style={s.k}>Day {si.dayN} of {si.c.days}</Text>
+          <Text style={s.after}>{extraLine ?? `Payday in ${days} ${days === 1 ? 'day' : 'days'}. Money in before then comes off this first`}</Text>
+        </View>
+      </View>
+    );
+  }
   const right = extraLine
     ?? (over ? (si.tomorrow === null ? 'Last day of the cycle' : si.tomorrow < 0 ? 'Cycle budget used up' : `${moneyS(si.tomorrow, cur)}/day from tomorrow`)
       : `${moneyS(si.allowance, cur)} daily budget`);

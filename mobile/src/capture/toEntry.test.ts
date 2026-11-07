@@ -1,5 +1,5 @@
 /// <reference types="jest" />
-import { alreadyLogged, emojiCategory, guessCategory, knownCategory, sameName, suggest, wordCategory } from './toEntry';
+import { alreadyLogged, emojiCategory, guessCategory, isSure, knownCategory, sameName, suggest, wordCategory } from './toEntry';
 import { blankState } from '../engine/migrate';
 import type { ParsedAlert } from '../parse/bankAlerts';
 import type { State } from '../engine/types';
@@ -237,4 +237,29 @@ it('puts an overnight TfL charge on the day of travel', () => {
   expect(night).toMatchObject({ action: 'add', tx: { date: '2026-11-06', note: 'Charged the next morning' } });
   const day = suggest(S, alert({ kind: 'spent', amount: 520, merchant: 'Transport for London', time: at('2026-11-07T12:10:00') }), 'n61');
   expect(day).toMatchObject({ action: 'add', tx: { date: '2026-11-07', note: '' } });
+});
+
+it('adds by itself only what it is sure about', () => {
+  const S = withHistory();
+  const sure = (o: Partial<ParsedAlert>) => { const p = alert(o); return isSure(p, suggest(S, p, 'n70'), alreadyLogged(S, p)); };
+  expect(sure({ kind: 'spent', amount: 640, merchant: 'Pret A Manger' })).toBe(true);
+  // Spending with a guessed category still goes in: the money has gone either way
+  expect(sure({ kind: 'spent', amount: 655, merchant: 'Qwzx Ltd' })).toBe(true);
+  // Money in that Kitty can't place, cash, unread alerts and anything that looks logged already wait for the person
+  expect(sure({ kind: 'received', amount: 5000, merchant: 'Money in' })).toBe(false);
+  expect(sure({ kind: 'spent', amount: 2000, merchant: 'Cash machine', cash: true })).toBe(false);
+  expect(sure({ kind: 'spent', amount: 999, unsure: true })).toBe(false);
+  expect(sure({ kind: 'spent', amount: 2630, merchant: 'Tesco', time: at('2026-10-20T10:05:00') })).toBe(false);
+  // A Direct Debit Kitty doesn't know waits for "Make it a bill"
+  expect(sure({ kind: 'bill', amount: 4211, bank: 'Barclays' })).toBe(false);
+});
+
+it("skips Google Wallet's extra alert when the card's bank sends its own", () => {
+  const S = withHistory();
+  S.tx.push({ id: 'b', kind: 'out', amt: 300, cat: 'food', merchant: 'Cafe', note: '', date: '2026-10-26', time: '09:00', biz: false, billId: null, bank: 'Barclays' });
+  const hold = alert({ kind: 'spent', amount: 500, merchant: 'Scoota Technology AB', bank: 'Google Wallet', reason: 'Paid with Barclays Debit' });
+  expect(suggest(S, hold, 'n71')).toMatchObject({ action: 'skip' });
+  // A card from a bank Kitty never hears from: Google Wallet is the only record, so it counts
+  const other = alert({ kind: 'spent', amount: 1350, merchant: 'Corner Shop', bank: 'Google Wallet', reason: 'Paid with Amex Gold' });
+  expect(suggest(S, other, 'n72')).toMatchObject({ action: 'add' });
 });

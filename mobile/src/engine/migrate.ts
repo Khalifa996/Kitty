@@ -22,6 +22,7 @@ export function migrate(input: unknown): State {
   S.checkins = S.checkins || [];
   S.settings.limits = S.settings.limits || { ...DEFAULT_LIMITS };
   S.settings.dismissed = S.settings.dismissed || {};
+  if (S.settings.autoAdd === undefined) S.settings.autoAdd = true;
   S.bills.forEach((b) => { if (!b.type) b.type = 'bill'; });
   // Business income is always a business item, even if an older version left the flag off
   S.tx.forEach((t) => { if (t.kind === 'in' && t.cat === 'side') t.biz = true; });

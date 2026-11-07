@@ -227,24 +227,34 @@ export function parseAlert(a: RawAlert): ParsedAlert {
  * The same card payment often arrives twice (the bank and Google Wallet).
  * Keep the bank's alert and mark the Wallet one as a duplicate.
  */
+const CARD_BANK = new RegExp(`\\b(${BANK_NAMES})\\b`, 'i');
+/** The bank behind a Google Wallet card ("Paid with Barclays Debit" → "Barclays"), as Kitty names banks. */
+export function cardBankOf(p: ParsedAlert): string | undefined {
+  const m = (p.reason || '').match(CARD_BANK)?.[1];
+  return m ? Object.values(BANK_APPS).find((n) => n.toLowerCase() === m.toLowerCase()) : undefined;
+}
+
 export function markDuplicates(list: ParsedAlert[], windowMs = 10 * 60 * 1000, exactMs = 60 * 60 * 1000): ParsedAlert[] {
-  const spent = list.filter((p) => p.kind === 'spent' && p.bank !== 'Google Wallet');
+  const out = list.map((p) => ({ ...p }));
+  const spent = out.filter((p) => p.kind === 'spent' && p.bank !== 'Google Wallet');
   const used = new Set<string>();
-  const cardBank = new RegExp(`\\b(${BANK_NAMES})\\b`, 'i');
-  return list.map((p) => {
-    if (p.kind !== 'spent' || p.bank !== 'Google Wallet' || !p.amount) return p;
+  for (const p of out) {
+    if (p.kind !== 'spent' || p.bank !== 'Google Wallet' || !p.amount) continue;
     // Google Wallet names the card ("with Barclays Debit"), so the twin comes from that bank. Apps that take a hold and then
     // the real amount (scooters, taxis) make the two differ by a few pence, and the bank can be a while behind
-    const bank = (p.reason?.match(cardBank) || [])[1]?.toLowerCase();
+    const bank = cardBankOf(p)?.toLowerCase();
     const amt = p.amount, near = (q: ParsedAlert) => Math.abs((q.amount || 0) - amt) <= Math.max(10, Math.round(amt * 0.03));
     const twin = spent
       .filter((q) => !used.has(q.key) && (!bank || q.bank.toLowerCase() === bank) &&
         ((q.amount === amt && Math.abs(q.time - p.time) <= exactMs) || (near(q) && Math.abs(q.time - p.time) <= windowMs)))
       .sort((a, b) => Math.abs(a.time - p.time) - Math.abs(b.time - p.time))[0];
-    if (!twin) return p;
+    if (!twin) continue;
     used.add(twin.key);
-    return { ...p, kind: 'ignore', duplicateOf: twin.key, reason: `Same payment as ${twin.bank}` };
-  });
+    // Barclays sometimes leaves out the shop; Google Wallet always has it
+    if (!twin.merchant && p.merchant) twin.merchant = p.merchant;
+    Object.assign(p, { kind: 'ignore', duplicateOf: twin.key, reason: `Same payment as ${twin.bank}` });
+  }
+  return out;
 }
 
 /**

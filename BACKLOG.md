@@ -7,8 +7,8 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 ## Snags
 | Pri | Found | Snag |
 |---|---|---|
-| P1 | 7 Nov | The daily figure only counts what's been added, so it's too high until Review is cleared (11 waiting, £14.07 shown, about £3.40 real). Proposal for Mo: add the payments Kitty is sure about by itself, and make Review a list to check with undo |
-| P1 | 7 Nov | Holds: scooter and taxi apps take one amount, then the real one (VOI £5.00 then £3.24 three minutes apart). Waiting on Mo's bank statement to see which the bank keeps |
+| P2 | 7 Nov | Monzo Business and personal alerts come from one app. "MSK Repairs & Maintenance" entries from Monzo look like the business account's own spending, counted as personal. Needs real (anonymised) Monzo alerts from both accounts |
+| P2 | 7 Nov | Credit card spending (seen through Google Wallet) counts against the daily budget, and the card's monthly repayment is a bill too. Fine for now, but think about cards paid in full |
 | P2 | 7 Nov | Flag likely duplicates already in Activity (same amount in on the same day, one from an alert and one by hand) |
 | P1 | 2 Nov | Monzo personal and Monzo Business alerts come from the same app. Until Kitty can tell them apart, money moved from the business to the personal account may show as a spend as well as "Paid myself". Needs real (anonymised) alerts from both |
 | P2 | 2 Nov | Ask "What's your business called?" when side income is switched on, so the first payment from it is spotted as "Paid myself" without the person marking it |
@@ -52,6 +52,13 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | P3 | Light theme |
 
 ## Changelog
+**App 0.9, 7 Nov 2026: Kitty adds what it's sure about**
+- Payments Kitty is sure about go in by themselves once they've settled (20 minutes, an hour for Google Wallet, so transfers and twins can pair up first). Spending goes in even with a guessed category. Money in only when Kitty knows what it is. Cash, new Direct Debits, bill amount changes, unclear alerts and anything that looks logged already still wait in Review. More has "Ask me first" to turn it off
+- Review shows "Kitty added N payments" to check: tap one to change its category or take it out, or "Looks right"
+- Google Wallet's extra alert for a card whose bank sends its own is skipped as a likely hold (VOI Technology AB £5.00 next to Barclays' £5.00 and £3.24). It can still be added from "not added"
+- A bank alert without a shop name takes the name from Google Wallet's copy
+- When the pay month's money has gone, Log shows how far over the month is and when payday is, instead of a minus figure per day
+
 **App 0.8.3, 7 Nov 2026: update notice, fewer double counts**
 - Test builds check GitHub for a newer build and show "A newer Kitty is ready" with an Update button, so nobody tests an old version
 - A Google Wallet alert is matched to its bank's alert even when the amounts differ by a few pence or the bank is up to an hour behind, as long as it's the same card's bank
