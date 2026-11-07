@@ -1,6 +1,6 @@
 // Kitty: safe to spend today. Tabs: Log, Review (bank alerts), Activity, Insights, More.
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { suggest } from './src/capture/toEntry';
@@ -13,6 +13,7 @@ import { ReviewScreen } from './src/screens/ReviewScreen';
 import { PlanScreen } from './src/screens/PlanScreen';
 import { SetupScreen } from './src/screens/SetupScreen';
 import { KittyProvider, useKitty } from './src/store/KittyState';
+import { useUpdate } from './src/update/useUpdate';
 import { Icon } from './src/ui/Icon';
 import { C } from './src/ui/theme';
 
@@ -43,6 +44,8 @@ function Shell() {
   const [importing, setImporting] = useState(false);
   const [more, setMore] = useState(false);
   const [toast, setToast] = useState<{ msg: string; undo?: () => void } | null>(null);
+  const update = useUpdate();
+  const [later, setLater] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const pending = cap.parsed.filter((p) => !p.duplicateOf && suggest(S, p, 'x').action !== 'skip').length;
@@ -73,6 +76,13 @@ function Shell() {
 
   return (
     <SafeAreaView style={s.screen} edges={['top', 'left', 'right']}>
+      {update && !later && (
+        <View style={s.update}>
+          <Text style={s.updateT} numberOfLines={1}>A newer Kitty is ready (0.1.{update.build})</Text>
+          <Pressable accessibilityRole="button" onPress={() => setLater(true)} hitSlop={8}><Text style={s.updateLater}>Later</Text></Pressable>
+          <Pressable accessibilityRole="button" onPress={() => Linking.openURL(update.url)} hitSlop={8}><Text style={s.updateGo}>Update</Text></Pressable>
+        </View>
+      )}
       <View style={{ flex: 1 }}>
         {more ? (
           <View style={{ flex: 1 }}>
@@ -117,6 +127,10 @@ function Shell() {
 }
 
 const s = StyleSheet.create({
+  update: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: C.surface2, paddingHorizontal: 16, paddingVertical: 10 },
+  updateT: { flex: 1, color: C.fg, fontSize: 14, fontWeight: '600' },
+  updateLater: { color: C.muted, fontSize: 14, fontWeight: '600' },
+  updateGo: { color: C.gold, fontSize: 14, fontWeight: '800' },
   screen: { flex: 1, backgroundColor: C.bg },
   tabs: { flexDirection: 'row', backgroundColor: C.surface, borderTopWidth: 1, borderTopColor: C.line, paddingTop: 6 },
   tab: { flex: 1, alignItems: 'center', gap: 3, paddingVertical: 4 },

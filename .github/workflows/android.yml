@@ -24,6 +24,9 @@ jobs:
       LOGS: ${{ github.workspace }}/ci-logs
       # Smart sorting (opt-in cloud AI): the app key is shared with the AI service; the address is written by ai-worker.yml
       EXPO_PUBLIC_KITTY_AI_KEY: ${{ secrets.KITTY_AI_KEY }}
+      # Test builds tell testers when a newer build is on Releases (src/update/useUpdate.ts)
+      EXPO_PUBLIC_KITTY_BUILD: ${{ github.run_number }}
+      EXPO_PUBLIC_KITTY_RELEASES: https://api.github.com/repos/${{ github.repository }}/releases/latest
     steps:
       - uses: actions/checkout@v4
 

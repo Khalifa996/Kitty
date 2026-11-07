@@ -230,3 +230,11 @@ it('counts money from your own business as paying yourself, once Kitty has seen 
   expect(suggest(S, alert({ kind: 'transfer', sent: true, amount: 25000, merchant: 'Acme Repairs' }), 'n42').action).toBe('skip');
   expect(suggest(S, alert({ kind: 'transfer', amount: 18000, merchant: 'Savings' }), 'n43').action).toBe('skip');
 });
+
+it('puts an overnight TfL charge on the day of travel', () => {
+  const S = withHistory();
+  const night = suggest(S, alert({ kind: 'spent', amount: 520, merchant: 'Transport for London', time: at('2026-11-07T03:35:00') }), 'n60');
+  expect(night).toMatchObject({ action: 'add', tx: { date: '2026-11-06', note: 'Charged the next morning' } });
+  const day = suggest(S, alert({ kind: 'spent', amount: 520, merchant: 'Transport for London', time: at('2026-11-07T12:10:00') }), 'n61');
+  expect(day).toMatchObject({ action: 'add', tx: { date: '2026-11-07', note: '' } });
+});

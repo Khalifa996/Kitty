@@ -7,6 +7,9 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 ## Snags
 | Pri | Found | Snag |
 |---|---|---|
+| P1 | 7 Nov | The daily figure only counts what's been added, so it's too high until Review is cleared (11 waiting, £14.07 shown, about £3.40 real). Proposal for Mo: add the payments Kitty is sure about by itself, and make Review a list to check with undo |
+| P1 | 7 Nov | Holds: scooter and taxi apps take one amount, then the real one (VOI £5.00 then £3.24 three minutes apart). Waiting on Mo's bank statement to see which the bank keeps |
+| P2 | 7 Nov | Flag likely duplicates already in Activity (same amount in on the same day, one from an alert and one by hand) |
 | P1 | 2 Nov | Monzo personal and Monzo Business alerts come from the same app. Until Kitty can tell them apart, money moved from the business to the personal account may show as a spend as well as "Paid myself". Needs real (anonymised) alerts from both |
 | P2 | 2 Nov | Ask "What's your business called?" when side income is switched on, so the first payment from it is spotted as "Paid myself" without the person marking it |
 | P2 | 2 Nov | Some banks only send text messages. Reading texts is blocked (private), so offer a sender-only option later: read texts from named bank senders and nothing else |
@@ -49,6 +52,11 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | P3 | Light theme |
 
 ## Changelog
+**App 0.8.3, 7 Nov 2026: update notice, fewer double counts**
+- Test builds check GitHub for a newer build and show "A newer Kitty is ready" with an Update button, so nobody tests an old version
+- A Google Wallet alert is matched to its bank's alert even when the amounts differ by a few pence or the bank is up to an hour behind, as long as it's the same card's bank
+- TfL charges that arrive before 7am go on the day of travel
+
 **App 0.8.2, 2 Nov 2026: big one-offs**
 - One-off bills (a surprise fee, a fine) come off every day left in the pay month instead of putting one day hundreds of pounds in the red. Activity can spread any big spend the same way. The Day view says what it did to each day
 - Money in marked Borrowed can be linked to a debt in Activity, so the debt's balance goes up by itself

@@ -13,7 +13,9 @@ import { alertLog, parseBackup } from '../store/storage';
 import { Btn, Card, Label } from '../ui/kit';
 import { C } from '../ui/theme';
 
-const VERSION = '0.8.2';
+const VERSION = '0.8.3';
+// @ts-ignore process.env is provided by Expo
+const BUILD: string = (process.env.EXPO_PUBLIC_KITTY_BUILD as string | undefined) || '';
 
 export function MoreScreen({ cap, onDone }: { cap: Capture; onDone: (msg: string) => void }) {
   const { S, replace, update } = useKitty();
@@ -115,7 +117,7 @@ export function MoreScreen({ cap, onDone }: { cap: Capture; onDone: (msg: string
         </View>
       </Card>
 
-      <Text style={[s.hint, { textAlign: 'center' }]}>Kitty {VERSION} · test build</Text>
+      <Text style={[s.hint, { textAlign: 'center' }]}>Kitty {VERSION} · test build{BUILD ? ` 0.1.${BUILD}` : ''}. It checks GitHub for a newer test build every few hours, without sending anything about you.</Text>
     </ScrollView>
   );
 }

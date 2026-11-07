@@ -107,6 +107,19 @@ describe('real alerts, 27 to 29 Oct (names changed)', () => {
     const out = parseAll([a(MON, '🍏 £1 at Co-op', '', 1000), a(GW, 'WELCOME', '£1.00 with Monzo Mastercard ••1234', 6000)]);
     expect(out.map((p) => p.kind)).toEqual(['spent', 'ignore']);
   });
+  it('drops the Google Wallet copy when the amounts differ by a few pence or the bank is a while behind', () => {
+    const m = 60 * 1000;
+    const out = parseAll([
+      a(BAR, 'Barclays', "Pers acct - You've spent £1.45 with SCOOTA UK from your account ending 1111.", 0),
+      a(GW, 'Scoota Technology AB', '£1.45 with Barclays Debit ••2222', 30 * m),
+      a(BAR, 'Barclays', "Pers acct - You've spent £1.43 with SCOOTA UK from your account ending 1111.", 30 * m),
+      // A Revolut card payment of the same amount is a different payment
+      a(GW, 'Cafe', '£2.10 with Revolut Visa ••3333', 31 * m),
+      a(BAR, 'Barclays', "Pers acct - You've spent £2.10 with CAFE from your account ending 1111.", 31 * m),
+    ]);
+    expect(out.map((p) => p.kind)).toEqual(['spent', 'ignore', 'spent', 'spent', 'spent']);
+    expect(out[1].duplicateOf).toBe(out[2].key);
+  });
   it('cleans card terminal names', () => {
     expect(parseAlert(a(GW, 'SumUp  *CAFFE DARTE LTD', '£12.45 with Revolut Visa ••1234')).merchant).toBe('Caffe Darte Ltd');
   });

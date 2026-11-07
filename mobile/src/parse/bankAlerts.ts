@@ -227,12 +227,23 @@ export function parseAlert(a: RawAlert): ParsedAlert {
  * The same card payment often arrives twice (the bank and Google Wallet).
  * Keep the bank's alert and mark the Wallet one as a duplicate.
  */
-export function markDuplicates(list: ParsedAlert[], windowMs = 10 * 60 * 1000): ParsedAlert[] {
-  const spent = list.filter((p) => p.kind === 'spent');
+export function markDuplicates(list: ParsedAlert[], windowMs = 10 * 60 * 1000, exactMs = 60 * 60 * 1000): ParsedAlert[] {
+  const spent = list.filter((p) => p.kind === 'spent' && p.bank !== 'Google Wallet');
+  const used = new Set<string>();
+  const cardBank = new RegExp(`\\b(${BANK_NAMES})\\b`, 'i');
   return list.map((p) => {
-    if (p.kind !== 'spent' || p.bank !== 'Google Wallet') return p;
-    const twin = spent.find((q) => q !== p && q.bank !== 'Google Wallet' && q.amount === p.amount && Math.abs(q.time - p.time) <= windowMs);
-    return twin ? { ...p, kind: 'ignore', duplicateOf: twin.key, reason: `Same payment as ${twin.bank}` } : p;
+    if (p.kind !== 'spent' || p.bank !== 'Google Wallet' || !p.amount) return p;
+    // Google Wallet names the card ("with Barclays Debit"), so the twin comes from that bank. Apps that take a hold and then
+    // the real amount (scooters, taxis) make the two differ by a few pence, and the bank can be a while behind
+    const bank = (p.reason?.match(cardBank) || [])[1]?.toLowerCase();
+    const amt = p.amount, near = (q: ParsedAlert) => Math.abs((q.amount || 0) - amt) <= Math.max(10, Math.round(amt * 0.03));
+    const twin = spent
+      .filter((q) => !used.has(q.key) && (!bank || q.bank.toLowerCase() === bank) &&
+        ((q.amount === amt && Math.abs(q.time - p.time) <= exactMs) || (near(q) && Math.abs(q.time - p.time) <= windowMs)))
+      .sort((a, b) => Math.abs(a.time - p.time) - Math.abs(b.time - p.time))[0];
+    if (!twin) return p;
+    used.add(twin.key);
+    return { ...p, kind: 'ignore', duplicateOf: twin.key, reason: `Same payment as ${twin.bank}` };
   });
 }
 
