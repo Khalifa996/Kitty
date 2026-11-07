@@ -163,7 +163,7 @@ export function parseAlert(a: RawAlert): ParsedAlert {
   }
 
   // With more than one Monzo account (a business, a joint account), the title is the account's name and the text
-  // has the rest: "MSK Ltd" / "£75.47 from Airtasker UK Limited". The name is the account, never the shop
+  // has the rest: "Acme Ltd" / "£40.00 from Jobsite UK Limited". The name is the account, never the shop
   const named = bank === 'Monzo' && title && !AMOUNT.test(title) && !GENERIC_TITLES.test(title) && AMOUNT.test(text) ? title : undefined;
   if (named) {
     base.accountName = named;
