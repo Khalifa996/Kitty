@@ -11,6 +11,7 @@ Owner: Mo. Goal: public release on Google Play first, then the App Store. See `R
 3. **For anyone with an income.** Weekly, fortnightly, 4-weekly or monthly pay, any currency. Power features (business/side income, debts) stay out of the way until switched on.
 4. **Private by default.** No account and no bank login. Data stays on the device unless the user exports it, or turns on Smart sorting (opt-in cloud AI, see below), which sends only the alerts Kitty couldn't sort, with account numbers removed.
 5. **Plain UK English.** Name things the way people say them ("bills", "payday", "safe to spend"), not system terms.
+6. **Build for everyone, test on Mo.** Mo's accounts are the test bed, not the spec. Before every change, ask: does this help most people (one to three accounts, get paid, move money around), or just Mo? Fix the general case. Don't encode one person's setup.
 
 ## Current state: web prototype (PWA)
 
