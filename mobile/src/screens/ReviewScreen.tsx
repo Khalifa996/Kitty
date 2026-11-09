@@ -96,7 +96,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
   const askAcct = useMemo(() => {
     const known = new Set([...(S.settings.bizAccounts || []), ...(S.settings.notBizAccounts || [])].map((n) => n.toLowerCase()));
     const seen = [...S.tx.map((t) => ({ name: t.accountName, bank: t.bank })), ...cap.parsed.map((p) => ({ name: p.accountName, bank: p.bank }))];
-    return seen.find((a): a is { name: string; bank?: string } => !!a.name && !known.has(a.name.toLowerCase()));
+    return seen.find((a): a is { name: string; bank: string | undefined } => !!a.name && !known.has(a.name.toLowerCase()));
   }, [S, cap.parsed]);
   const answerAcct = (name: string, yes: boolean) => {
     const key = name.toLowerCase();
