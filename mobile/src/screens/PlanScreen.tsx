@@ -253,11 +253,13 @@ export function PlanScreen({ onDone, openMore }: { onDone: (msg: string, undo?: 
               return (
                 <Card style={{ gap: 8 }}>
                   <Label>Total owed</Label>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    {owedTrend.map((p) => <Text key={p.date} style={[s.meta, { flex: 1, textAlign: 'center', fontSize: 11 }]} numberOfLines={1}>{kShort(p.total)}</Text>)}
+                  </View>
                   <View style={s.tBars}>
                     {owedTrend.map((p, i) => (
                       <View key={p.date} style={s.tCol}>
-                        <Text style={[s.meta, { textAlign: 'center', fontSize: 11 }]} numberOfLines={1}>{kShort(p.total)}</Text>
-                        <View style={[s.tBar, { height: `${Math.max(2, (p.total / top) * 100)}%`, backgroundColor: i === owedTrend.length - 1 ? C.warn : C.surface2 }]} />
+                        <View style={[s.tBar, { height: `${Math.max(2, (p.total / top) * 100)}%`, backgroundColor: i === owedTrend.length - 1 ? C.warn : C.faint }]} />
                       </View>
                     ))}
                   </View>
@@ -462,7 +464,7 @@ const s = StyleSheet.create({
   autoT: { color: C.muted, fontSize: 12, fontWeight: '700' },
   field: { backgroundColor: C.surface2, borderRadius: 12, height: 46, paddingHorizontal: 12, color: C.fg, fontSize: 16 },
   wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  tBars: { flexDirection: 'row', alignItems: 'flex-end', height: 120, gap: 8 },
-  tCol: { flex: 1, height: '100%', justifyContent: 'flex-end', gap: 4 },
+  tBars: { flexDirection: 'row', alignItems: 'flex-end', height: 100, gap: 8 },
+  tCol: { flex: 1, height: '100%', justifyContent: 'flex-end' },
   tBar: { borderRadius: 6, minHeight: 2 },
 });

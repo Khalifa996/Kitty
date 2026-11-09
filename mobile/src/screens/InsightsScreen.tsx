@@ -288,7 +288,7 @@ export function InsightsScreen() {
                 {!!openLimit && <View style={[s.hLine, { bottom: `${(openLimit / maxH) * 100}%`, borderColor: C.gold }]} />}
                 {hist.months.map((x, i) => (
                   <View key={x.c.start} style={s.hCol}>
-                    <View style={[s.hBar, { height: `${Math.max(1, (x.amt / maxH) * 100)}%`, backgroundColor: i === hist.months.length - 1 ? colourC : C.surface2 }]} />
+                    <View style={[s.hBar, { height: `${Math.max(1, (x.amt / maxH) * 100)}%`, backgroundColor: i === hist.months.length - 1 ? colourC : C.faint }]} />
                   </View>
                 ))}
               </View>

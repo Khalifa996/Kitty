@@ -57,6 +57,12 @@ Since 9 Nov 2026 Kitty is Mo's own app, built around how he banks. Items that on
 | P3 | Debt and business suggestions only recognise UK lender and insurer names |
 
 ## Changelog
+**App 0.12, 9 Nov 2026: Crest, and the best of Emma**
+- The app is called Crest now, with a navy and gold shield icon (themed icon too). Your data and updates carry on as before
+- Insights: "Where it went" shows categories or shops. Tap a category for its last four pay months, what's usual, and an optional limit ("£X left of £Y", "running fast" once a week has gone by). Tap a shop for its payments
+- Plan has a Debts tab: everything owed (cards, loans and overdrafts), when cards and loans clear, and the total at the start of each pay month
+- Morning message: a notification at 7, 8 or 9am with what's safe to spend that day, bills going out and any category running fast. Turn it on in More
+
 **App 0.11, 9 Nov 2026: built for Mo**
 - Kitty is Mo's own app now (principle 6: where a general rule and his setup disagree, his setup wins; his details still stay on the phone)
 - Review asks once whether a named account (a Monzo business account) is your business. Yes: money in there is side income and spending there a business cost, for what's already in too. More shows it, with "It isn't" to undo

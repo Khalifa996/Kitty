@@ -32,6 +32,8 @@ class KittyNotificationListener : NotificationListenerService() {
     } catch (e: Exception) {
       // Reading the shade is a best effort
     }
+    // Alarms don't survive a restart; the listener reconnects after one, so set the morning message again
+    try { Morning.schedule(this) } catch (e: Exception) { }
   }
 
   /** If Android drops the connection, ask to be connected again rather than going quiet. */

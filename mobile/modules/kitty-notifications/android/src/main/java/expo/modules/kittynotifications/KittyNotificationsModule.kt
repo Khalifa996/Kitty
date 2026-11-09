@@ -52,5 +52,17 @@ class KittyNotificationsModule : Module() {
     Function("getExtraApps") { CaptureStore.extraApps(ctx).toList() }
     Function("setExtraApps") { pkgs: List<String> -> CaptureStore.setExtra(ctx, pkgs) }
     Function("getAppLabel") { pkg: String -> CaptureStore.label(ctx, pkg) }
+
+    // The morning message: the app hands over the next one whenever it's open
+    Function("setMorning") { json: String -> Morning.save(ctx, json) }
+    Function("morningOff") { Morning.off(ctx) }
+    Function("showNow") { title: String, body: String -> Morning.show(ctx, title, body) }
+    Function("canNotify") { Morning.canNotify(ctx) }
+    Function("openNotificationSettings") {
+      val i = if (android.os.Build.VERSION.SDK_INT >= 26)
+        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, ctx.packageName)
+      else Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + ctx.packageName))
+      ctx.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
   }
 }

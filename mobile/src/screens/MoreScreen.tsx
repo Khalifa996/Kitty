@@ -1,7 +1,7 @@
 // Bring data across from the web app, switch on bank alerts, back up.
 import * as Clipboard from 'expo-clipboard';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { PermissionsAndroid, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { isMoneyApp } from '../capture/useCapture';
 import { aiAvailable, newInstallId } from '../ai/cloud';
 import { aiSortedCount } from '../ai/useSmartSort';
@@ -10,15 +10,31 @@ import type { Capture } from '../capture/useCapture';
 import type { State } from '../engine/types';
 import { useKitty } from '../store/KittyState';
 import { alertLog, parseBackup } from '../store/storage';
-import { Btn, Card, Label } from '../ui/kit';
-import { C } from '../ui/theme';
+import { morningMessage } from '../engine/morning';
+import { Btn, Card, Chip, Label } from '../ui/kit';
+import { C, moneyS } from '../ui/theme';
 
 const VERSION = '0.12';
 // @ts-ignore process.env is provided by Expo
 const BUILD: string = (process.env.EXPO_PUBLIC_KITTY_BUILD as string | undefined) || '';
 
 export function MoreScreen({ cap, onDone }: { cap: Capture; onDone: (msg: string) => void }) {
-  const { S, replace, update } = useKitty();
+  const { S, replace, update, today } = useKitty();
+  const morning = S.settings.morning, canMorning = !!KittyNotifications?.setMorning;
+  const [notifyOk, setNotifyOk] = useState(() => KittyNotifications?.canNotify?.() ?? true);
+  const morningOn = async (on: boolean) => {
+    if (on && Platform.OS === 'android' && Number(Platform.Version) >= 33) {
+      const r = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+      if (r !== PermissionsAndroid.RESULTS.GRANTED) { setNotifyOk(false); onDone('Notifications are off for Crest. Turn them on in settings'); return; }
+    }
+    setNotifyOk(KittyNotifications?.canNotify?.() ?? true);
+    update((d) => { d.settings.morning = { on, hour: d.settings.morning?.hour ?? 8 }; });
+    onDone(on ? `Morning message on, at ${morning?.hour ?? 8}am` : 'Morning message off');
+  };
+  const morningNow = () => {
+    const m = morningMessage(S, today, (p) => moneyS(p, S.settings.currency));
+    KittyNotifications?.showNow?.(m.title, m.body || 'Nothing else to flag today.');
+  };
   const aiOn = !!S.settings.ai?.on;
   const [paste, setPaste] = useState('');
   const [found, setFound] = useState<State | null>(null);
@@ -90,6 +106,28 @@ export function MoreScreen({ cap, onDone }: { cap: Capture; onDone: (msg: string
           </>
         )}
       </Card>
+
+      {canMorning && (
+        <Card style={{ gap: 10 }}>
+          <Label>Morning message</Label>
+          <Text style={s.hint}>{morning?.on ? `On, at ${morning.hour}am.` : 'Off.'} A notification each morning with what's safe to spend that day, bills going out and any category running fast. It's worked out when Crest was last open; if bank alerts came in since, it says so.</Text>
+          {morning?.on && (
+            <View style={[s.row, { flexWrap: 'wrap' }]}>
+              {[7, 8, 9].map((h) => <Chip key={h} label={`${h}am`} on={morning.hour === h} onPress={() => update((d) => { d.settings.morning = { on: true, hour: h }; })} />)}
+            </View>
+          )}
+          {morning?.on && !notifyOk && (
+            <View style={{ gap: 8 }}>
+              <Text style={[s.hint, { color: C.warn }]}>Notifications are off for Crest, so the message can't show.</Text>
+              <Btn label="Open notification settings" onPress={() => { KittyNotifications?.openNotificationSettings?.(); setTimeout(() => setNotifyOk(KittyNotifications?.canNotify?.() ?? true), 4000); }} />
+            </View>
+          )}
+          <View style={s.row}>
+            <Btn label={morning?.on ? 'Turn off' : 'Turn on'} primary={!morning?.on} onPress={() => morningOn(!morning?.on)} />
+            {morning?.on && <Btn label="Show today's now" onPress={morningNow} />}
+          </View>
+        </Card>
+      )}
 
       {aiAvailable && (
         <Card style={{ gap: 10 }}>

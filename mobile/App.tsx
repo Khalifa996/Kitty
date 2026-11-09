@@ -7,6 +7,8 @@ import { alertTxId, alreadyLogged, isSure, settleMinutes, suggest } from './src/
 import { keysFor, useCapture } from './src/capture/useCapture';
 import { useSmartSort } from './src/ai/useSmartSort';
 import { categories } from './src/engine/cats';
+import { morningMessage, nextMorning } from './src/engine/morning';
+import { KittyNotifications } from './modules/kitty-notifications';
 import { ActivityScreen } from './src/screens/ActivityScreen';
 import { InsightsScreen } from './src/screens/InsightsScreen';
 import { LogScreen } from './src/screens/LogScreen';
@@ -17,7 +19,7 @@ import { SetupScreen } from './src/screens/SetupScreen';
 import { KittyProvider, useKitty } from './src/store/KittyState';
 import { useUpdate } from './src/update/useUpdate';
 import { Icon } from './src/ui/Icon';
-import { C, money } from './src/ui/theme';
+import { C, money, moneyS } from './src/ui/theme';
 
 type Tab = 'log' | 'review' | 'activity' | 'plan' | 'insights';
 const TABS: { id: Tab; label: string; icon: string }[] = [
@@ -65,6 +67,16 @@ function Shell() {
     });
     cap.done(sure.flatMap((i) => keysFor(i.p, cap.parsed)));
   }, [cap.parsed, tick, S.settings.autoAdd, S.settings.setupDone]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The morning message: hand the next one to the phone whenever anything changes, so it's as fresh as it can be
+  useEffect(() => {
+    const m = S.settings.morning;
+    if (!S.settings.setupDone || !KittyNotifications?.setMorning) return;
+    if (!m?.on) { KittyNotifications.morningOff?.(); return; }
+    const day = nextMorning(new Date(), m.hour);
+    const msg = morningMessage(S, day, (p) => moneyS(p, S.settings.currency));
+    try { KittyNotifications.setMorning(JSON.stringify({ ...msg, day, hour: m.hour, minute: 0, savedAt: Date.now() })); } catch { /* best effort */ }
+  }, [S, tick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Smart sorting (when it's on) picks categories for shops Crest added with a guess
   const guessed = useMemo(() => S.tx.filter((t) => t.catGuess && t.kind === 'out' && t.merchant).slice(-20)

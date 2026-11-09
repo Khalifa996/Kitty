@@ -21,6 +21,7 @@ export type Settings = {
   learned?: { skip?: Record<string, number>; keep?: Record<string, number> }; // what the person did with alerts Crest couldn't read, by bank
   autoAdd?: boolean;  // add payments Crest is sure about without asking (on unless turned off)
   autoSeen?: string;  // the person has checked what Crest added up to this time (ISO)
+  morning?: { on: boolean; hour: number }; // the morning message: today's figure as a notification at this hour
   bizAccounts?: string[];    // named bank accounts the person said are their business (money in is side income, spending is a business cost)
   notBizAccounts?: string[]; // named accounts they said aren't
   opening?: { start: string; date: string; pot: number } | null;
