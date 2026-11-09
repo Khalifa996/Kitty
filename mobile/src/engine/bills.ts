@@ -5,7 +5,7 @@ import type { Bill, Cycle, State, Tx } from './types';
 
 export type BillPaid = { date: string; auto: boolean; pre: boolean } | null;
 
-/** Paid in this bill period: a payment linked to the bill, or due before you started using Kitty. */
+/** Paid in this bill period: a payment linked to the bill, or due before you started using Crest. */
 export function paidIn(S: State, b: Bill, w: Cycle): BillPaid {
   const t = S.tx.find((x) => x.billId === b.id && x.date >= w.start && x.date <= w.end);
   if (t) return { date: t.date, auto: !!t.auto, pre: false };

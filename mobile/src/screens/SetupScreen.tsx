@@ -64,9 +64,9 @@ export function SetupScreen({ onImport }: { onImport: () => void }) {
               <Text style={s.hint}>Day 9 of 31 · £21.80 daily budget</Text>
             </Card>
             <Text style={s.h1}>Know what's safe to spend today</Text>
-            <Text style={s.lead}>Tell Kitty when you're paid and what your bills are. It works out how much you can spend each day until payday, and adjusts as you go.</Text>
+            <Text style={s.lead}>Tell Crest when you're paid and what your bills are. It works out how much you can spend each day until payday, and adjusts as you go.</Text>
             <Btn label="Get started" primary onPress={() => setStep(1)} style={{ height: 52 }} />
-            <Btn label="I have a Kitty backup" onPress={onImport} />
+            <Btn label="I have a Crest backup" onPress={onImport} />
             <Text style={[s.hint, { textAlign: 'center' }]}>No account and no bank login. Everything stays on this phone.</Text>
           </>
         )}
@@ -90,7 +90,7 @@ export function SetupScreen({ onImport }: { onImport: () => void }) {
                 <View style={s.wrapRow}>{recent.slice(0, d.payFreq === 'weekly' ? 7 : d.payFreq === 'fortnightly' ? 14 : 28).map((x) => (
                   <Chip key={x} label={x === today ? 'Today' : dfmt(x)} on={d.payAnchor === x} onPress={() => set({ payAnchor: x })} />
                 ))}</View>
-                <Text style={s.hint}>Kitty counts forward from this date.</Text>
+                <Text style={s.hint}>Crest counts forward from this date.</Text>
               </>
             )}
           </>
@@ -100,7 +100,7 @@ export function SetupScreen({ onImport }: { onImport: () => void }) {
           <>
             {nav}
             <Text style={s.h1}>How much do you take home each payday?</Text>
-            <Text style={s.lead}>After tax. If it changes, use a typical amount. Kitty switches to the real figure when your pay arrives.</Text>
+            <Text style={s.lead}>After tax. If it changes, use a typical amount. Crest switches to the real figure when your pay arrives.</Text>
             <Money value={d.income} onChange={(income) => set({ income })} label="Take-home pay" />
             <Pressable accessibilityRole="switch" accessibilityState={{ checked: d.sideIncome }} onPress={() => set({ sideIncome: !d.sideIncome })} style={s.toggle}>
               <View style={[s.box, d.sideIncome && { backgroundColor: C.gold, borderColor: C.gold }]}>{d.sideIncome && <Icon name="check" size={14} colour={C.goldInk} />}</View>
@@ -134,7 +134,7 @@ export function SetupScreen({ onImport }: { onImport: () => void }) {
           <>
             {nav}
             <Text style={s.h1}>Anything to save?</Text>
-            <Text style={s.lead}>Kitty sets this aside on payday, so it never counts as spending money. Zero is fine.</Text>
+            <Text style={s.lead}>Crest sets this aside on payday, so it never counts as spending money. Zero is fine.</Text>
             <Money value={d.savings} onChange={(savings) => set({ savings })} label="Savings each payday" />
             {p.mid && (
               <>
@@ -171,7 +171,7 @@ export function SetupScreen({ onImport }: { onImport: () => void }) {
         <View style={s.foot}>
           {step < 4
             ? <Btn label="Next" primary disabled={!canNext} onPress={() => setStep(step + 1)} style={{ height: 52 }} />
-            : <Btn label="Start using Kitty" primary disabled={p.mid && d.balance == null} onPress={finish} style={{ height: 52 }} />}
+            : <Btn label="Start using Crest" primary disabled={p.mid && d.balance == null} onPress={finish} style={{ height: 52 }} />}
         </View>
       )}
 

@@ -1,4 +1,4 @@
-// Turns a bank app's notification into something Kitty can log.
+// Turns a bank app's notification into something Crest can log.
 // Built from real UK alerts. Every rule here should have a test in bankAlerts.test.ts.
 
 export type RawAlert = { key: string; pkg: string; title: string; text: string; time: number; app?: string };
@@ -21,13 +21,13 @@ export type ParsedAlert = {
   pairedWith?: string;  // key of the other half of a move between your own accounts
   reason?: string;      // why it was ignored, or a note for the person
   duplicateOf?: string; // key of the alert this one repeats
-  unsure?: boolean;     // has an amount, but Kitty can't tell what it is: ask the person
+  unsure?: boolean;     // has an amount, but Crest can't tell what it is: ask the person
   cash?: boolean;       // a cash withdrawal
   warning?: string;     // something the person should know about (overdraft, low balance): shown as a heads-up
   emoji?: string;       // the bank's own category symbol (Revolut and Monzo start alerts with one)
 };
 
-// Apps Kitty never reads, even if someone turns them on: chats, email, texts and social apps carry private messages,
+// Apps Crest never reads, even if someone turns them on: chats, email, texts and social apps carry private messages,
 // and marketplaces, app stores and ride or delivery apps only repeat money that's counted when it reaches your bank.
 // Kept in step with NEVER in CaptureStore.kt.
 const NEVER_PKG = /whatsapp|telegram|thoughtcrime|signal|messag|\.mms|\bsms|mail|android\.gm$|outlook|snapchat|instagram|facebook|discord|slack|teams|viber|naver\.line|skype|twitter|linkedin|musically|tiktok|reddit|dynamite|airtasker|amazon|samsungapps|android\.vending|vinted|ebay|ubercab|deliveroo|justeat|depop|etsy/i;
@@ -245,7 +245,7 @@ export function parseAlert(a: RawAlert): ParsedAlert {
 
   // Only ask about it if it talks about money moving; a price in an advert or a job post is not a payment
   if (!MONEY_MOVING.test(all)) return { ...out, reason: 'Not a payment' };
-  return { ...out, unsure: true, reason: 'Kitty couldn\'t tell what this one is' };
+  return { ...out, unsure: true, reason: 'Crest couldn\'t tell what this one is' };
 }
 
 /**
@@ -253,7 +253,7 @@ export function parseAlert(a: RawAlert): ParsedAlert {
  * Keep the bank's alert and mark the Wallet one as a duplicate.
  */
 const CARD_BANK = new RegExp(`\\b(${BANK_NAMES})\\b`, 'i');
-/** The bank behind a Google Wallet card ("Paid with Barclays Debit" → "Barclays"), as Kitty names banks. */
+/** The bank behind a Google Wallet card ("Paid with Barclays Debit" → "Barclays"), as Crest names banks. */
 export function cardBankOf(p: ParsedAlert): string | undefined {
   const m = (p.reason || '').match(CARD_BANK)?.[1];
   return m ? Object.values(BANK_APPS).find((n) => n.toLowerCase() === m.toLowerCase()) : undefined;

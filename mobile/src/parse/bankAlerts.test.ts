@@ -261,7 +261,7 @@ describe('apps that are not banks', () => {
   });
 });
 
-describe('apps Kitty never reads', () => {
+describe('apps Crest never reads', () => {
   it('blocks chats, email, texts and platforms, but not banks or wallets', () => {
     for (const pkg of ['com.whatsapp', 'com.google.android.apps.messaging', 'com.samsung.android.messaging', 'com.google.android.gm', 'com.microsoft.office.outlook',
       'org.telegram.messenger', 'au.com.airtasker', 'com.amazon.mShop.android.shopping', 'com.sec.android.app.samsungapps', 'com.ebay.mobile'])

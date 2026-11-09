@@ -1,4 +1,4 @@
-// Sends alerts Kitty couldn't sort to the AI service (only when the person has turned it on), and remembers the answers.
+// Sends alerts Crest couldn't sort to the AI service (only when the person has turned it on), and remembers the answers.
 import { useEffect, useRef, useState } from 'react';
 import { categories, inTypes } from '../engine/cats';
 import type { State } from '../engine/types';

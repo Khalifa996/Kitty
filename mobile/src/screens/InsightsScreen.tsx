@@ -1,13 +1,14 @@
 // Looking back: how a single day went, and a pay month at a glance.
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { cycleOf, cycleSummary, dayInfo, isSpread, sideSummary, taxYearStart } from '../engine/budget';
 import { catName, categories, inName, inTypes } from '../engine/cats';
 import { diffDays, nextDay, parse, prevDay } from '../engine/dates';
+import { byShop, catHistory, catSpent, limitInfo, suggestLimit, type Shop } from '../engine/spending';
 import type { Tx } from '../engine/types';
 import { useKitty } from '../store/KittyState';
 import { Icon } from '../ui/Icon';
-import { Card, CatIcon, Chip, Label } from '../ui/kit';
+import { Btn, Card, CatIcon, Chip, Label, Sheet } from '../ui/kit';
 import { C, money, moneyS } from '../ui/theme';
 
 const DAYS_BACK = 60;
@@ -39,6 +40,11 @@ export function InsightsScreen() {
   const [day, setDay] = useState(() => prevDay(today));
   const [back, setBack] = useState(0); // pay months back from this one
   const [showBills, setShowBills] = useState(false);
+  const [whereBy, setWhereBy] = useState<'cat' | 'shop'>('cat');
+  const [allShops, setAllShops] = useState(false);
+  const [openCat, setOpenCat] = useState<string | null>(null);
+  const [openShop, setOpenShop] = useState<Shop | null>(null);
+  const [limitDraft, setLimitDraft] = useState('');
   const cur = S.settings.currency;
   const cats = categories(S.settings), ins = inTypes(S.settings);
 
@@ -66,7 +72,28 @@ export function InsightsScreen() {
   const prev = useMemo(() => cycleSummary(S, cycleOf(prevDay(cycle.start), S.settings), today), [S, cycle, today]);
   const inPlan = m.days.filter((d) => d.spent <= Math.max(0, d.allowance)).length;
   const maxDay = Math.max(1, ...m.days.map((d) => Math.max(d.spent, d.allowance)));
-  const topCat = m.byCat[0]?.amt || 1;
+  // Categories this pay month, plus any with a limit, so a limit with nothing spent yet still shows
+  const limits = S.settings.catLimits || {};
+  const catRows = useMemo(() => {
+    const ids = new Set([...m.byCat.map((x) => x.cat), ...Object.keys(limits)]);
+    return [...ids].map((cat) => ({ cat, amt: catSpent(S, cat, cycle) })).filter((x) => x.amt > 0 || limits[x.cat]).sort((a, b) => b.amt - a.amt);
+  }, [S, cycle, m.byCat]); // eslint-disable-line react-hooks/exhaustive-deps
+  const topCat = Math.max(1, ...catRows.map((x) => x.amt));
+  const shops = useMemo(() => byShop(S, cycle), [S, cycle]);
+  const topShop = shops[0]?.amt || 1;
+  const hist = useMemo(() => (openCat ? catHistory(S, openCat, cycle) : null), [S, openCat, cycle]);
+  const openLimit = openCat ? limits[openCat] : undefined;
+  const suggested = useMemo(() => (openCat ? suggestLimit(S, openCat, today) : null), [S, openCat, today]);
+  const catTx = useMemo(() => (openCat ? S.tx.filter((t) => t.kind === 'out' && !t.billId && !t.potId && !t.outside && t.cat === openCat && t.date >= cycle.start && t.date <= cycle.end)
+    .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)) : []), [S.tx, openCat, cycle]);
+  const showCat = (cat: string) => { setOpenCat(cat); setLimitDraft(''); };
+  const saveLimit = (cat: string, p: number | null) => update((d) => {
+    const next = { ...(d.settings.catLimits || {}) };
+    if (p && p > 0) next[cat] = p; else delete next[cat];
+    d.settings.catLimits = next;
+  });
+  const draftP = Math.round(parseFloat(limitDraft.replace(/[^0-9.]/g, '')) * 100);
+  const catLabel = (cat: string) => cats.find((k) => k.id === cat)?.n || catName(S.settings, cat);
   const n = m.days.length, prevSoFar = prev.days.slice(0, n).reduce((a, d) => a + d.spent, 0);
   const isNow = back === 0;
   const sideOn = S.settings.sideIncome;
@@ -162,7 +189,7 @@ export function InsightsScreen() {
               <Text style={s.hint}>
                 {sideYear.profit <= 0
                   ? `The business has spent ${money(-sideYear.profit, cur)} more than it made since ${short(ty)}. No tax to keep back yet.`
-                  : `Kitty keeps ${sideYear.rate}% of your side income profit out of your daily budget, so the tax bill is covered when it comes. Since ${short(ty)} that's ${money(sideYear.tax, cur)}.`}
+                  : `Crest keeps ${sideYear.rate}% of your side income profit out of your daily budget, so the tax bill is covered when it comes. Since ${short(ty)} that's ${money(sideYear.tax, cur)}.`}
               </Text>
               <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
                 {[20, 26, 40].map((r) => <Chip key={r} label={`${r}%`} on={sideYear.rate === r} onPress={() => update((d) => { d.settings.sideTaxRate = r; })} />)}
@@ -185,26 +212,151 @@ export function InsightsScreen() {
             </Card>
           )}
 
-          {m.byCat.length > 0 && (
+          {(catRows.length > 0 || shops.length > 0) && (
             <Card style={{ gap: 12 }}>
-              <Label>Where it went</Label>
-              {m.byCat.map((x) => {
-                const c = cats.find((k) => k.id === x.cat);
+              <View style={[s.row, { paddingVertical: 0 }]}>
+                <View style={{ flex: 1 }}><Label>Where it went</Label></View>
+                <View style={s.seg}>
+                  {(['cat', 'shop'] as const).map((k) => (
+                    <Pressable key={k} accessibilityRole="button" accessibilityState={{ selected: whereBy === k }} onPress={() => setWhereBy(k)} style={[s.segB, { paddingVertical: 5, paddingHorizontal: 12 }, whereBy === k && s.segOn]}>
+                      <Text style={[s.segT, whereBy === k && { color: C.fg }]}>{k === 'cat' ? 'Categories' : 'Shops'}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+              {whereBy === 'cat' ? catRows.map((x) => {
+                const c = cats.find((k) => k.id === x.cat), lim = limits[x.cat];
+                const pace = lim && isNow ? limitInfo(S, x.cat, today)?.pace : lim && x.amt > lim ? 'over' : 'ok';
+                const barC = !lim ? c?.c || C.muted : pace === 'over' ? C.bad : pace === 'fast' ? C.warn : c?.c || C.muted;
                 return (
-                  <View key={x.cat} style={{ gap: 5 }}>
+                  <Pressable key={x.cat} style={{ gap: 5 }} accessibilityRole="button" accessibilityLabel={`${c?.n || x.cat}: ${money(x.amt, cur)}${lim ? ` of ${money(lim, cur)}` : ''}`} onPress={() => showCat(x.cat)}>
                     <View style={s.row}>
                       <CatIcon icon={c?.i || 'more'} colour={c?.c || C.muted} size={28} />
-                      <Text style={[s.name, { flex: 1, fontSize: 14 }]}>{c?.n || catName(S.settings, x.cat)}</Text>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={[s.name, { fontSize: 14 }]} numberOfLines={1}>{c?.n || catName(S.settings, x.cat)}</Text>
+                        {!!lim && (
+                          <Text style={[s.meta, pace === 'over' && { color: C.bad }, pace === 'fast' && { color: C.warn }]} numberOfLines={1}>
+                            {x.amt > lim ? `${money(x.amt - lim, cur)} over its ${moneyS(lim, cur)} limit` : `${money(lim - x.amt, cur)} left of ${moneyS(lim, cur)}`}{pace === 'fast' ? ' · Running fast' : ''}
+                          </Text>
+                        )}
+                      </View>
                       <Text style={[s.amt, { fontSize: 14 }]}>{money(x.amt, cur)}</Text>
                     </View>
-                    <View style={s.track}><View style={[s.fill, { width: `${(x.amt / topCat) * 100}%`, backgroundColor: c?.c || C.muted }]} /></View>
-                  </View>
+                    <View style={s.track}><View style={[s.fill, { width: `${Math.min(100, (x.amt / (lim || topCat)) * 100)}%`, backgroundColor: barC }]} /></View>
+                  </Pressable>
                 );
-              })}
+              }) : (
+                <>
+                  {(allShops ? shops : shops.slice(0, 12)).map((x) => {
+                    const c = cats.find((k) => k.id === x.cat);
+                    return (
+                      <Pressable key={x.key} style={{ gap: 5 }} accessibilityRole="button" accessibilityLabel={`${x.name || c?.n}: ${money(x.amt, cur)}`} onPress={() => setOpenShop(x)}>
+                        <View style={s.row}>
+                          <CatIcon icon={c?.i || 'more'} colour={c?.c || C.muted} size={28} />
+                          <View style={{ flex: 1, minWidth: 0 }}>
+                            <Text style={[s.name, { fontSize: 14 }]} numberOfLines={1}>{x.name || `${c?.n || 'Other'}, no name`}</Text>
+                            <Text style={s.meta}>{x.n} payment{x.n === 1 ? '' : 's'}</Text>
+                          </View>
+                          <Text style={[s.amt, { fontSize: 14 }]}>{money(x.amt, cur)}</Text>
+                        </View>
+                        <View style={s.track}><View style={[s.fill, { width: `${(x.amt / topShop) * 100}%`, backgroundColor: c?.c || C.muted }]} /></View>
+                      </Pressable>
+                    );
+                  })}
+                  {shops.length > 12 && <Btn label={allShops ? 'Show fewer' : `Show all ${shops.length}`} small onPress={() => setAllShops(!allShops)} />}
+                </>
+              )}
+              <Text style={s.meta}>Day-to-day spending. Bills, pots and anything paid from savings are left out. Tap one to see more{whereBy === 'cat' ? ' or set a limit' : ''}.</Text>
             </Card>
           )}
         </>
       )}
+
+      <Sheet open={!!openCat} onClose={() => setOpenCat(null)} title={openCat ? catLabel(openCat) : ''}>
+        {openCat && hist && (() => {
+          const maxH = Math.max(1, ...hist.months.map((x) => x.amt), hist.avg || 0, openLimit || 0);
+          const li = isNow && openLimit ? limitInfo(S, openCat, today) : null;
+          const colourC = cats.find((k) => k.id === openCat)?.c || C.gold;
+          return (
+            <>
+              <View>
+                <Text style={s.meta}>{isNow ? 'This pay month so far' : `${short(cycle.start)} to ${short(cycle.end)}`}</Text>
+                <Text style={[s.big, { color: C.fg }]}>{money(hist.months[hist.months.length - 1].amt, cur)}</Text>
+              </View>
+              <View style={s.hBars}>
+                {hist.avg !== null && hist.avg > 0 && <View style={[s.hLine, { bottom: `${(hist.avg / maxH) * 100}%`, borderColor: C.muted }]} />}
+                {!!openLimit && <View style={[s.hLine, { bottom: `${(openLimit / maxH) * 100}%`, borderColor: C.gold }]} />}
+                {hist.months.map((x, i) => (
+                  <View key={x.c.start} style={s.hCol}>
+                    <View style={[s.hBar, { height: `${Math.max(1, (x.amt / maxH) * 100)}%`, backgroundColor: i === hist.months.length - 1 ? colourC : C.surface2 }]} />
+                  </View>
+                ))}
+              </View>
+              <View style={{ flexDirection: 'row' }}>
+                {hist.months.map((x) => <Text key={x.c.start} style={[s.meta, { flex: 1, textAlign: 'center' }]}>{short(x.c.start)}</Text>)}
+              </View>
+              <Text style={s.hint}>
+                {hist.avg === null ? 'Crest needs one full pay month of yours before it can say what is usual here.'
+                  : `Usually ${money(hist.avg, cur)} a pay month (grey line${openLimit ? ', your limit is the gold one' : ''}).`}
+              </Text>
+
+              <Label>Limit</Label>
+              {openLimit && !limitDraft ? (
+                <>
+                  <Text style={s.hint}>
+                    {money(openLimit, cur)} a pay month.{li ? ` ${li.left >= 0 ? `${money(li.left, cur)} left` : `${money(-li.left, cur)} over`}, ${li.daysLeft} day${li.daysLeft === 1 ? '' : 's'} to go.${li.pace === 'fast' ? ' At this rate it will run out before payday.' : ''}` : ''}
+                  </Text>
+                  <View style={[s.row, { justifyContent: 'flex-end', paddingVertical: 0 }]}>
+                    <Btn label="Remove" small onPress={() => saveLimit(openCat, null)} />
+                    <Btn label="Change" small onPress={() => setLimitDraft(String(openLimit / 100))} />
+                  </View>
+                </>
+              ) : (
+                <>
+                  <Text style={s.hint}>Optional. Your daily figure stays the main number; a limit just tells you when this category is eating into it. It also shows in the morning message.</Text>
+                  <View style={[s.row, { paddingVertical: 0 }]}>
+                    <TextInput value={limitDraft} onChangeText={setLimitDraft} keyboardType="decimal-pad" placeholder="Amount a pay month" placeholderTextColor={C.faint} style={s.field} accessibilityLabel="Limit a pay month" />
+                    <Btn label="Save" primary small disabled={!(draftP > 0)} onPress={() => { saveLimit(openCat, draftP); setLimitDraft(''); }} />
+                  </View>
+                  {suggested !== null && <View style={{ flexDirection: 'row' }}><Chip label={`Usual: ${moneyS(suggested, cur)}`} onPress={() => setLimitDraft(String(suggested / 100))} /></View>}
+                </>
+              )}
+
+              {catTx.length > 0 && <Label>{isNow ? 'This pay month' : 'That pay month'}</Label>}
+              <View style={s.list}>
+                {catTx.map((t, i) => (
+                  <View key={t.id} style={[s.row, i > 0 && s.sep]}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={s.name} numberOfLines={1}>{t.merchant || catLabel(t.cat)}</Text>
+                      <Text style={s.meta}>{short(t.date)}{t.bank ? ` · ${t.bank}` : ''}</Text>
+                    </View>
+                    <Text style={s.amt}>{money(t.amt, cur)}</Text>
+                  </View>
+                ))}
+              </View>
+            </>
+          );
+        })()}
+      </Sheet>
+
+      <Sheet open={!!openShop} onClose={() => setOpenShop(null)} title={openShop?.name || 'No name'}>
+        {openShop && (
+          <>
+            <Text style={s.hint}>{money(openShop.amt, cur)} over {openShop.n} payment{openShop.n === 1 ? '' : 's'} {isNow ? 'this pay month' : `from ${short(cycle.start)} to ${short(cycle.end)}`}.</Text>
+            <View style={s.list}>
+              {[...openShop.tx].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).map((t, i) => (
+                <View key={t.id} style={[s.row, i > 0 && s.sep]}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={s.name} numberOfLines={1}>{short(t.date)}, {t.time}</Text>
+                    <Text style={s.meta}>{[catLabel(t.cat), t.bank].filter(Boolean).join(' · ')}</Text>
+                  </View>
+                  <Text style={s.amt}>{money(t.amt, cur)}</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+      </Sheet>
     </ScrollView>
   );
 }
@@ -234,5 +386,10 @@ const s = StyleSheet.create({
   barCol: { flex: 1, height: '100%', justifyContent: 'flex-end' },
   bar: { borderRadius: 2, minHeight: 2 },
   track: { height: 6, borderRadius: 3, backgroundColor: C.surface2, overflow: 'hidden' },
+  hBars: { flexDirection: 'row', alignItems: 'flex-end', height: 110, gap: 12, position: 'relative' },
+  hCol: { flex: 1, height: '100%', justifyContent: 'flex-end' },
+  hBar: { borderRadius: 6, minHeight: 2 },
+  hLine: { position: 'absolute', left: 0, right: 0, borderTopWidth: 1.5, borderStyle: 'dashed', zIndex: 1 },
+  field: { flex: 1, backgroundColor: C.surface2, color: C.fg, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16 },
   fill: { height: '100%', borderRadius: 3 },
 });

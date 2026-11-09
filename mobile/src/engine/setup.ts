@@ -1,4 +1,4 @@
-// First-run setup: from a few answers (pay, bills, savings, money now) to a ready-to-use Kitty.
+// First-run setup: from a few answers (pay, bills, savings, money now) to a ready-to-use Crest.
 // Mirrors finishSetup()/obPot() in the web prototype.
 import { billDue, billWindowAt, cycleOf, isMonthly } from './budget';
 import { addDays, diffDays, parse, ymd } from './dates';
@@ -27,7 +27,7 @@ const asSettings = (d: Draft): Settings => ({ ...blankState().settings, payFreq:
 
 export type Preview = { start: string; end: string; next: string; days: number; daysLeft: number; mid: boolean; bills: number; left: number; rem: number; first: number | null };
 
-/** What Kitty will work out from the answers so far. */
+/** What Crest will work out from the answers so far. */
 export function preview(d: Draft, today: string): Preview {
   const st = asSettings(d), c = cycleOf(today, st), monthly = isMonthly(st);
   const list = d.bills.filter((b) => b.amt > 0 && b.name.trim());
@@ -46,7 +46,7 @@ export function fitLimits(budget: number): Record<string, number> {
   return o;
 }
 
-/** A fresh Kitty from the answers. Direct Debits are ticked off from today; bills due earlier this cycle count as already paid. */
+/** A fresh Crest from the answers. Direct Debits are ticked off from today; bills due earlier this cycle count as already paid. */
 export function applySetup(d: Draft, today: string, now: string, id: () => string): State {
   const S = blankState(), p = preview(d, today);
   S.settings = { ...asSettings(d), setupDone: true, limits: fitLimits(p.left) };

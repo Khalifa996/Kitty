@@ -6,7 +6,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Keeps captured bank alerts on the phone until Kitty has read them.
+ * Keeps captured bank alerts on the phone until Crest has read them.
  * Only alerts from bank apps the person has allowed are stored.
  */
 object CaptureStore {
@@ -17,7 +17,7 @@ object CaptureStore {
   private const val MAX = 300
   private const val HEARD = "last_heard"
 
-  /** The newest notification Kitty has seen from any app, so a catch-up after a gap reads only what came after it. */
+  /** The newest notification Crest has seen from any app, so a catch-up after a gap reads only what came after it. */
   fun markHeard(ctx: Context, time: Long) {
     if (time > lastHeard(ctx)) prefs(ctx).edit().putLong(HEARD, time).apply()
   }
@@ -62,7 +62,7 @@ object CaptureStore {
 
   fun isWatched(ctx: Context, pkg: String) = BANK_APPS.contains(pkg) || (extraApps(ctx).contains(pkg) && !neverRead(pkg))
 
-  /** Remember (name only, never content) other apps that post money alerts, so Kitty can offer to watch them. */
+  /** Remember (name only, never content) other apps that post money alerts, so Crest can offer to watch them. */
   @Synchronized
   fun noteCandidate(ctx: Context, pkg: String, text: String) {
     if (pkg == ctx.packageName || neverRead(pkg) || isWatched(ctx, pkg) || !MONEY.containsMatchIn(text)) return
@@ -72,7 +72,7 @@ object CaptureStore {
 
   fun candidates(ctx: Context): List<String> = (prefs(ctx).getStringSet(SEEN, emptySet()) ?: emptySet()).filter { !isWatched(ctx, it) && !neverRead(it) }
 
-  /** The name people know an app by, for apps Kitty can see. Falls back to the package name. */
+  /** The name people know an app by, for apps Crest can see. Falls back to the package name. */
   fun label(ctx: Context, pkg: String): String = try {
     val pm = ctx.packageManager
     pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()

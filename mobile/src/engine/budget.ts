@@ -132,7 +132,7 @@ export function potBalance(S: State, id: string, today: string): number {
 
 // ---------- Balance check-ins ----------
 const stamp = (t: Tx) => `${t.date} ${t.time}`;
-/** Money Kitty knows moved since a moment (+ in, − out), leaving out moves between your own tracked accounts. */
+/** Money Crest knows moved since a moment (+ in, − out), leaving out moves between your own tracked accounts. */
 export function loggedSince(S: State, at: string): number {
   const linked = new Set(S.accounts.filter((a) => a.type === 'credit' && a.debtId).map((a) => a.debtId as string));
   let d = 0;
@@ -179,7 +179,7 @@ export function dueDirectDebits(S: State, today: string, now = '06:00'): Tx[] {
 }
 
 // ---------- Looking back ----------
-/** How a past day went, as Kitty would have seen it at the end of that day. */
+/** How a past day went, as Crest would have seen it at the end of that day. */
 export function dayInfo(S: State, day: string): SafeInfo {
   return safeInfo({ ...S, tx: S.tx.filter((t) => t.date <= day) }, day);
 }
@@ -227,7 +227,7 @@ export function taxYearStart(today: string, currency = 'GBP'): string {
 
 export type SideSummary = { income: number; costs: number; profit: number; tax: number; rate: number };
 
-/** Side income between two dates: what came in, business costs, and the tax Kitty keeps back from your budget for it. */
+/** Side income between two dates: what came in, business costs, and the tax Crest keeps back from your budget for it. */
 export function sideSummary(S: State, from: string, to: string): SideSummary {
   const L = S.tx.filter((t) => t.date >= from && t.date <= to);
   const income = sideIn(L), costs = sideCosts(L), rate = sideRate(S), profit = income - costs;

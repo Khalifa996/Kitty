@@ -56,7 +56,7 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
   };
 
   const del = (t: Tx) => {
-    // A Direct Debit Kitty ticked off would come back the next time the app opens, so remember it was removed
+    // A Direct Debit Crest ticked off would come back the next time the app opens, so remember it was removed
     const skipKey = t.auto && t.billId ? `${t.billId}:${billWindowAt(t.date, S.settings).start}` : null;
     update((d) => {
       d.tx = d.tx.filter((x) => x.id !== t.id);
@@ -70,7 +70,7 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
   };
 
   const pennies = Math.round(parseFloat(form.amt.replace(/[^0-9.]/g, '')) * 100);
-  // Other entries from the same place with the old category: fixing one fixes them all, and Kitty remembers it
+  // Other entries from the same place with the old category: fixing one fixes them all, and Crest remembers it
   const same = open && open.merchant && form.cat !== open.cat && !open.billId
     ? S.tx.filter((x) => x.id !== open.id && x.kind === open.kind && !x.billId && x.cat === open.cat && x.merchant.trim().toLowerCase() === open.merchant.trim().toLowerCase())
     : [];

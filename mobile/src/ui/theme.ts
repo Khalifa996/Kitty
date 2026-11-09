@@ -1,4 +1,4 @@
-// Kitty's look, matching the web prototype's dark tokens. Use these, never raw colours.
+// Crest's look, matching the web prototype's dark tokens. Use these, never raw colours.
 export const C = {
   bg: '#0A0C0F',
   surface: '#15181D',

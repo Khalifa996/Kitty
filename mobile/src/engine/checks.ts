@@ -1,4 +1,4 @@
-// Gentle checks that help anyone keep their numbers honest, without Kitty tracking every move.
+// Gentle checks that help anyone keep their numbers honest, without Crest tracking every move.
 import { diffDays } from './dates';
 import type { State, Tx } from './types';
 
@@ -6,7 +6,7 @@ const near = (a: number, b: number) => Math.abs(a - b) <= Math.max(100, Math.rou
 
 /**
  * Something you added by hand that a bank alert also added: same direction, about the same amount, a day apart at most.
- * Bills are left out (Kitty ticks those off itself). Pairs the person said to keep are skipped.
+ * Bills are left out (Crest ticks those off itself). Pairs the person said to keep are skipped.
  */
 export function likelyDuplicates(S: State, today: string, days = 60): [Tx, Tx][] {
   const recent = S.tx.filter((t) => !t.billId && Math.abs(diffDays(t.date, today)) <= days);
@@ -22,7 +22,7 @@ export function likelyDuplicates(S: State, today: string, days = 60): [Tx, Tx][]
 
 /**
  * Banks that usually send alerts (on five or more days in the last three weeks) but have gone quiet for three days.
- * Usually the bank's notifications were switched off, or the phone put Kitty to sleep.
+ * Usually the bank's notifications were switched off, or the phone put Crest to sleep.
  */
 export function quietBanks(S: State, today: string, heardToday: string[] = []): { bank: string; last: string }[] {
   const days = new Map<string, Set<string>>();

@@ -106,14 +106,14 @@ it('matches bill names written differently', () => {
   expect(sameName('Paypal Bill', 'Paypal *Spotify')).toBe(false);
 });
 
-it('does not count a card payment for a bill Kitty already ticked off', () => {
+it('does not count a card payment for a bill Crest already ticked off', () => {
   const S = withHistory();
   S.bills.push({ id: 'yt', name: 'Youtube Premium', amt: 1299, day: 28, type: 'sub', dd: true });
   S.tx.push({ id: 'ddyt', kind: 'out', amt: 1299, cat: 'bills', merchant: 'Youtube Premium', note: '', date: '2026-10-28', time: '06:00', biz: false, billId: 'yt', auto: true });
   expect(suggest(S, alert({ amount: 1299, merchant: 'Google Youtube', bank: 'Barclays' }), 'n14')).toMatchObject({ action: 'skip', reason: 'Youtube Premium is already ticked off as paid' });
 });
 
-it('corrects a Direct Debit Kitty ticked off with the usual amount', () => {
+it('corrects a Direct Debit Crest ticked off with the usual amount', () => {
   const S = withHistory();
   S.bills.push({ id: 'flex', name: 'Monzo Flex Bill', amt: 50000, day: 27, type: 'debt', dd: true });
   S.tx.push({ id: 'ddf', kind: 'out', amt: 50000, cat: 'bills', merchant: 'Monzo Flex Bill', note: '', date: '2026-10-27', time: '06:00', biz: false, billId: 'flex', auto: true });
@@ -129,7 +129,7 @@ it('offers a Direct Debit that matches no bill instead of hiding it', () => {
 it('matches an unnamed Direct Debit to a bill with a close amount from the last few days', () => {
   const S = withHistory();
   S.bills.push({ id: 'en', name: 'Energy', amt: 7000, day: 1, type: 'bill', dd: true }, { id: 'tv', name: 'TV', amt: 1500, day: 30, type: 'sub', dd: true });
-  // Kitty ticked the energy bill off on Sunday 1 Nov at the usual amount; the bank took a little less on Monday
+  // Crest ticked the energy bill off on Sunday 1 Nov at the usual amount; the bank took a little less on Monday
   S.tx.push({ id: 'dden', kind: 'out', amt: 7000, cat: 'bills', merchant: 'Energy', note: '', date: '2026-11-01', time: '06:00', biz: false, billId: 'en', auto: true });
   const mon = (h: string) => at(`2026-11-02T${h}:00`);
   expect(suggest(S, alert({ kind: 'bill', amount: 6840, bank: 'Barclays', time: mon('09:30') }), 'n50')).toMatchObject({ action: 'pay-bill', billId: 'en', tx: { amt: 6840 }, replaces: { id: 'dden' } });
@@ -170,7 +170,7 @@ it('asks about a cash withdrawal instead of guessing', () => {
   expect(s).toMatchObject({ action: 'add', cash: true, guessed: true, tx: { merchant: 'Cash (High Street)', sub: 'Cash' } });
 });
 
-it('asks about alerts Kitty could not read', () => {
+it('asks about alerts Crest could not read', () => {
   expect(suggest(withHistory(), alert({ kind: 'ignore', unsure: true, amount: 3000 }), 'n20').action).toBe('ask');
   expect(suggest(withHistory(), alert({ kind: 'ignore', reason: 'Advert' }), 'n21').action).toBe('skip');
 });
@@ -195,7 +195,7 @@ it("uses the bank's own category symbol for shops nobody has listed", () => {
   expect(mine.action === 'add' && [mine.tx.cat, mine.guessed]).toEqual(['personal', false]);
 });
 
-it("doesn't learn a category from a name Kitty filled in", () => {
+it("doesn't learn a category from a name Crest filled in", () => {
   const S = withHistory();
   S.tx.push({ id: 'm', kind: 'in', amt: 18000, cat: 'expenses', merchant: 'Money in', note: '', date: '2026-10-20', time: '10:00', biz: false, billId: null });
   const s = suggest(S, alert({ kind: 'received', amount: 4000, merchant: 'Money in' }), 'n24');
@@ -217,7 +217,7 @@ it('stops asking about alerts the person keeps skipping', () => {
   expect(suggest(S, p, 'n28').action).toBe('ask');
 });
 
-it('counts money from your own business as paying yourself, once Kitty has seen you mark it', () => {
+it('counts money from your own business as paying yourself, once Crest has seen you mark it', () => {
   const S = withHistory();
   S.settings.sideIncome = true;
   S.tx.push({ id: 'd', kind: 'in', amt: 10000, cat: 'draw', merchant: 'Acme Repairs', note: '', date: '2026-10-20', time: '10:00', biz: false, billId: null });
@@ -245,12 +245,12 @@ it('adds by itself only what it is sure about', () => {
   expect(sure({ kind: 'spent', amount: 640, merchant: 'Pret A Manger' })).toBe(true);
   // Spending with a guessed category still goes in: the money has gone either way
   expect(sure({ kind: 'spent', amount: 655, merchant: 'Qwzx Ltd' })).toBe(true);
-  // Money in that Kitty can't place, cash, unread alerts and anything that looks logged already wait for the person
+  // Money in that Crest can't place, cash, unread alerts and anything that looks logged already wait for the person
   expect(sure({ kind: 'received', amount: 5000, merchant: 'Money in' })).toBe(false);
   expect(sure({ kind: 'spent', amount: 2000, merchant: 'Cash machine', cash: true })).toBe(false);
   expect(sure({ kind: 'spent', amount: 999, unsure: true })).toBe(false);
   expect(sure({ kind: 'spent', amount: 2630, merchant: 'Tesco', time: at('2026-10-20T10:05:00') })).toBe(false);
-  // A Direct Debit Kitty doesn't know waits for "Make it a bill"
+  // A Direct Debit Crest doesn't know waits for "Make it a bill"
   expect(sure({ kind: 'bill', amount: 4211, bank: 'Barclays' })).toBe(false);
 });
 
@@ -259,7 +259,7 @@ it("skips Google Wallet's extra alert when the card's bank sends its own", () =>
   S.tx.push({ id: 'b', kind: 'out', amt: 300, cat: 'food', merchant: 'Cafe', note: '', date: '2026-10-26', time: '09:00', biz: false, billId: null, bank: 'Barclays' });
   const hold = alert({ kind: 'spent', amount: 500, merchant: 'Scoota Technology AB', bank: 'Google Wallet', reason: 'Paid with Barclays Debit' });
   expect(suggest(S, hold, 'n71')).toMatchObject({ action: 'skip' });
-  // A card from a bank Kitty never hears from: Google Wallet is the only record, so it counts
+  // A card from a bank Crest never hears from: Google Wallet is the only record, so it counts
   const other = alert({ kind: 'spent', amount: 1350, merchant: 'Corner Shop', bank: 'Google Wallet', reason: 'Paid with Amex Gold' });
   expect(suggest(S, other, 'n72')).toMatchObject({ action: 'add' });
 });
@@ -342,7 +342,7 @@ it('counts everything in your business account as business, once you say which i
   expect(suggest(S, alert({ kind: 'received', amount: 12000, merchant: 'Jo Bloggs', bank: 'Monzo' }), 'n113')).toMatchObject({ tx: { cat: 'extra', biz: false } });
 });
 
-it("doesn't learn a shop's category from one Kitty guessed", () => {
+it("doesn't learn a shop's category from one Crest guessed", () => {
   const S = withHistory();
   S.tx.push({ id: 'g', kind: 'out', amt: 500, cat: 'other', merchant: 'Corner Kebab', note: '', date: '2026-10-26', time: '09:00', biz: false, billId: null, catGuess: true });
   expect(guessCategory(S, 'Corner Kebab')).toBeNull();

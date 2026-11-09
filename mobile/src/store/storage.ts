@@ -1,4 +1,4 @@
-// Saves Kitty's data on the phone as one JSON document, the same shape as the web app's backup.
+// Saves Crest's data on the phone as one JSON document, the same shape as the web app's backup.
 import { blankState, migrate } from '../engine/migrate';
 import type { State } from '../engine/types';
 import { getItem, setItem } from './kv';
@@ -19,7 +19,7 @@ export const saveState = (S: State) => setItem(KEY, JSON.stringify(S));
 /** Read a backup pasted from the web app. Throws a readable error if it isn't one. */
 export function parseBackup(text: string): State {
   let data: unknown;
-  try { data = JSON.parse(text.trim()); } catch { throw new Error("That doesn't look like a Kitty backup. Copy it again and paste the whole thing"); }
+  try { data = JSON.parse(text.trim()); } catch { throw new Error("That doesn't look like a Crest backup. Copy it again and paste the whole thing"); }
   return migrate(data);
 }
 
@@ -31,7 +31,7 @@ export function logAlerts(items: unknown[]): void {
   try { list = JSON.parse(getItem(LOG) || '[]'); } catch { list = []; }
   setItem(LOG, JSON.stringify([...list, ...items].slice(-200)));
 }
-/** Drop logged alerts that shouldn't be kept (from apps Kitty no longer reads). */
+/** Drop logged alerts that shouldn't be kept (from apps Crest no longer reads). */
 export function pruneLog(keep: (r: { pkg?: string }) => boolean): void {
   const list = alertLog() as { pkg?: string }[];
   const next = list.filter(keep);

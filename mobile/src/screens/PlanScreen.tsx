@@ -1,14 +1,15 @@
 // Looking ahead: bills for this period, and pots for things you're saving towards.
 import { useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { billItems, debtFree, debtTip, payTx, type BillItem } from '../engine/bills';
+import { billItems, debtFree, debtTip, monthlyRate, payTx, type BillItem } from '../engine/bills';
+import { owedHistory, owedNow } from '../engine/debts';
 import { cycleOf, fixedFor, isMonthly, potBalance, safeInfo } from '../engine/budget';
 import { diffDays, hm, nextDay, parse } from '../engine/dates';
-import type { Bill, Pot, Tx } from '../engine/types';
+import type { Bill, Overdraft, Pot, Tx } from '../engine/types';
 import { uid, useKitty } from '../store/KittyState';
 import { Icon } from '../ui/Icon';
 import { Btn, Card, CatIcon, Chip, Label, Sheet } from '../ui/kit';
-import { C, money, moneyS } from '../ui/theme';
+import { C, money, moneyS, symbol } from '../ui/theme';
 
 const ord = (n: number) => n + (n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th');
 const pence = (s: string) => { const v = Math.round(parseFloat((s || '').replace(/[^0-9.]/g, '')) * 100); return v > 0 ? v : 0; };
@@ -18,11 +19,13 @@ const monthLabel = (d: string) => parse(d).toLocaleDateString('en-GB', { month: 
 const TYPES: { id: Bill['type']; n: string; i: string }[] = [{ id: 'bill', n: 'Bill', i: 'receipt' }, { id: 'sub', n: 'Subscription', i: 'calendar' }, { id: 'debt', n: 'Debt repayment', i: 'credit' }];
 
 type BillForm = { id: string | null; name: string; amt: string; day: number; type: Bill['type']; dd: boolean; balance: string; rate: string; biz: boolean };
+type OdForm = { id: string | null; name: string; used: string; rate: string };
 type PotForm = { id: string | null; name: string; perPay: string; target: string; balance: string; fromNext: boolean };
 
 export function PlanScreen({ onDone, openMore }: { onDone: (msg: string, undo?: () => void) => void; openMore: () => void }) {
   const { S, today, update } = useKitty();
-  const [view, setView] = useState<'bills' | 'pots'>('bills');
+  const [view, setView] = useState<'bills' | 'debts' | 'pots'>('bills');
+  const [of, setOf] = useState<OdForm | null>(null);
   const [bf, setBf] = useState<BillForm | null>(null);
   const [pf, setPf] = useState<PotForm | null>(null);
   const [topUp, setTopUp] = useState<{ pot: Pot; amt: string } | null>(null);
@@ -33,6 +36,31 @@ export function PlanScreen({ onDone, openMore }: { onDone: (msg: string, undo?: 
   const dueNow = items.filter((i) => !i.paid && i.due <= today), later = items.filter((i) => !i.paid && i.due > today), done = items.filter((i) => i.paid);
   const debts = S.bills.filter((b) => b.type === 'debt'), subs = S.bills.filter((b) => b.type === 'sub');
   const tip = debtTip(S, today);
+  const owed = owedNow(S, today), owedTrend = owedHistory(S, today);
+  const kShort = (p: number) => (p >= 100000 ? `${symbol(cur)}${(p / 100000).toFixed(1).replace(/\.0$/, '')}k` : moneyS(p, cur));
+  const ods = S.overdrafts || [];
+  const saveOd = () => {
+    if (!of || !of.name.trim()) return;
+    const f = of, used = pence(f.used), at = `${today} ${now()}`, rate = parseFloat(f.rate.replace('%', ''));
+    update((d) => {
+      d.overdrafts = d.overdrafts || [];
+      let o = f.id ? d.overdrafts.find((x) => x.id === f.id) : undefined;
+      if (!o) { o = { id: 'o' + uid(), name: '', used: 0, at, history: [] }; d.overdrafts.push(o); }
+      // A new figure for today replaces one already entered today, so the trend keeps one point a day
+      if (o.used !== used || !o.history.length) { o.history = [...o.history.filter((h) => h.at.slice(0, 10) !== today), { at, used }]; o.used = used; o.at = at; }
+      o.name = f.name.trim();
+      o.rate = rate > 0 && rate < 1000 ? rate : null;
+    });
+    setOf(null);
+    onDone(f.id ? 'Overdraft updated' : `${f.name.trim()} added`);
+  };
+  const deleteOd = () => {
+    if (!of?.id) return;
+    const old = ods.find((o) => o.id === of.id) as Overdraft;
+    update((d) => { d.overdrafts = (d.overdrafts || []).filter((o) => o.id !== old.id); });
+    setOf(null);
+    onDone(`${old.name} removed`, () => update((d) => { d.overdrafts = [...(d.overdrafts || []), old]; }));
+  };
   const subsM = subs.reduce((a, b) => a + b.amt, 0), monthly = isMonthly(S.settings), c = cycleOf(today, S.settings);
 
   const pay = (list: Bill[]) => {
@@ -68,7 +96,14 @@ export function PlanScreen({ onDone, openMore }: { onDone: (msg: string, undo?: 
       Object.assign(b, { name: f.name.trim(), amt: pence(f.amt), day: f.day, type: f.type, dd: f.dd, biz: f.biz,
         sub: f.type === 'sub' ? 'Subscription' : f.type === 'debt' ? 'Debt repayment' : f.name.trim() });
       if (f.dd && !b.ddFrom) b.ddFrom = today;
-      if (f.type === 'debt' && balChanged) { b.balance = bal || null; b.balanceAt = bal ? `${today} ${now()}` : null; }
+      if (f.type === 'debt' && balChanged) {
+        // Keep the earlier figure as a point in the debt's history, so the trend in Debts survives a correction
+        const hist = [...(b.history || [])];
+        if (b.balance && b.balanceAt && !hist.some((h) => h.at === b.balanceAt)) hist.push({ at: b.balanceAt, left: b.balance });
+        b.balance = bal || null; b.balanceAt = bal ? `${today} ${now()}` : null;
+        if (bal) hist.push({ at: b.balanceAt as string, left: bal });
+        b.history = hist;
+      }
       const rate = parseFloat(f.rate.replace('%', ''));
       b.rate = f.type === 'debt' && rate > 0 && rate < 1000 ? rate : null;
       const id = b.id;
@@ -167,9 +202,9 @@ export function PlanScreen({ onDone, openMore }: { onDone: (msg: string, undo?: 
           <Pressable accessibilityRole="button" accessibilityLabel="Settings and backups" onPress={openMore} style={s.iconBtn}><Icon name="sliders" size={20} colour={C.fg} /></Pressable>
         </View>
         <View style={s.seg}>
-          {(['bills', 'pots'] as const).map((v) => (
+          {(['bills', 'debts', 'pots'] as const).map((v) => (
             <Pressable key={v} accessibilityRole="button" accessibilityState={{ selected: view === v }} onPress={() => setView(v)} style={[s.segB, view === v && s.segOn]}>
-              <Text style={[s.segT, view === v && { color: C.fg }]}>{v === 'bills' ? 'Bills' : 'Pots'}</Text>
+              <Text style={[s.segT, view === v && { color: C.fg }]}>{v === 'bills' ? 'Bills' : v === 'debts' ? 'Debts' : 'Pots'}</Text>
             </Pressable>
           ))}
         </View>
@@ -180,14 +215,62 @@ export function PlanScreen({ onDone, openMore }: { onDone: (msg: string, undo?: 
               <Label>Still to pay {dfmt(w.start)} to {dfmt(w.end)}</Label>
               <Text style={s.big}>{moneyS(total - paidTotal, cur)}</Text>
               <View style={s.track}><View style={[s.fill, { width: `${total ? (paidTotal / total) * 100 : 0}%` }]} /></View>
-              <Text style={s.hint}>{moneyS(paidTotal, cur)} of {moneyS(total, cur)} paid. {monthly ? 'Bills come off on payday, so they never eat into your daily budget.' : `Kitty sets aside ${moneyS(fixedFor(S, c), cur)} from each pay for these, so they never eat into your daily budget.`}</Text>
+              <Text style={s.hint}>{moneyS(paidTotal, cur)} of {moneyS(total, cur)} paid. {monthly ? 'Bills come off on payday, so they never eat into your daily budget.' : `Crest sets aside ${moneyS(fixedFor(S, c), cur)} from each pay for these, so they never eat into your daily budget.`}</Text>
             </Card>
             {items.length === 0 && <Card><Text style={s.hint}>No bills yet. Add rent, council tax and subscriptions so your daily budget is honest.</Text></Card>}
             <Section title="Due now" list={dueNow} extra={dueNow.length > 1 ? <Pressable accessibilityRole="button" onPress={() => pay(dueNow.map((i) => i.b))}><Text style={s.link}>Mark all {dueNow.length} paid</Text></Pressable> : undefined} />
             <Section title="Coming up" list={later} />
+            {(debts.length > 0 || ods.length > 0) && (
+              <Pressable accessibilityRole="button" onPress={() => setView('debts')}>
+                <Card style={{ gap: 4 }}>
+                  <Label>Debts</Label>
+                  <Text style={s.hint}>You owe <Text style={{ color: C.fg, fontWeight: '700' }}>{moneyS(owed.total, cur)}</Text>{owed.missing ? ` plus ${owed.missing} without a balance` : ''}. <Text style={s.link}>See debts</Text></Text>
+                </Card>
+              </Pressable>
+            )}
+            {subs.length > 0 && <Card><Text style={s.hint}>{subs.length} subscription{subs.length === 1 ? '' : 's'}: {money(subsM, cur)} a month is <Text style={{ color: C.fg, fontWeight: '700' }}>{moneyS(subsM * 12, cur)}</Text> a year.</Text></Card>}
+            <Section title={monthly ? 'Paid this pay month' : 'Paid this month'} list={done} />
+            <Btn label="Add a bill" onPress={() => editBill()} />
+          </>
+        ) : view === 'debts' ? (
+          <>
+            <Card style={{ gap: 8 }}>
+              <Label>You owe</Label>
+              <Text style={[s.big, owed.total > 0 && { color: C.warn }]}>{money(owed.total, cur)}</Text>
+              {owedTrend.length >= 2 && (() => {
+                const first = owedTrend[0], ch = owed.total - first.total;
+                return ch === 0 ? <Text style={s.hint}>The same as on {dfmt(first.date)}.</Text>
+                  : <Text style={[s.hint, { color: ch < 0 ? C.good : C.bad }]}>{moneyS(Math.abs(ch), cur)} {ch < 0 ? 'less' : 'more'} than on {dfmt(first.date)}</Text>;
+              })()}
+              <Text style={s.hint}>
+                {owed.never.length ? `At these payments, ${owed.never.join(' and ')} won't clear: the payment doesn't cover the interest.`
+                  : owed.by ? `Cards and loans clear by ${monthLabel(owed.by)} at these payments.` : ''}
+                {owed.missing ? ` ${owed.missing} debt${owed.missing === 1 ? " has" : 's have'} no balance yet: tap to add it.` : ''}
+              </Text>
+            </Card>
+            {owedTrend.length >= 2 && (() => {
+              const top = Math.max(1, ...owedTrend.map((p) => p.total));
+              return (
+                <Card style={{ gap: 8 }}>
+                  <Label>Total owed</Label>
+                  <View style={s.tBars}>
+                    {owedTrend.map((p, i) => (
+                      <View key={p.date} style={s.tCol}>
+                        <Text style={[s.meta, { textAlign: 'center', fontSize: 11 }]} numberOfLines={1}>{kShort(p.total)}</Text>
+                        <View style={[s.tBar, { height: `${Math.max(2, (p.total / top) * 100)}%`, backgroundColor: i === owedTrend.length - 1 ? C.warn : C.surface2 }]} />
+                      </View>
+                    ))}
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    {owedTrend.map((p, i) => <Text key={p.date} style={[s.meta, { flex: 1, textAlign: 'center' }]}>{i === owedTrend.length - 1 ? 'Now' : dfmt(p.date)}</Text>)}
+                  </View>
+                  <Text style={s.meta}>At the start of each pay month. Payments to cards and loans count as they go out; overdrafts move when you update them.</Text>
+                </Card>
+              );
+            })()}
             {debts.length > 0 && (
               <Card style={{ gap: 10 }}>
-                <Label>Debt repayments</Label>
+                <Label>Cards and loans</Label>
                 {debts.map((b) => {
                   const f = debtFree(S, b, today);
                   const about = (n: number) => moneyS(Math.round(n / 100) * 100, cur);
@@ -213,9 +296,25 @@ export function PlanScreen({ onDone, openMore }: { onDone: (msg: string, undo?: 
                 {debts.some((b) => b.balance && !b.rate) && <Text style={s.meta}>Dates without a rate leave out interest. Tap a debt to add its rate: your lender's app or statement shows it.</Text>}
               </Card>
             )}
-            {subs.length > 0 && <Card><Text style={s.hint}>{subs.length} subscription{subs.length === 1 ? '' : 's'}: {money(subsM, cur)} a month is <Text style={{ color: C.fg, fontWeight: '700' }}>{moneyS(subsM * 12, cur)}</Text> a year.</Text></Card>}
-            <Section title={monthly ? 'Paid this pay month' : 'Paid this month'} list={done} />
-            <Btn label="Add a bill" onPress={() => editBill()} />
+            <Btn label="Add a card or loan" onPress={() => setBf({ id: null, name: '', amt: '', day: 1, type: 'debt', dd: true, balance: '', rate: '', biz: false })} />
+            <Card style={{ gap: 10 }}>
+              <Label>Overdrafts</Label>
+              {ods.length === 0 && <Text style={s.hint}>Add an overdraft you're using, with how much of it is used. Update it now and then and Crest shows the trend.</Text>}
+              {ods.map((o) => {
+                const mi = Math.round(o.used * monthlyRate(o.rate));
+                return (
+                  <Pressable key={o.id} style={s.row} accessibilityRole="button" onPress={() => setOf({ id: o.id, name: o.name, used: pounds(o.used), rate: o.rate ? String(o.rate) : '' })}>
+                    <CatIcon icon="wallet" colour={C.warn} size={30} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.name}>{o.name}</Text>
+                      <Text style={s.meta}>{o.rate ? `${o.rate}% a year · about ${moneyS(mi, cur)} a month in interest` : 'Add its rate to see the interest'} · updated {dfmt(o.at.slice(0, 10))}</Text>
+                    </View>
+                    <Text style={s.amt}>{moneyS(o.used, cur)}</Text>
+                  </Pressable>
+                );
+              })}
+            </Card>
+            <Btn label="Add an overdraft" onPress={() => setOf({ id: null, name: '', used: '', rate: '' })} />
           </>
         ) : (
           <>
@@ -284,6 +383,22 @@ export function PlanScreen({ onDone, openMore }: { onDone: (msg: string, undo?: 
         </>}
       </Sheet>
 
+      <Sheet open={!!of} onClose={() => setOf(null)} title={of?.id ? 'Update overdraft' : 'New overdraft'}>
+        {of && <>
+          <Label>Name</Label>
+          <TextInput value={of.name} onChangeText={(name) => setOf({ ...of, name })} placeholder="e.g. Bank overdraft" placeholderTextColor={C.faint} style={s.field} maxLength={28} accessibilityLabel="Overdraft name" />
+          <Label>Using now</Label>
+          <TextInput value={of.used} onChangeText={(used) => setOf({ ...of, used })} keyboardType="decimal-pad" placeholder="0" placeholderTextColor={C.faint} style={s.field} accessibilityLabel="Amount of the overdraft in use" selectTextOnFocus />
+          <Label>Interest rate, % a year (optional)</Label>
+          <TextInput value={of.rate} onChangeText={(rate) => setOf({ ...of, rate })} keyboardType="decimal-pad" placeholder="e.g. 39" placeholderTextColor={C.faint} style={s.field} accessibilityLabel="Interest rate" />
+          <Text style={s.hint}>Your bank app shows how much of the overdraft you're using. This doesn't change your daily figure: overdraft interest is a bill if you've added it as one.</Text>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            {of.id && <Btn label="Delete" danger onPress={deleteOd} />}
+            <Btn label={of.id ? 'Save' : 'Add overdraft'} primary style={{ flex: 1 }} disabled={!of.name.trim()} onPress={saveOd} />
+          </View>
+        </>}
+      </Sheet>
+
       <Sheet open={!!pf} onClose={() => setPf(null)} title={pf?.id ? 'Edit pot' : 'New pot'}>
         {pf && <>
           <Label>Name</Label>
@@ -347,4 +462,7 @@ const s = StyleSheet.create({
   autoT: { color: C.muted, fontSize: 12, fontWeight: '700' },
   field: { backgroundColor: C.surface2, borderRadius: 12, height: 46, paddingHorizontal: 12, color: C.fg, fontSize: 16 },
   wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tBars: { flexDirection: 'row', alignItems: 'flex-end', height: 120, gap: 8 },
+  tCol: { flex: 1, height: '100%', justifyContent: 'flex-end', gap: 4 },
+  tBar: { borderRadius: 6, minHeight: 2 },
 });

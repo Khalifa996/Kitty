@@ -1,4 +1,4 @@
-// Payments Kitty spotted in your bank alerts, ready to add with one tap.
+// Payments Crest spotted in your bank alerts, ready to add with one tap.
 import { useEffect, useMemo, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { alertTxId, alreadyLogged, guessCategory, knownCategory, suggest, type Suggestion } from '../capture/toEntry';
@@ -25,7 +25,7 @@ const loadPicks = (): Picks => {
   try { const p = JSON.parse(getItem(PICKS) || '{}'); return { cats: p.cats || {}, side: p.side || {} }; } catch { return { cats: {}, side: {} }; }
 };
 
-/** Use the AI's answer for an alert Kitty couldn't read, or a shop it couldn't place. Kitty's own rules and your history win otherwise. */
+/** Use the AI's answer for an alert Crest couldn't read, or a shop it couldn't place. Crest's own rules and your history win otherwise. */
 function withAi(i: Item, r: AiResult | undefined, S: State): Item {
   if (!r || i.dup) return i;
   const valid = (id: string, kind: 'out' | 'in') => (kind === 'out' ? categories(S.settings) : inTypes(S.settings)).some((c) => c.id === id);
@@ -38,7 +38,7 @@ function withAi(i: Item, r: AiResult | undefined, S: State): Item {
       date: ymd(d), time: hm(d), biz: cat === 'side', billId: null, source: 'alert', bank: i.p.bank };
     return { ...i, sug: { action: 'add', tx, guessed: !sure, ai: true, hint: `Smart sorting: ${r.note.replace(/\.$/, "")}` } };
   }
-  // A shop Kitty couldn't place: only take the AI's answer if it names a real category and isn't a shrug
+  // A shop Crest couldn't place: only take the AI's answer if it names a real category and isn't a shrug
   if (i.sug.action === 'add' && i.sug.guessed && valid(r.category, i.sug.tx.kind) && r.category !== 'other' && r.confidence !== 'low') {
     return { ...i, sug: { ...i.sug, ai: true, guessed: !sure, tx: { ...i.sug.tx, cat: r.category, biz: r.category === 'side', merchant: i.sug.tx.merchant || r.name } } };
   }
@@ -73,7 +73,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
   const [making, setMaking] = useState<{ i: Item; name: string; type: Bill['type'] } | null>(null);
   const [showSkipped, setShowSkipped] = useState(false);
   const [showNotices, setShowNotices] = useState(false);
-  // What Kitty added by itself since the person last looked
+  // What Crest added by itself since the person last looked
   const [showAdded, setShowAdded] = useState(false);
   const [fixing, setFixing] = useState<Tx | null>(null);
   const cur = S.settings.currency;
@@ -82,17 +82,17 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
     .filter((p) => p.kind !== 'ignore' || !p.duplicateOf)
     .map((p) => ({ p, sug: suggest(S, p, alertTxId(p), cap.parsed), dup: alreadyLogged(S, p) })), [cap.parsed, S]);
 
-  // Smart sorting (opt-in): ask the AI about alerts Kitty couldn't read and shops it couldn't place
+  // Smart sorting (opt-in): ask the AI about alerts Crest couldn't read and shops it couldn't place
   const needHelp = useMemo(() => base.filter((i) => !i.p.duplicateOf && !i.dup && (i.sug.action === 'ask' || (i.sug.action === 'add' && i.sug.guessed && !i.sug.cash && !(i.sug.newBill && !i.p.merchant))))
     .map((i) => { const r = cap.raw.find((x) => x.key === i.p.key); return { key: i.p.key, app: i.p.bank, title: r?.title || '', text: r?.text || '' }; }), [base, cap.raw]);
   const ai = useSmartSort(S, needHelp);
   const items: Item[] = useMemo(() => base.map((i) => withAi(i, ai.results[i.p.key], S)), [base, ai.results, S]);
   const todo = items.filter((i) => i.sug.action !== 'skip' && !i.p.duplicateOf);
-  // Banks that usually send alerts but have gone quiet: their notifications may be off, or the phone put Kitty to sleep
+  // Banks that usually send alerts but have gone quiet: their notifications may be off, or the phone put Crest to sleep
   const quiet = useMemo(() => quietBanks(S, ymd(new Date()), [...new Set<string>(cap.parsed.filter((p) => Date.now() - p.time < 3 * 864e5).map((p) => p.bank))]), [S, cap.parsed]);
   const addedByKitty = useMemo(() => S.tx.filter((t) => t.autoAdded && t.autoAdded > (S.settings.autoSeen || ''))
     .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)), [S]);
-  // A named account (Monzo business or joint) Kitty hasn't asked about: is it the business one?
+  // A named account (Monzo business or joint) Crest hasn't asked about: is it the business one?
   const askAcct = useMemo(() => {
     const known = new Set([...(S.settings.bizAccounts || []), ...(S.settings.notBizAccounts || [])].map((n) => n.toLowerCase()));
     const seen = [...S.tx.map((t) => ({ name: t.accountName, bank: t.bank })), ...cap.parsed.map((p) => ({ name: p.accountName, bank: p.bank }))];
@@ -119,7 +119,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
     const id = fixing.id;
     update((d) => { const t = d.tx.find((x) => x.id === id); if (t) { t.cat = cat; delete t.catGuess; if (t.kind === 'in') t.biz = cat === 'side'; } });
     setFixing(null);
-    onDone('Changed. Kitty will use this for that name from now on');
+    onDone('Changed. Crest will use this for that name from now on');
   };
   const takeOut = () => {
     if (!fixing) return;
@@ -139,7 +139,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
     return !S.settings.dismissed?.[`keepapp:${a.pkg}`] && mine.length >= 3 && !mine.some((p) => p.kind === 'spent' || p.kind === 'received' || p.kind === 'bill' || p.unsure);
   });
 
-  // Tidy up: things Kitty skipped by itself are cleared after three days
+  // Tidy up: things Crest skipped by itself are cleared after three days
   useEffect(() => {
     const old = skipped.filter((i) => Date.now() - i.p.time > 3 * 864e5);
     if (old.length) cap.done(old.flatMap((i) => keysFor(i.p, cap.parsed)));
@@ -159,7 +159,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
   const add = (list: Item[], patch?: Partial<Tx>) => {
     const txs = list.map(txFor).filter((t): t is Tx => !!t).map((t) => (patch ? { ...t, ...patch } : t));
     if (!txs.length) return;
-    // A Direct Debit Kitty ticked off with the usual amount is swapped for the bank's real figure
+    // A Direct Debit Crest ticked off with the usual amount is swapped for the bank's real figure
     const old = list.flatMap((i) => (i.sug.action === 'pay-bill' && i.sug.replaces ? [i.sug.replaces] : []));
     const oldIds = new Set(old.map((t) => t.id));
     update((d) => { d.tx = d.tx.filter((t) => !oldIds.has(t.id)); d.tx.push(...txs); });
@@ -167,7 +167,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
     onDone(txs.length === 1 ? `${old.length ? 'Updated' : 'Added'} ${money(txs[0].amt, cur)}${txs[0].merchant ? ' · ' + txs[0].merchant : ''}` : `Added ${txs.length} payments`,
       () => update((d) => { const ids = new Set(txs.map((t) => t.id)); d.tx = d.tx.filter((t) => !ids.has(t.id)); d.tx.push(...old); }));
   };
-  /** Remember what the person did with alerts Kitty couldn't read, so it asks less over time. */
+  /** Remember what the person did with alerts Crest couldn't read, so it asks less over time. */
   const learn = (bank: string, how: 'skip' | 'keep') => update((d) => {
     const L = d.settings.learned || {}, m = { ...(L[how] || {}) };
     m[bank] = (m[bank] || 0) + 1;
@@ -179,7 +179,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
     onDone('Skipped');
   };
   const cashToSpend = (i: Item) => { cap.done(keysFor(i.p, cap.parsed)); onDone('Noted. Log what you buy with it on the keypad'); };
-  /** A Direct Debit Kitty didn't know: add it to Plan as a monthly bill, paid today, so future ones are ticked off. */
+  /** A Direct Debit Crest didn't know: add it to Plan as a monthly bill, paid today, so future ones are ticked off. */
   const makeBill = () => {
     if (!making || !making.name.trim()) return;
     const t = txFor(making.i) as Tx, name = making.name.trim(), id = 'b' + uid();
@@ -192,7 +192,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
     onDone(`${name} added to your bills, paid ${money(t.amt, cur)}`, () => update((d) => { d.bills = d.bills.filter((b) => b.id !== id); d.tx = d.tx.filter((x) => x.id !== tx.id); }));
   };
 
-  /** You decided what an alert was (one Kitty couldn't read, or a notice you want to add anyway). */
+  /** You decided what an alert was (one Crest couldn't read, or a notice you want to add anyway). */
   const addAs = (p: ParsedAlert, kind: 'out' | 'in', amt: number) => {
     if (p.unsure) learn(p.bank, 'keep');
     const r = rawOf(p), d = new Date(p.time);
@@ -236,8 +236,8 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
       <ScrollView contentContainerStyle={s.wrap}>
         <Text style={s.h1}>To review</Text>
         <Card style={{ gap: 10 }}>
-          <Text style={s.h2}>Bring your Kitty data across first</Text>
-          <Text style={s.hint}>In the web app, go to Insights, Settings, Copy backup. Then paste it in More here. Payments Kitty spots will appear on this screen, ready to add.</Text>
+          <Text style={s.h2}>Bring your Crest data across first</Text>
+          <Text style={s.hint}>In the web app, go to Insights, Settings, Copy backup. Then paste it in More here. Payments Crest spots will appear on this screen, ready to add.</Text>
           <Btn label="Go to More" primary onPress={goSetup} />
         </Card>
       </ScrollView>
@@ -249,8 +249,8 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
       <View style={s.head}>
         <View style={{ flex: 1 }}>
           <Text style={s.h1}>To review</Text>
-          <Text style={s.sub}>{todo.length ? `${todo.length} payment${todo.length === 1 ? '' : 's'} to check` : S.settings.autoAdd !== false ? 'Kitty adds the payments it\'s sure about. Anything else waits here' : 'Payments from your bank alerts show up here'}</Text>
-          {ai.on && (ai.busy || ai.error) ? <Text style={[s.sub, ai.error ? { color: C.warn } : null]}>{ai.busy ? 'Smart sorting the ones Kitty is unsure about…' : ai.error}</Text> : null}
+          <Text style={s.sub}>{todo.length ? `${todo.length} payment${todo.length === 1 ? '' : 's'} to check` : S.settings.autoAdd !== false ? 'Crest adds the payments it\'s sure about. Anything else waits here' : 'Payments from your bank alerts show up here'}</Text>
+          {ai.on && (ai.busy || ai.error) ? <Text style={[s.sub, ai.error ? { color: C.warn } : null]}>{ai.busy ? 'Smart sorting the ones Crest is unsure about…' : ai.error}</Text> : null}
         </View>
         {easy.length > 1 && <Btn label={`Add all ${easy.length}`} primary small onPress={() => add(easy)} />}
       </View>
@@ -258,7 +258,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
       {quiet.map((q) => (
         <Card key={q.bank} style={{ gap: 8, borderWidth: 1, borderColor: C.warn }}>
           <Text style={s.h2}>No alerts from {q.bank} since {new Date(q.last + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long' })}</Text>
-          <Text style={s.hint}>Kitty usually hears from {q.bank} most days. If you've used it since, check {q.bank}'s notifications are switched on in your phone's settings, and that your phone isn't putting Kitty to sleep to save battery.</Text>
+          <Text style={s.hint}>Crest usually hears from {q.bank} most days. If you've used it since, check {q.bank}'s notifications are switched on in your phone's settings, and that your phone isn't putting Crest to sleep to save battery.</Text>
           <View style={[s.row, { justifyContent: 'flex-end' }]}>
             <Btn label="Got it" small onPress={() => update((d) => { d.settings.dismissed = { ...(d.settings.dismissed || {}), [`quiet:${q.bank}:${q.last}`]: true }; })} />
           </View>
@@ -268,7 +268,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
       {askAcct && (
         <Card style={{ gap: 8 }}>
           <Text style={s.h2}>Is {askAcct.name} your business account?</Text>
-          <Text style={s.hint}>Kitty sees payments from your {askAcct.name} account{askAcct.bank ? ` in ${askAcct.bank}` : ''}. If it's your business, money in there counts as side income, with {S.settings.sideTaxRate ?? 20}% kept back for tax, and spending there counts as a business cost.{S.settings.sideIncome ? '' : ' This turns on side income.'}</Text>
+          <Text style={s.hint}>Crest sees payments from your {askAcct.name} account{askAcct.bank ? ` in ${askAcct.bank}` : ''}. If it's your business, money in there counts as side income, with {S.settings.sideTaxRate ?? 20}% kept back for tax, and spending there counts as a business cost.{S.settings.sideIncome ? '' : ' This turns on side income.'}</Text>
           <View style={[s.row, { justifyContent: 'flex-end' }]}>
             <Btn label="No" small onPress={() => answerAcct(askAcct.name, false)} />
             <Btn label="Yes, it's my business" primary small onPress={() => answerAcct(askAcct.name, true)} />
@@ -279,9 +279,9 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
       {addedByKitty.length > 0 && (
         <Card style={{ gap: 6 }}>
           <View style={s.row}>
-            <Text style={[s.h2, { flex: 1 }]}>Kitty added {addedByKitty.length} payment{addedByKitty.length === 1 ? '' : 's'}</Text>
+            <Text style={[s.h2, { flex: 1 }]}>Crest added {addedByKitty.length} payment{addedByKitty.length === 1 ? '' : 's'}</Text>
             <Btn label="Looks right" small onPress={() => update((d) => {
-              // Checked: their categories can now teach Kitty about those shops
+              // Checked: their categories can now teach Crest about those shops
               const ids = new Set(addedByKitty.map((t) => t.id));
               for (const t of d.tx) if (ids.has(t.id)) delete t.catGuess;
               d.settings.autoSeen = new Date().toISOString();
@@ -329,7 +329,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
 
       {cap.native && cap.enabled === false && (
         <Card style={{ gap: 8 }}>
-          <Text style={s.h2}>Kitty can't see your bank alerts</Text>
+          <Text style={s.h2}>Crest can't see your bank alerts</Text>
           <Text style={s.hint}>Switch on notification access in More, and payments will appear here as you make them.</Text>
           <Btn label="Go to More" onPress={goSetup} />
         </Card>
@@ -381,8 +381,8 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
               <Text style={[s.amt, isIn && { color: C.good }]}>{isIn ? '+' : ''}{money(t.amt, cur)}</Text>
             </View>
             {i.dup && <Text style={[s.hint, { color: C.warn }]}>Looks like you already logged this: {dupText(i.dup)}.</Text>}
-            {i.sug.action === 'add' && i.sug.hint && <Text style={s.hint}>{i.sug.hint}.{newBill ? ' If it comes every month, make it a bill and Kitty will expect it from now on.' : ''}</Text>}
-            {i.sug.action === 'pay-bill' && i.sug.replaces && <Text style={s.hint}>Kitty ticked this off as {money(i.sug.replaces.amt, cur)} on the day. Your bank says {money(t.amt, cur)}.</Text>}
+            {i.sug.action === 'add' && i.sug.hint && <Text style={s.hint}>{i.sug.hint}.{newBill ? ' If it comes every month, make it a bill and Crest will expect it from now on.' : ''}</Text>}
+            {i.sug.action === 'pay-bill' && i.sug.replaces && <Text style={s.hint}>Crest ticked this off as {money(i.sug.replaces.amt, cur)} on the day. Your bank says {money(t.amt, cur)}.</Text>}
             <View style={s.row}>
               {i.sug.action === 'pay-bill'
                 ? <View style={s.tag}><Icon name="receipt" size={15} colour={C.bill} /><Text style={s.tagT}>{label}</Text></View>
@@ -420,10 +420,10 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
       {cap.spotted.filter(isMoneyApp).filter((a) => !S.settings.dismissed?.[`app:${a.pkg}`]).slice(0, 1).map((a) => (
         <Card key={a.pkg} style={{ gap: 8 }}>
           <Text style={s.h2}>Money alerts from {a.label}</Text>
-          <Text style={s.hint}>Kitty noticed {a.label} posting alerts with amounts in them. If it's one of your banks or cards, Kitty can read its alerts too. They stay on your phone.</Text>
+          <Text style={s.hint}>Crest noticed {a.label} posting alerts with amounts in them. If it's one of your banks or cards, Crest can read its alerts too. They stay on your phone.</Text>
           <View style={[s.row, { justifyContent: 'flex-end' }]}>
             <Btn label="Not mine" small onPress={() => update((d) => { d.settings.dismissed = { ...(d.settings.dismissed || {}), [`app:${a.pkg}`]: true }; })} />
-            <Btn label="Read its alerts" small primary onPress={() => { cap.watchApp(a.pkg, true); onDone(`Kitty will read alerts from ${a.label}`); }} />
+            <Btn label="Read its alerts" small primary onPress={() => { cap.watchApp(a.pkg, true); onDone(`Crest will read alerts from ${a.label}`); }} />
           </View>
         </Card>
       ))}
@@ -433,13 +433,13 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
         return (
           <Card key={a.pkg} style={{ gap: 8 }}>
             <Text style={s.h2}>{a.label} isn't sending payments</Text>
-            <Text style={s.hint}>Kitty has read {n} alerts from {a.label} and none of them were money in or out. Your bank's alerts already cover payments, so it's simpler to stop reading {a.label}.</Text>
+            <Text style={s.hint}>Crest has read {n} alerts from {a.label} and none of them were money in or out. Your bank's alerts already cover payments, so it's simpler to stop reading {a.label}.</Text>
             <View style={[s.row, { justifyContent: 'flex-end' }]}>
               <Btn label="Keep reading" small onPress={() => update((d) => { d.settings.dismissed = { ...(d.settings.dismissed || {}), [`keepapp:${a.pkg}`]: true }; })} />
               <Btn label={`Stop reading ${a.label}`} small primary onPress={() => {
                 cap.done(cap.parsed.filter((p) => p.bank === a.label).map((p) => p.key));
                 cap.watchApp(a.pkg, false);
-                onDone(`Kitty has stopped reading ${a.label}`);
+                onDone(`Crest has stopped reading ${a.label}`);
               }} />
             </View>
           </Card>
@@ -509,7 +509,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
           const t = txFor(making.i) as Tx, d = parseInt(t.date.slice(8), 10);
           const nth = d + (d % 10 === 1 && d !== 11 ? 'st' : d % 10 === 2 && d !== 12 ? 'nd' : d % 10 === 3 && d !== 13 ? 'rd' : 'th');
           return <>
-            <Text style={s.hint}>{money(t.amt, cur)} by Direct Debit around the {nth} of each month. Kitty marks this one paid and ticks off the next ones itself.</Text>
+            <Text style={s.hint}>{money(t.amt, cur)} by Direct Debit around the {nth} of each month. Crest marks this one paid and ticks off the next ones itself.</Text>
             <Label>What is it?</Label>
             <TextInput value={making.name} onChangeText={(name) => setMaking({ ...making, name })} placeholder="e.g. TV licence" placeholderTextColor={C.faint}
               style={s.field} autoFocus accessibilityLabel="Bill name" returnKeyType="done" onSubmitEditing={makeBill} />

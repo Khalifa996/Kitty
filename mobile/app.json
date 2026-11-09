@@ -1,18 +1,20 @@
 {
   "expo": {
-    "name": "Kitty",
+    "name": "Crest",
     "slug": "kitty",
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "backgroundColor": "#0A0C0F",
+    "backgroundColor": "#0B1628",
     "android": {
       "package": "com.khalifa996.kitty",
       "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0A0C0F"
+        "backgroundImage": "./assets/adaptive-bg.png",
+        "monochromeImage": "./assets/adaptive-mono.png",
+        "backgroundColor": "#0B1628"
       }
     }
   }

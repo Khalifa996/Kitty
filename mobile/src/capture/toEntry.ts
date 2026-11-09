@@ -1,4 +1,4 @@
-// Turns a parsed bank alert into a Kitty entry, using what the person has logged before.
+// Turns a parsed bank alert into a Crest entry, using what the person has logged before.
 import { billDue, billWindowAt, cycleOf, planDays, pot } from '../engine/budget';
 import { diffDays, hm, ymd } from '../engine/dates';
 import type { State, Tx } from '../engine/types';
@@ -59,7 +59,7 @@ const WORDS: [RegExp, string][] = [
 export const wordCategory = (merchant?: string) => (merchant ? WORDS.find(([rx]) => rx.test(merchant))?.[1] ?? null : null);
 
 /** What this payer was logged as last time (money in). */
-// Names Kitty fills in when the alert doesn't say who: never learn a category from these
+// Names Crest fills in when the alert doesn't say who: never learn a category from these
 const PLACEHOLDER = /^(money in|payment sent|refund|cash|shop not named)$/i;
 function guessIncome(S: State, merchant?: string): string | null {
   if (!merchant || PLACEHOLDER.test(merchant.trim())) return null;
@@ -104,8 +104,8 @@ export const alertTxId = (p: ParsedAlert) => `a-${p.key.replace(/[^a-z0-9]/gi, '
 export const settleMinutes = (p: ParsedAlert) => (p.bank === 'Google Wallet' ? 65 : 20);
 
 /**
- * Payments Kitty is sure enough about to add without asking: money has clearly moved and there's nothing to decide.
- * Spending goes in even when the category is a guess (the money has gone either way). Money in only when Kitty knows
+ * Payments Crest is sure enough about to add without asking: money has clearly moved and there's nothing to decide.
+ * Spending goes in even when the category is a guess (the money has gone either way). Money in only when Crest knows
  * what it is, since a guess there could add money that isn't really yours to spend. Anything that looks logged already,
  * cash, a new Direct Debit, or a change to a bill's amount waits for the person.
  */
@@ -122,7 +122,7 @@ export function suggest(S: State, p: ParsedAlert, id: string, others: ParsedAler
     // Learn from what the person did before: skipped two from this bank and never kept one, so stop asking
     const L = S.settings.learned || {};
     if ((L.skip?.[p.bank] || 0) >= 2 && !L.keep?.[p.bank]) return { action: 'skip', reason: `You skipped alerts like this from ${p.bank} before` };
-    return { action: 'ask', reason: p.reason || 'Kitty couldn\'t tell what this one is' };
+    return { action: 'ask', reason: p.reason || 'Crest couldn\'t tell what this one is' };
   }
   if (p.kind === 'ignore') return { action: 'skip', reason: p.reason || 'Not a payment' };
   // Google Wallet for a card whose bank sends its own alerts: the bank's alert is the payment, and an extra one from
@@ -159,14 +159,14 @@ export function suggest(S: State, p: ParsedAlert, id: string, others: ParsedAler
         tx: { ...base, kind: 'in', cat: 'refund', sub: null, merchant: counted.merchant || p.merchant || 'Refund', note: 'Payment undone', refundCat: counted.cat, biz: !!counted.biz } };
     }
     const waiting = others.some((q) => q.key !== p.key && q.kind === 'spent' && q.bank === p.bank && q.time <= p.time && p.time - q.time <= 4 * 864e5 && undoes(q));
-    return { action: 'skip', reason: waiting ? 'Undoes a payment that wasn\'t added, so both stay out' : 'Undoes a payment Kitty never counted' };
+    return { action: 'skip', reason: waiting ? 'Undoes a payment that wasn\'t added, so both stay out' : 'Undoes a payment Crest never counted' };
   }
   // ...and the payment itself, when the undo is already here
   if (p.kind === 'spent' && others.some((q) => q.reverted && q.bank === p.bank && q.amount === p.amount && q.time >= p.time && q.time - p.time <= 4 * 864e5)) {
     return { action: 'skip', reason: `${p.bank} undid this payment` };
   }
 
-  // Money from another of your own accounts (one Kitty has seen alerts from by name) is a move, not money in
+  // Money from another of your own accounts (one Crest has seen alerts from by name) is a move, not money in
   if (p.kind === 'received' && p.merchant && S.tx.some((t) => t.accountName && sameName(t.accountName, p.merchant as string))) {
     return { action: 'skip', reason: `Moved from your ${p.merchant}` };
   }
@@ -194,7 +194,7 @@ export function suggest(S: State, p: ParsedAlert, id: string, others: ParsedAler
     const b = byAmt.find(named) || (p.kind === 'bill' ? byAmt[0] || open.find(named) : byAmt[0]);
     if (b) return asBill(b);
 
-    // Already ticked off. If Kitty ticked it off itself (Direct Debit day), the bank's figure is the real one
+    // Already ticked off. If Crest ticked it off itself (Direct Debit day), the bank's figure is the real one
     const done = S.bills.find((x) => paidTx(x) && named(x)) || (p.kind === 'bill' ? S.bills.find((x) => paidTx(x) && x.amt === p.amount) : undefined);
     if (done) {
       const t = paidTx(done) as Tx;
@@ -247,7 +247,7 @@ export function suggest(S: State, p: ParsedAlert, id: string, others: ParsedAler
     return { action: 'add', guessed: true, hint: 'Cash withdrawal. If it\'s already gone (paid someone, given away), add it. If you\'ll spend it bit by bit, tap Cash to spend and log what you buy on the keypad',
       tx: { ...base, kind: 'out', cat: 'other', sub: 'Cash', merchant: p.merchant && p.merchant !== 'Cash' ? `Cash (${p.merchant})` : 'Cash' }, cash: true };
   }
-  // Your own history first, then shops Kitty knows, then the bank's category, then words in the name
+  // Your own history first, then shops Crest knows, then the bank's category, then words in the name
   const mine = guessCategory(S, p.merchant), known = knownCategory(p.merchant);
   const cat = mine || known || emojiCategory(p.emoji) || wordCategory(p.merchant);
   const big = isBigOneOff(S, p.amount, p.merchant, date);
@@ -258,7 +258,7 @@ export function suggest(S: State, p: ParsedAlert, id: string, others: ParsedAler
 
 /**
  * A spend big enough to matter (three days' worth of budget, and at least £75) that isn't usual for this name.
- * Kitty can't know whether it came from this month's money or from savings, so it asks instead of guessing.
+ * Crest can't know whether it came from this month's money or from savings, so it asks instead of guessing.
  */
 export function isBigOneOff(S: State, amt: number, name: string | undefined, date: string): boolean {
   const c = cycleOf(date, S.settings), days = Math.max(1, planDays(S, c));

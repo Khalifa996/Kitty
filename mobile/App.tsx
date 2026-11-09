@@ -1,4 +1,4 @@
-// Kitty: safe to spend today. Tabs: Log, Review (bank alerts), Activity, Insights, More.
+// Crest: safe to spend today. Tabs: Log, Review (bank alerts), Activity, Insights, More.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -42,7 +42,7 @@ export default function App() {
 function Shell() {
   const { S, update } = useKitty();
   const cap = useCapture();
-  // Payments Kitty is sure about go in by themselves once they've settled, so the number is right without opening Review
+  // Payments Crest is sure about go in by themselves once they've settled, so the number is right without opening Review
   const [tick, setTick] = useState(0);
   useEffect(() => { const t = setInterval(() => setTick((n) => n + 1), 5 * 60 * 1000); return () => clearInterval(t); }, []);
   useEffect(() => {
@@ -57,7 +57,7 @@ function Shell() {
     update((d) => {
       const have = new Set(d.tx.map((t) => t.id));
       for (const i of sure) if (i.sug.action === 'add' || i.sug.action === 'pay-bill') {
-        // A shop Kitty couldn't place goes in with its best guess, marked so Smart sorting can fill it in
+        // A shop Crest couldn't place goes in with its best guess, marked so Smart sorting can fill it in
         const guess = i.sug.action === 'add' && i.sug.guessed && i.sug.tx.kind === 'out';
         const t = { ...i.sug.tx, autoAdded: stamp, ...(guess ? { catGuess: true } : {}) };
         if (!have.has(t.id)) d.tx.push(t);
@@ -66,7 +66,7 @@ function Shell() {
     cap.done(sure.flatMap((i) => keysFor(i.p, cap.parsed)));
   }, [cap.parsed, tick, S.settings.autoAdd, S.settings.setupDone]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Smart sorting (when it's on) picks categories for shops Kitty added with a guess
+  // Smart sorting (when it's on) picks categories for shops Crest added with a guess
   const guessed = useMemo(() => S.tx.filter((t) => t.catGuess && t.kind === 'out' && t.merchant).slice(-20)
     .map((t) => ({ key: `tx:${t.id}`, app: t.bank || 'Bank', title: '', text: `You spent ${money(t.amt, S.settings.currency)} at ${t.merchant}` })), [S.tx, S.settings.currency]);
   const sorted = useSmartSort(S, guessed);
@@ -120,7 +120,7 @@ function Shell() {
     <SafeAreaView style={s.screen} edges={['top', 'left', 'right']}>
       {newBuild && !later && (
         <View style={s.update}>
-          <Text style={s.updateT} numberOfLines={1}>A newer Kitty is ready (0.1.{newBuild.build})</Text>
+          <Text style={s.updateT} numberOfLines={1}>A newer Crest is ready (0.1.{newBuild.build})</Text>
           <Pressable accessibilityRole="button" onPress={() => setLater(true)} hitSlop={8}><Text style={s.updateLater}>Later</Text></Pressable>
           <Pressable accessibilityRole="button" onPress={() => Linking.openURL(newBuild.url)} hitSlop={8}><Text style={s.updateGo}>Update</Text></Pressable>
         </View>

@@ -61,7 +61,7 @@ function forgetNeverRead() {
 export function useCapture() {
   const [raw, setRaw] = useState<RawAlert[]>(() => {
     forgetNeverRead();
-    // If Android dropped Kitty's listener (after an update, or to save battery), ask for it back
+    // If Android dropped Crest's listener (after an update, or to save battery), ask for it back
     try { if (KittyNotifications?.isEnabled()) KittyNotifications.rebind?.(); } catch { /* best effort */ }
     return readRaw();
   });
@@ -84,7 +84,7 @@ export function useCapture() {
     refresh();
   }, [raw, refresh]);
 
-  /** Start or stop reading alerts from another app (a bank Kitty doesn't know yet). Only the person can turn this on. */
+  /** Start or stop reading alerts from another app (a bank Crest doesn't know yet). Only the person can turn this on. */
   const watchApp = useCallback((pkg: string, on: boolean) => {
     const K = KittyNotifications;
     if (!K || (on && neverRead(pkg))) return;

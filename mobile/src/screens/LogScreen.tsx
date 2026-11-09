@@ -35,7 +35,7 @@ export function LogScreen({ onSaved }: { onSaved: (msg: string, undo: () => void
   const picks = useMemo(() => quickPicks(S, mode, today, new Date().getHours()), [S, mode, today]);
   const q = norm(merchant);
   const sugg: { name: string; cat: string; amt?: number }[] = q ? memory.filter((e) => norm(e.name).includes(q)).slice(0, 8) : picks;
-  // Typing a name Kitty already picks up from bank alerts: logging it by hand would count it twice
+  // Typing a name Crest already picks up from bank alerts: logging it by hand would count it twice
   const tracked = useMemo(() => {
     if (q.length < 4) return null;
     const since = ymd(new Date(Date.now() - 45 * 864e5));
@@ -108,7 +108,7 @@ export function LogScreen({ onSaved }: { onSaved: (msg: string, undo: () => void
       <TextInput value={merchant} onChangeText={typed} placeholder={mode === 'out' ? 'Where? e.g. Lidl' : 'From? e.g. Salary'} placeholderTextColor={C.faint}
         style={s.field} accessibilityLabel="Where" returnKeyType="done" />
       {tracked ? (
-        <Text style={s.tracked}>Kitty already picks up {tracked.merchant} from your {tracked.bank} alerts, so you don't need to log it.</Text>
+        <Text style={s.tracked}>Crest already picks up {tracked.merchant} from your {tracked.bank} alerts, so you don't need to log it.</Text>
       ) : sugg.length > 0 && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 6 }} keyboardShouldPersistTaps="handled">
           {sugg.map((e) => { const c = cats.find((x) => x.id === e.cat); return <Chip key={e.name} label={e.amt ? `${e.name} · ${moneyS(e.amt, cur)}` : e.name} on={norm(e.name) === q} colour={c?.c || C.muted} icon={c?.i} onPress={() => pick(e.name, e.cat, e.amt)} />; })}

@@ -1,4 +1,4 @@
-// Draws one of Kitty's line icons with react-native-svg (works on the phone and in the browser preview).
+// Draws one of Crest's line icons with react-native-svg (works on the phone and in the browser preview).
 import { memo } from 'react';
 import Svg, { Circle, Path, Polyline, Rect } from 'react-native-svg';
 import { ICONS } from './icons';

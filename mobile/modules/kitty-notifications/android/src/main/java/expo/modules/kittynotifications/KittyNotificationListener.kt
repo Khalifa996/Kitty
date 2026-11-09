@@ -16,8 +16,8 @@ class KittyNotificationListener : NotificationListenerService() {
 
   /**
    * Android connects the listener when the phone starts, after the app updates, or after it was stopped to save battery.
-   * Anything a bank posted while Kitty wasn't listening is usually still in the notification shade, so pick it up now.
-   * Only notifications newer than the last one Kitty heard are read, so nothing already handled comes back.
+   * Anything a bank posted while Crest wasn't listening is usually still in the notification shade, so pick it up now.
+   * Only notifications newer than the last one Crest heard are read, so nothing already handled comes back.
    */
   override fun onListenerConnected() {
     try {

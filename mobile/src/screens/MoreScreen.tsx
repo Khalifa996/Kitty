@@ -13,7 +13,7 @@ import { alertLog, parseBackup } from '../store/storage';
 import { Btn, Card, Label } from '../ui/kit';
 import { C } from '../ui/theme';
 
-const VERSION = '0.11';
+const VERSION = '0.12';
 // @ts-ignore process.env is provided by Expo
 const BUILD: string = (process.env.EXPO_PUBLIC_KITTY_BUILD as string | undefined) || '';
 
@@ -52,7 +52,7 @@ export function MoreScreen({ cap, onDone }: { cap: Capture; onDone: (msg: string
           <Text style={s.hint}>Reading bank alerts only works in the Android app.</Text>
         ) : cap.enabled ? (
           <>
-            <Text style={s.hint}>On. Kitty reads payment alerts from the main UK banks and card apps, and from Google Wallet. They never leave your phone. It never reads chats, texts, email or social apps.</Text>
+            <Text style={s.hint}>On. Crest reads payment alerts from the main UK banks and card apps, and from Google Wallet. They never leave your phone. It never reads chats, texts, email or social apps.</Text>
             <View style={[s.row, { alignItems: 'center' }]}>
               <Text style={[s.hint, { flex: 1, color: C.fg }]}>{S.settings.autoAdd !== false ? 'Adds the payments it\'s sure about by itself. You can check or change them in Review' : 'Waits for you to add every payment in Review'}</Text>
               <Btn label={S.settings.autoAdd !== false ? 'Ask me first' : 'Add by itself'} small onPress={() => update((d) => { d.settings.autoAdd = d.settings.autoAdd === false; })} />
@@ -81,8 +81,8 @@ export function MoreScreen({ cap, onDone }: { cap: Capture; onDone: (msg: string
           </>
         ) : (
           <>
-            <Text style={[s.hint, { color: C.fg }]}>Off. Tap Allow access, find Kitty and switch it on.</Text>
-            <Text style={s.hint}>If Kitty is greyed out, tap Open App info, then ⋮ at the top right, then "Allow restricted settings", and try again.</Text>
+            <Text style={[s.hint, { color: C.fg }]}>Off. Tap Allow access, find Crest and switch it on.</Text>
+            <Text style={s.hint}>If Crest is greyed out, tap Open App info, then ⋮ at the top right, then "Allow restricted settings", and try again.</Text>
             <View style={s.row}>
               <Btn label="Allow access" primary onPress={() => KittyNotifications?.openSettings()} />
               <Btn label="Open App info" onPress={() => KittyNotifications?.openAppInfo()} />
@@ -94,8 +94,8 @@ export function MoreScreen({ cap, onDone }: { cap: Capture; onDone: (msg: string
       {aiAvailable && (
         <Card style={{ gap: 10 }}>
           <Label>Smart sorting with AI</Label>
-          <Text style={s.hint}>{aiOn ? `On. ${aiSortedCount()} alerts sorted so far.` : 'Off.'} When Kitty can't tell what an alert is, or which category a shop belongs in, it can ask an AI.</Text>
-          <Text style={s.hint}>Only that alert's text is sent, with account numbers removed. Your balance, history, bills and settings are never sent. It goes to Kitty's AI service and is read by Claude, Anthropic's AI. Kitty's service keeps no copy.</Text>
+          <Text style={s.hint}>{aiOn ? `On. ${aiSortedCount()} alerts sorted so far.` : 'Off.'} When Crest can't tell what an alert is, or which category a shop belongs in, it can ask an AI.</Text>
+          <Text style={s.hint}>Only that alert's text is sent, with account numbers removed. Your balance, history, bills and settings are never sent. It goes to Crest's AI service and is read by Claude, Anthropic's AI. Crest's service keeps no copy.</Text>
           <Btn label={aiOn ? 'Turn off' : 'Turn on smart sorting'} primary={!aiOn} onPress={() => {
             update((d) => { d.settings.ai = { on: !aiOn, install: d.settings.ai?.install || newInstallId() }; });
             onDone(aiOn ? 'Smart sorting is off. Nothing more will be sent' : 'Smart sorting is on');
@@ -130,7 +130,7 @@ export function MoreScreen({ cap, onDone }: { cap: Capture; onDone: (msg: string
         </View>
       </Card>
 
-      <Text style={[s.hint, { textAlign: 'center' }]}>Kitty {VERSION} · test build{BUILD ? ` 0.1.${BUILD}` : ''}. It checks GitHub for a newer test build every few hours, without sending anything about you.</Text>
+      <Text style={[s.hint, { textAlign: 'center' }]}>Crest {VERSION} · test build{BUILD ? ` 0.1.${BUILD}` : ''}. It checks GitHub for a newer test build every few hours, without sending anything about you.</Text>
     </ScrollView>
   );
 }

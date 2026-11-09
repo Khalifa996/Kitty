@@ -1,4 +1,4 @@
-// Holds Kitty's data for the whole app and saves every change.
+// Holds Crest's data for the whole app and saves every change.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { AppState } from 'react-native';
 import { dueDirectDebits } from '../engine/budget';

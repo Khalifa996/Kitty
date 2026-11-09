@@ -7,19 +7,20 @@ export function blankState(): State {
   return {
     v: 1,
     settings: { currency: 'GBP', payFreq: 'monthly', payday: 28, payAnchor: null, income: 0, savings: 0, sideIncome: false, setupDone: false, checkEvery: 3, limits: { ...DEFAULT_LIMITS }, dismissed: {} },
-    bills: [], tx: [], pots: [], accounts: [], checkins: [],
+    bills: [], tx: [], pots: [], accounts: [], checkins: [], overdrafts: [],
   };
 }
 
-/** Accepts anything that looks like a Kitty backup. Throws with a plain message if it doesn't. */
+/** Accepts anything that looks like a Crest backup. Throws with a plain message if it doesn't. */
 export function migrate(input: unknown): State {
   const d = input as Partial<State> | null;
-  if (!d || d.v !== 1 || !Array.isArray(d.tx) || !Array.isArray(d.bills) || !d.settings) throw new Error("That doesn't look like a Kitty backup");
+  if (!d || d.v !== 1 || !Array.isArray(d.tx) || !Array.isArray(d.bills) || !d.settings) throw new Error("That doesn't look like a Crest backup");
   const base = blankState();
   const S: State = { ...base, ...d, settings: { ...base.settings, ...d.settings } } as State;
   S.pots = S.pots || [];
   S.accounts = S.accounts || [];
   S.checkins = S.checkins || [];
+  S.overdrafts = S.overdrafts || [];
   S.settings.limits = S.settings.limits || { ...DEFAULT_LIMITS };
   S.settings.dismissed = S.settings.dismissed || {};
   if (S.settings.autoAdd === undefined) S.settings.autoAdd = true;

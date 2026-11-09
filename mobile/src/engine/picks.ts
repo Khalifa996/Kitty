@@ -1,5 +1,5 @@
 // Quick picks on the Log screen. Bank alerts already catch card payments, so the keypad is mostly
-// for cash and anything the bank doesn't tell Kitty about. Picks come from what you log by hand,
+// for cash and anything the bank doesn't tell Crest about. Picks come from what you log by hand,
 // favouring things you log often, lately and around this time of day. One-offs fade out.
 import { diffDays } from './dates';
 import type { State } from './types';
