@@ -16,6 +16,7 @@ export type ParsedAlert = {
   account?: string;     // last four digits
   accountName?: string; // a named account in the same bank app (a Monzo business or joint account)
   refund?: boolean;
+  reverted?: boolean;   // a card payment the bank undid (declined later, or the shop cancelled it)
   sent?: boolean;       // money you sent to someone (may be one of your own accounts)
   pairedWith?: string;  // key of the other half of a move between your own accounts
   reason?: string;      // why it was ignored, or a note for the person
@@ -170,8 +171,10 @@ export function parseAlert(a: RawAlert): ParsedAlert {
     const body = text.replace(/^[^\w£+-]+/u, '');
     const xAt = body.match(new RegExp('^\\+?' + MONEY + '\\s+at\\s+([^\\n]+)', 'i'));
     const xFrom = body.match(new RegExp('^\\+?' + MONEY + '\\s+from\\s+([^\\n]+)', 'i'));
-    if (xAt) return { ...base, kind: 'spent', amount: toPennies(xAt[1]), merchant: tidyName(xAt[2]) };
-    if (xFrom) return { ...base, kind: 'received', amount: toPennies(xFrom[1]), merchant: tidyName(xFrom[2]) };
+    // Monzo can run a running total on after the name ("Toolstation You've spent £41.85 today")
+    const cut = (n: string) => n.split(/\s+(?:you'?ve spent|you have spent|you'?ve received|spent today|balance)\b/i)[0];
+    if (xAt) return { ...base, kind: 'spent', amount: toPennies(xAt[1]), merchant: tidyName(cut(xAt[2])) };
+    if (xFrom) return { ...base, kind: 'received', amount: toPennies(xFrom[1]), merchant: tidyName(cut(xFrom[2])) };
     const xTo = body.match(new RegExp('^-?' + MONEY + '\\s+to\\s+([^\\n]+)', 'i'));
     if (xTo) return { ...base, kind: 'spent', sent: true, amount: toPennies(xTo[1]), merchant: tidyName(xTo[2]) };
   }
@@ -206,6 +209,13 @@ export function parseAlert(a: RawAlert): ParsedAlert {
   // Money in
   const fromName = (text.match(/\bfrom\s+(.+?)(?:\s+(?:to|into)\s+your|\.\s|\.$|\s+balance|$)/i) || [])[1];
   const sentYou = text.match(/^(.+?)\s+(?:sent|paid) you\b/i);
+  // A card payment undone by the bank or the shop ("Card payment reverted"): it only matters if the payment was counted
+  if (/\b(revert(ed)?|reversed|reversal)\b/i.test(all)) {
+    const to = (text.match(/\b(?:to|at|from)\s+(.+?)(?:\s+(?:has|have|was|were|is)\b|\.\s|\.$|\s+balance|$)/i) || [])[1];
+    // Revolut can put the shop in the title instead ("Transport for London" / "Payment of £6.40 reverted")
+    const inTitle = !named && title && !GENERIC_TITLES.test(title) && !AMOUNT.test(title) && !/revers|revert|payment|refund/i.test(title) ? title : '';
+    return { ...out, kind: 'received', refund: true, reverted: true, merchant: tidyName(to || inTitle) };
+  }
   if (/\brefund/i.test(all)) {
     return { ...out, kind: 'received', refund: true, merchant: tidyName(fromName || (!named && !GENERIC_TITLES.test(title) ? title : '') || 'Refund') };
   }

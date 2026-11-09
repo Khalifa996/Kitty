@@ -92,10 +92,32 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
   const quiet = useMemo(() => quietBanks(S, ymd(new Date()), [...new Set<string>(cap.parsed.filter((p) => Date.now() - p.time < 3 * 864e5).map((p) => p.bank))]), [S, cap.parsed]);
   const addedByKitty = useMemo(() => S.tx.filter((t) => t.autoAdded && t.autoAdded > (S.settings.autoSeen || ''))
     .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)), [S]);
+  // A named account (Monzo business or joint) Kitty hasn't asked about: is it the business one?
+  const askAcct = useMemo(() => {
+    const known = new Set([...(S.settings.bizAccounts || []), ...(S.settings.notBizAccounts || [])].map((n) => n.toLowerCase()));
+    const seen = [...S.tx.map((t) => ({ name: t.accountName, bank: t.bank })), ...cap.parsed.map((p) => ({ name: p.accountName, bank: p.bank }))];
+    return seen.find((a): a is { name: string; bank?: string } => !!a.name && !known.has(a.name.toLowerCase()));
+  }, [S, cap.parsed]);
+  const answerAcct = (name: string, yes: boolean) => {
+    const key = name.toLowerCase();
+    let moved = 0;
+    update((d) => {
+      if (!yes) { d.settings.notBizAccounts = [...(d.settings.notBizAccounts || []), name]; return; }
+      d.settings.bizAccounts = [...(d.settings.bizAccounts || []), name];
+      d.settings.sideIncome = true;
+      // What's already in from that account: money in is side income, spending is a business cost
+      for (const t of d.tx) {
+        if ((t.accountName || '').toLowerCase() !== key) continue;
+        if (t.kind === 'out') t.biz = true;
+        else if (!['refund', 'transfer', 'borrowed'].includes(t.cat)) { t.cat = 'side'; t.biz = true; moved++; }
+      }
+    });
+    onDone(yes ? `${name} is your business account${moved ? `. ${moved} payment${moved === 1 ? '' : 's'} in now count as side income` : ''}` : 'Noted');
+  };
   const fixCat = (cat: string) => {
     if (!fixing) return;
     const id = fixing.id;
-    update((d) => { const t = d.tx.find((x) => x.id === id); if (t) { t.cat = cat; if (t.kind === 'in') t.biz = cat === 'side'; } });
+    update((d) => { const t = d.tx.find((x) => x.id === id); if (t) { t.cat = cat; delete t.catGuess; if (t.kind === 'in') t.biz = cat === 'side'; } });
     setFixing(null);
     onDone('Changed. Kitty will use this for that name from now on');
   };
@@ -243,11 +265,27 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
         </Card>
       ))}
 
+      {askAcct && (
+        <Card style={{ gap: 8 }}>
+          <Text style={s.h2}>Is {askAcct.name} your business account?</Text>
+          <Text style={s.hint}>Kitty sees payments from your {askAcct.name} account{askAcct.bank ? ` in ${askAcct.bank}` : ''}. If it's your business, money in there counts as side income, with {S.settings.sideTaxRate ?? 20}% kept back for tax, and spending there counts as a business cost.{S.settings.sideIncome ? '' : ' This turns on side income.'}</Text>
+          <View style={[s.row, { justifyContent: 'flex-end' }]}>
+            <Btn label="No" small onPress={() => answerAcct(askAcct.name, false)} />
+            <Btn label="Yes, it's my business" primary small onPress={() => answerAcct(askAcct.name, true)} />
+          </View>
+        </Card>
+      )}
+
       {addedByKitty.length > 0 && (
         <Card style={{ gap: 6 }}>
           <View style={s.row}>
             <Text style={[s.h2, { flex: 1 }]}>Kitty added {addedByKitty.length} payment{addedByKitty.length === 1 ? '' : 's'}</Text>
-            <Btn label="Looks right" small onPress={() => update((d) => { d.settings.autoSeen = new Date().toISOString(); })} />
+            <Btn label="Looks right" small onPress={() => update((d) => {
+              // Checked: their categories can now teach Kitty about those shops
+              const ids = new Set(addedByKitty.map((t) => t.id));
+              for (const t of d.tx) if (ids.has(t.id)) delete t.catGuess;
+              d.settings.autoSeen = new Date().toISOString();
+            })} />
           </View>
           <Text style={s.hint}>They're already in your daily figure. Tap one to change its category or take it out.</Text>
           {(showAdded ? addedByKitty : addedByKitty.slice(0, 4)).map((t) => {

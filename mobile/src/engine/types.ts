@@ -20,6 +20,8 @@ export type Settings = {
   learned?: { skip?: Record<string, number>; keep?: Record<string, number> }; // what the person did with alerts Kitty couldn't read, by bank
   autoAdd?: boolean;  // add payments Kitty is sure about without asking (on unless turned off)
   autoSeen?: string;  // the person has checked what Kitty added up to this time (ISO)
+  bizAccounts?: string[];    // named bank accounts the person said are their business (money in is side income, spending is a business cost)
+  notBizAccounts?: string[]; // named accounts they said aren't
   opening?: { start: string; date: string; pot: number } | null;
   prepaid?: Record<string, string>;
   ddSkip?: Record<string, boolean>;
@@ -73,6 +75,7 @@ export type Tx = {
   autoAdded?: string; // when Kitty added this from a bank alert by itself (ISO time), so Review can show it to check
   accountName?: string; // the named account the alert came from (a Monzo business or joint account)
   outside?: boolean;  // paid from savings or money put aside, not this pay month's money: left out of the daily budget
+  catGuess?: boolean; // Kitty added this by itself with a guessed category; Smart sorting may fill it in, and any edit clears it
 };
 
 export type Pot = { id: string; name: string; perPay: number; target: number; opening: number; start: string; end?: string; closed?: string };

@@ -1,10 +1,12 @@
 // Kitty: safe to spend today. Tabs: Log, Review (bank alerts), Activity, Insights, More.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { alertTxId, alreadyLogged, isSure, settleMinutes, suggest } from './src/capture/toEntry';
 import { keysFor, useCapture } from './src/capture/useCapture';
+import { useSmartSort } from './src/ai/useSmartSort';
+import { categories } from './src/engine/cats';
 import { ActivityScreen } from './src/screens/ActivityScreen';
 import { InsightsScreen } from './src/screens/InsightsScreen';
 import { LogScreen } from './src/screens/LogScreen';
@@ -15,7 +17,7 @@ import { SetupScreen } from './src/screens/SetupScreen';
 import { KittyProvider, useKitty } from './src/store/KittyState';
 import { useUpdate } from './src/update/useUpdate';
 import { Icon } from './src/ui/Icon';
-import { C } from './src/ui/theme';
+import { C, money } from './src/ui/theme';
 
 type Tab = 'log' | 'review' | 'activity' | 'plan' | 'insights';
 const TABS: { id: Tab; label: string; icon: string }[] = [
@@ -54,10 +56,32 @@ function Shell() {
     const stamp = new Date().toISOString();
     update((d) => {
       const have = new Set(d.tx.map((t) => t.id));
-      for (const i of sure) if (i.sug.action === 'add' || i.sug.action === 'pay-bill') { const t = { ...i.sug.tx, autoAdded: stamp }; if (!have.has(t.id)) d.tx.push(t); }
+      for (const i of sure) if (i.sug.action === 'add' || i.sug.action === 'pay-bill') {
+        // A shop Kitty couldn't place goes in with its best guess, marked so Smart sorting can fill it in
+        const guess = i.sug.action === 'add' && i.sug.guessed && i.sug.tx.kind === 'out';
+        const t = { ...i.sug.tx, autoAdded: stamp, ...(guess ? { catGuess: true } : {}) };
+        if (!have.has(t.id)) d.tx.push(t);
+      }
     });
     cap.done(sure.flatMap((i) => keysFor(i.p, cap.parsed)));
   }, [cap.parsed, tick, S.settings.autoAdd, S.settings.setupDone]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Smart sorting (when it's on) picks categories for shops Kitty added with a guess
+  const guessed = useMemo(() => S.tx.filter((t) => t.catGuess && t.kind === 'out' && t.merchant).slice(-20)
+    .map((t) => ({ key: `tx:${t.id}`, app: t.bank || 'Bank', title: '', text: `You spent ${money(t.amt, S.settings.currency)} at ${t.merchant}` })), [S.tx, S.settings.currency]);
+  const sorted = useSmartSort(S, guessed);
+  useEffect(() => {
+    if (!S.tx.some((t) => t.catGuess && sorted.results[`tx:${t.id}`])) return;
+    const ok = new Set(categories(S.settings).map((c) => c.id));
+    update((d) => {
+      for (const t of d.tx) {
+        const r = t.catGuess ? sorted.results[`tx:${t.id}`] : undefined;
+        if (!r) continue;
+        if (r.category !== 'other' && r.confidence !== 'low' && ok.has(r.category)) t.cat = r.category;
+        delete t.catGuess;
+      }
+    });
+  }, [sorted.results]); // eslint-disable-line react-hooks/exhaustive-deps
   const [tab, setTab] = useState<Tab>('log');
   const [importing, setImporting] = useState(false);
   const [more, setMore] = useState(false);

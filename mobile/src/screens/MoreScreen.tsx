@@ -13,7 +13,7 @@ import { alertLog, parseBackup } from '../store/storage';
 import { Btn, Card, Label } from '../ui/kit';
 import { C } from '../ui/theme';
 
-const VERSION = '0.10.1';
+const VERSION = '0.11';
 // @ts-ignore process.env is provided by Expo
 const BUILD: string = (process.env.EXPO_PUBLIC_KITTY_BUILD as string | undefined) || '';
 
@@ -57,6 +57,15 @@ export function MoreScreen({ cap, onDone }: { cap: Capture; onDone: (msg: string
               <Text style={[s.hint, { flex: 1, color: C.fg }]}>{S.settings.autoAdd !== false ? 'Adds the payments it\'s sure about by itself. You can check or change them in Review' : 'Waits for you to add every payment in Review'}</Text>
               <Btn label={S.settings.autoAdd !== false ? 'Ask me first' : 'Add by itself'} small onPress={() => update((d) => { d.settings.autoAdd = d.settings.autoAdd === false; })} />
             </View>
+            {(S.settings.bizAccounts || []).map((n) => (
+              <View key={n} style={[s.row, { alignItems: 'center' }]}>
+                <Text style={[s.hint, { flex: 1, color: C.fg }]}>{n} is your business account: money in there is side income</Text>
+                <Btn label="It isn't" small onPress={() => update((d) => {
+                  d.settings.bizAccounts = (d.settings.bizAccounts || []).filter((x) => x !== n);
+                  d.settings.notBizAccounts = [...(d.settings.notBizAccounts || []), n];
+                })} />
+              </View>
+            ))}
             {cap.watched.map((a) => (
               <View key={a.pkg} style={[s.row, { alignItems: 'center' }]}>
                 <Text style={[s.hint, { flex: 1, color: C.fg }]}>Also reading {a.label}</Text>

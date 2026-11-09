@@ -79,9 +79,10 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
     const was = open, others = form.all ? same : [];
     const before = new Map(others.map((x) => [x.id, x.cat]));
     update((d) => {
-      for (const x of d.tx) if (before.has(x.id)) { x.cat = form.cat; if (x.kind === 'in') x.biz = form.cat === 'side'; }
+      for (const x of d.tx) if (before.has(x.id)) { x.cat = form.cat; delete x.catGuess; if (x.kind === 'in') x.biz = form.cat === 'side'; }
       const t = d.tx.find((x) => x.id === was.id);
       if (!t) return;
+      delete t.catGuess;
       t.merchant = form.name.trim();
       t.amt = pennies;
       if (t.kind === 'out' && !t.billId && !t.biz) { if (form.side) t.fromSide = true; else delete t.fromSide; }

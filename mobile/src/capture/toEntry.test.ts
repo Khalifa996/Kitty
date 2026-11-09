@@ -285,3 +285,65 @@ it('asks about a big spend that is unusual for that name, but not a usual one', 
   const shop = suggest(S, alert({ kind: 'spent', amount: 9800, merchant: 'Tesco', time: at('2026-10-27T10:00:00') }), 'n92') as { big?: boolean };
   expect(shop.big).toBeUndefined();
 });
+
+it("doesn't take a Direct Debit for a bill that's a few pence out of a near amount", () => {
+  const S = withHistory();
+  S.bills.push({ id: 'tv', name: 'TV', amt: 1099, day: 25, type: 'sub', dd: true });
+  // 79p off on a small bill is a different payment, not the TV bill drifting
+  expect(suggest(S, alert({ kind: 'bill', amount: 1020, bank: 'Barclays' }), 'n100')).toMatchObject({ action: 'add', newBill: true });
+});
+
+it('skips Google Wallet money in when the bank sends its own', () => {
+  const S = withHistory();
+  S.tx.push({ id: 'b', kind: 'out', amt: 300, cat: 'food', merchant: 'Cafe', note: '', date: '2026-10-26', time: '09:00', biz: false, billId: null, bank: 'Monzo' });
+  const check = alert({ kind: 'received', refund: true, amount: 100, merchant: 'Budget App Ltd', bank: 'Google Wallet', reason: 'Paid with Monzo Mastercard' });
+  expect(suggest(S, check, 'n101')).toMatchObject({ action: 'skip' });
+});
+
+it('treats a card top-up of your own account as a move', () => {
+  const S = withHistory();
+  expect(suggest(S, alert({ kind: 'spent', amount: 2000, merchant: 'Revolut**1234*', bank: 'Barclays' }), 'n102')).toMatchObject({ action: 'skip' });
+  expect(suggest(S, alert({ kind: 'spent', amount: 2000, merchant: 'Monzo', bank: 'Barclays' }), 'n103')).toMatchObject({ action: 'skip' });
+  // Shops that only start the same way are still spending
+  expect(suggest(S, alert({ kind: 'spent', amount: 950, merchant: 'Chip Shop', bank: 'Barclays' }), 'n104')).toMatchObject({ action: 'add' });
+  expect(suggest(S, alert({ kind: 'spent', amount: 950, merchant: 'Plum Tree Cafe', bank: 'Barclays' }), 'n105')).toMatchObject({ action: 'add' });
+  // A savings app paid as a monthly bill is the bill
+  S.bills.push({ id: 'sv', name: 'Chip savings', amt: 5000, day: 27, type: 'bill' });
+  expect(suggest(S, alert({ kind: 'spent', amount: 5000, merchant: 'Chip', bank: 'Barclays' }), 'n106')).toMatchObject({ action: 'pay-bill', billId: 'sv' });
+});
+
+it('takes a payment back off when the bank undoes it', () => {
+  const S = withHistory();
+  S.tx.push({ id: 't1', kind: 'out', amt: 640, cat: 'transport', merchant: 'Transport for London', note: '', date: '2026-10-26', time: '08:00', biz: false, billId: null, bank: 'Revolut' });
+  const undo = alert({ key: 'u1', kind: 'received', refund: true, reverted: true, amount: 640, merchant: 'Transport for London' });
+  const s = suggest(S, undo, 'n107');
+  expect(s).toMatchObject({ action: 'add', guessed: false, tx: { kind: 'in', cat: 'refund', amt: 640, merchant: 'Transport for London' } });
+  expect(isSure(undo, s)).toBe(true);
+  // The bank names the shop differently on the undo
+  expect(suggest(S, { ...undo, merchant: 'TFL Travel CH' }, 'n107b')).toMatchObject({ action: 'add', tx: { merchant: 'Transport for London' } });
+  // Nothing counted: the undo isn't money in
+  expect(suggest(withHistory(), undo, 'n108')).toMatchObject({ action: 'skip' });
+  // Both still waiting: the payment and its undo both stay out
+  const pay = alert({ key: 'p1', kind: 'spent', amount: 640, merchant: 'Transport for London', time: at('2026-10-27T08:00:00') });
+  expect(suggest(withHistory(), pay, 'n109', [pay, undo])).toMatchObject({ action: 'skip' });
+  expect(suggest(withHistory(), undo, 'n110', [pay, undo])).toMatchObject({ action: 'skip' });
+});
+
+it('counts everything in your business account as business, once you say which it is', () => {
+  const S = withHistory();
+  S.settings.sideIncome = true; S.settings.bizAccounts = ['Acme Fixes & Co'];
+  // Money in from anyone is side income
+  expect(suggest(S, alert({ kind: 'received', amount: 12000, merchant: 'Jo Bloggs', bank: 'Monzo', accountName: 'Acme Fixes & Co' }), 'n111'))
+    .toMatchObject({ action: 'add', guessed: false, tx: { kind: 'in', cat: 'side', biz: true } });
+  // Spending is a business cost
+  expect(suggest(S, alert({ kind: 'spent', amount: 1240, merchant: 'Toolstation', bank: 'Monzo', accountName: 'Acme Fixes & Co' }), 'n112'))
+    .toMatchObject({ action: 'add', tx: { kind: 'out', cat: 'home', biz: true } });
+  // The personal account in the same app isn't
+  expect(suggest(S, alert({ kind: 'received', amount: 12000, merchant: 'Jo Bloggs', bank: 'Monzo' }), 'n113')).toMatchObject({ tx: { cat: 'extra', biz: false } });
+});
+
+it("doesn't learn a shop's category from one Kitty guessed", () => {
+  const S = withHistory();
+  S.tx.push({ id: 'g', kind: 'out', amt: 500, cat: 'other', merchant: 'Corner Kebab', note: '', date: '2026-10-26', time: '09:00', biz: false, billId: null, catGuess: true });
+  expect(guessCategory(S, 'Corner Kebab')).toBeNull();
+});

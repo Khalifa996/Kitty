@@ -106,8 +106,14 @@ describe('real alerts, 27 to 29 Oct (names changed)', () => {
   it('reads alerts from a second Monzo account, where the title is the account name', () => {
     expect(parseAlert(a(MON, 'Acme Fixes & Co', '£75.20 from JOBSITE UK LIMITED'))).toMatchObject({ kind: 'received', amount: 7520, merchant: 'Jobsite UK Limited', accountName: 'Acme Fixes & Co' });
     expect(parseAlert(a(MON, 'Acme Fixes & Co', '🔨 £12.40 at Toolstation'))).toMatchObject({ kind: 'spent', amount: 1240, merchant: 'Toolstation', accountName: 'Acme Fixes & Co' });
+    expect(parseAlert(a(MON, 'Acme Fixes & Co', "£27.10 at Builders Depot LTD You've spent £41.85 today"))).toMatchObject({ kind: 'spent', amount: 2710, merchant: 'Builders Depot LTD' });
     // The account name is never taken for the shop or the payer
     expect(parseAlert(a(MON, 'Acme Fixes & Co', 'You received £30.00')).merchant).not.toBe('Acme Fixes & Co');
+  });
+  it('reads a card payment the bank undid', () => {
+    expect(parseAlert(a(REV, 'Card payment reverted', 'Your £6.40 payment to Transport for London was reverted'))).toMatchObject({ kind: 'received', refund: true, reverted: true, amount: 640, merchant: 'Transport for London' });
+    expect(parseAlert(a(REV, 'Card payment reverted', '£1.00 returned to your account'))).toMatchObject({ kind: 'received', reverted: true, amount: 100 });
+    expect(parseAlert(a(REV, 'Transport for London', '↩️ Payment of £6.40 reverted'))).toMatchObject({ reverted: true, amount: 640, merchant: 'Transport for London' });
   });
   it('pairs a move between two accounts in the same bank app', () => {
     const out = parseAll([

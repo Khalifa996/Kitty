@@ -28,7 +28,8 @@ export function useSmartSort(S: State, want: AiAlert[]) {
     todo.forEach((a) => tried.current.add(a.key));
     setBusy(true);
     sortAlerts(todo, categories(S.settings), inTypes(S.settings), S.settings.ai?.install as string)
-      .then((got) => { setResults((cur) => { const next = { ...cur, ...got }; save(next); return next; }); setError(''); })
+      // Merge with what's saved, since more than one screen can be sorting at once
+      .then((got) => { setResults((cur) => { const next = { ...load(), ...cur, ...got }; save(next); return next; }); setError(''); })
       .catch((e) => setError(e instanceof Error ? e.message : 'Smart sorting failed'))
       .finally(() => setBusy(false));
   }, [on, sig, busy]); // eslint-disable-line react-hooks/exhaustive-deps

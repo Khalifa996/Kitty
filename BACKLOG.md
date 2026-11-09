@@ -4,38 +4,35 @@ Snags and improvements, worst first. Add new ones at the top of the right sectio
 
 Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3** nice to have
 
+Since 9 Nov 2026 Kitty is Mo's own app, built around how he banks. Items that only matter for a public release are parked at the end.
+
 ## Snags
 | Pri | Found | Snag |
 |---|---|---|
+| P2 | 9 Nov | A Direct Debit the bank reverses (bounced, or claimed back) is skipped, but the bill stays ticked off as paid |
+| P2 | 9 Nov | Monzo's wording for an undone card payment isn't known yet. If it reads like "£6.40 from TfL", it comes in as money in to check, not as an undo |
+| P2 | 9 Nov | Business account: answering "It isn't" in More doesn't change entries already counted as side income (fix them in Activity) |
 | P2 | 7 Nov | A balance check now and then ("What's in your accounts?") to catch anything no alert covered. The web prototype has check-ins; bring them across once testers have tried 0.10 |
 | P2 | 7 Nov | The web prototype still leaves side income out of the budget and doesn't know `outside` or `spread` |
 | P2 | 7 Nov | Big one-offs on the keypad: Review asks, Activity has the switches, but the keypad doesn't offer "From savings" yet |
 | P2 | 7 Nov | Credit card spending (seen through Google Wallet) counts against the daily budget, and the card's monthly repayment is a bill too. Fine for now, but think about cards paid in full |
-| P1 | 2 Nov | Monzo personal and Monzo Business alerts come from the same app. Until Kitty can tell them apart, money moved from the business to the personal account may show as a spend as well as "Paid myself". Needs real (anonymised) alerts from both |
-| P2 | 2 Nov | Ask "What's your business called?" when side income is switched on, so the first payment from it is spotted as "Paid myself" without the person marking it |
-| P2 | 2 Nov | Some banks only send text messages. Reading texts is blocked (private), so offer a sender-only option later: read texts from named bank senders and nothing else |
 | P2 | 2 Nov | The web prototype doesn't know about spread entries or interest on debts yet |
 | P2 | 2 Nov | Day view: "£X over" gives no reason. Name the biggest entry and what it does to the days left |
 | P2 | 2 Nov | Entries named "Payment sent", "Money in" or just the category mean nothing later. Use the payee in the alert, or ask once in Review |
 | P2 | 2 Nov | Cash withdrawals are named after the machine ("Ec East Ham GBP"). Call them "Cash · <place>" |
 | P2 | 2 Nov | Plan: paid bills make a long list (fold into one line), and each row shows the due date in the box and the paid date underneath |
 | P1 | 29 Oct | App: balance check-ins, Settings (change pay, categories, side income switch) still only in the web app |
-| P2 | 1 Nov | Intelligence: on-device AI (Gemini Nano via ML Kit Prompt API, beta, newer flagships only) to read unclear alerts and name shops; falls back to rules and learning on other phones |
-| P1 | 1 Nov | Setup that fits each person before testers: other income sources, regular spending, which banks, fixed amounts; essentials first, the rest as prompts in week one (ROADMAP phase 2c) |
-| P1 | 1 Nov | Before public launch: harden the AI service (per-install rate limits, Play Integrity check), and add Smart sorting to the privacy policy and Play Data safety form |
-| P2 | 1 Nov | On-device AI for phones that have Gemini Nano (Pixel 9+, Galaxy S26, Z Fold8): same Smart sorting without anything leaving the phone |
-| P1 | 1 Nov | Testers: 12+ people for the Play closed test; their anonymised alert exports to confirm each bank's wording |
+| P2 | 1 Nov | On-device AI (Gemini Nano, which the Z Fold8 has): same Smart sorting without anything leaving the phone |
 | P2 | 1 Nov | Cash: a Cash pot for a stash at home (withdrawal tops it up, spending from it skips the daily budget) |
 | P2 | 29 Oct | App: change an entry's date; notes; Business switch; pay from a pot |
 | P2 | 29 Oct | Work expenses: mark a spend as "I'll get this back" so it stays off the daily budget until the reimbursement arrives |
-| P2 | 28 Oct | Payments to your own accounts or business (e.g. a business account) show as spending. Let people mark a payee as "one of my accounts" so future ones count as transfers |
+| P2 | 28 Oct | Payments to your own accounts by bank transfer (not card top-ups, not Monzo named accounts) can still show as spending. Let a payee be marked as "one of my accounts" |
 | P2 | 27 Oct | Log screen in Received mode is tall on small phones (two rows of types plus the debt picker) |
 | P3 | 27 Oct | Closed pots disappear completely. Add a "closed pots" list |
 | P2 | 27 Oct | "Last working day" pay ignores bank holidays (UK employers usually pay the day before) |
 | P2 | 27 Oct | With non-monthly pay, bills track by calendar month. A bill paid early on the 30th counts for the wrong month |
 | P2 | 27 Oct | Turning side income off leaves old business items excluded from the budget with no way to see them |
 | P3 | 27 Oct | Date input shows the phone's own format (fine on UK phones, US format elsewhere) |
-| P3 | 27 Oct | Debt and business suggestions only recognise UK lender and insurer names |
 
 ## Improvements
 | Pri | Idea |
@@ -50,7 +47,26 @@ Priority: **P1** wrong number or lost data · **P2** confusing or slow · **P3**
 | P3 | Haptics and sound settings |
 | P3 | Light theme |
 
+## Public release (parked 9 Nov)
+| Pri | Idea |
+|---|---|
+| P1 | Setup that fits each person: other income sources, regular spending, which banks, fixed amounts (ROADMAP phase 2c) |
+| P1 | Harden the AI service (per-install rate limits, Play Integrity check), privacy policy and Play Data safety form |
+| P1 | Testers for the Play closed test, and their anonymised alerts to confirm each bank's wording |
+| P2 | Banks that only send texts: a sender-only option to read texts from named bank senders and nothing else |
+| P3 | Debt and business suggestions only recognise UK lender and insurer names |
+
 ## Changelog
+**App 0.11, 9 Nov 2026: built for Mo**
+- Kitty is Mo's own app now (principle 6: where a general rule and his setup disagree, his setup wins; his details still stay on the phone)
+- Review asks once whether a named account (a Monzo business account) is your business. Yes: money in there is side income and spending there a business cost, for what's already in too. More shows it, with "It isn't" to undo
+- Topping up another of your own accounts by card (Barclays card to "Revolut**1234*", Monzo, Starling, Wise, Chip and others) is a move, not spending
+- A card payment the bank undoes ("Card payment reverted") comes back off your spending if it was counted. If neither was added yet, both stay out
+- Google Wallet's copy of money coming back (a refund, or a £1 card check) is skipped when the card's bank sends its own alert
+- Monzo business shop names drop the running total ("You've spent £41.85 today") the bank adds after them
+- An unnamed Direct Debit is only matched to a bill if it's within 50p or 5% (79p off a £10.99 bill is no longer taken for it)
+- Shops Kitty added by itself with a guessed category are sent to Smart sorting (when it's on) to pick the category. Guessed categories don't teach Kitty about a shop until you check them ("Looks right") or change them
+
 **App 0.10, 7 Nov 2026: simpler and for everyone**
 - Principle 6: build for everyone, test on Mo. Kitty doesn't try to track every move between accounts. It needs this pay month's money in and what was spent
 - Side income is money in, wherever it lands, with a share kept back for tax (20% by default, of income minus business costs). Business costs count as spending; marking one only lowers the tax kept back. "Paid myself" stays for business accounts Kitty can't read

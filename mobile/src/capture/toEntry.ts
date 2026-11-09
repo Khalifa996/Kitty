@@ -12,7 +12,7 @@ export function guessCategory(S: State, merchant?: string): string | null {
   const m = norm(merchant), first = norm(merchant.split(/\s+/)[0] || '');
   let best: string | null = null;
   for (const t of S.tx) {
-    if (t.kind !== 'out' || t.billId || t.checkin || !t.merchant) continue;
+    if (t.kind !== 'out' || t.billId || t.checkin || t.catGuess || !t.merchant) continue;
     const n = norm(t.merchant);
     if (n === m || (first.length >= 4 && n.startsWith(first)) || (n.length >= 4 && m.startsWith(n)) || (m.length >= 4 && n.startsWith(m))) best = t.cat;
   }
@@ -84,6 +84,13 @@ export function sameName(a?: string, b?: string): boolean {
   return [...words(b)].some((w) => w.length >= 4 && wa.has(w));
 }
 
+/** Card payments that top up another of your own accounts or apps (Barclays card → "Revolut**1234*"). */
+const OWN_TOPUP = /^(revolut|monzo|starling|wise|plum|chip|moneybox|kroo|chase|curve|top ?-?up)(\s*(ltd|limited|bank|uk|top ?-?up)|\*.*|\s*\d.*)*$/i;
+export const isTopUp = (name?: string) => !!name && OWN_TOPUP.test(name.trim());
+
+/** An account the person said is their business one (asked once in Review, kept in settings). */
+export const isBizAccount = (S: State, name?: string) => !!name && (S.settings.bizAccounts || []).some((n) => n.toLowerCase() === name.toLowerCase());
+
 export type Suggestion =
   | { action: 'add'; tx: Tx; guessed: boolean; hint?: string; cash?: boolean; ai?: boolean; newBill?: boolean; big?: boolean }
   | { action: 'pay-bill'; billId: string; billName: string; tx: Tx; replaces?: Tx }
@@ -120,10 +127,11 @@ export function suggest(S: State, p: ParsedAlert, id: string, others: ParsedAler
   if (p.kind === 'ignore') return { action: 'skip', reason: p.reason || 'Not a payment' };
   // Google Wallet for a card whose bank sends its own alerts: the bank's alert is the payment, and an extra one from
   // Google Wallet with no bank twin is usually a hold (scooter and taxi apps take one before the real fare)
-  if (p.bank === 'Google Wallet' && p.kind === 'spent') {
+  if (p.bank === 'Google Wallet' && (p.kind === 'spent' || p.kind === 'received')) {
     const bank = cardBankOf(p), since = ymd(new Date(p.time - 30 * 864e5));
     if (bank && (others.some((q) => q.bank === bank) || S.tx.some((t) => t.bank === bank && t.date >= since)))
-      return { action: 'skip', reason: `${bank} sends its own alert for this card. This one is usually a hold, not a charge` };
+      return { action: 'skip', reason: p.kind === 'spent' ? `${bank} sends its own alert for this card. This one is usually a hold, not a charge`
+        : `${bank} sends its own alert for this card, so this would count it twice` };
   }
 
   // Money moved from your business to your own account is paying yourself: it counts as money to spend
@@ -133,8 +141,30 @@ export function suggest(S: State, p: ParsedAlert, id: string, others: ParsedAler
   // TfL adds up a day's travel and charges it overnight, so an early-morning charge belongs to the day before
   const d = new Date(p.time), lateTravel = p.kind === 'spent' && /transport for london|\btfl\b/i.test(p.merchant || '') && d.getHours() < 7;
   const date = ymd(lateTravel ? new Date(p.time - 864e5) : d), time = hm(d);
-  const base = { id, amt: p.amount, merchant: p.merchant || '', note: lateTravel ? 'Charged the next morning' : '', date, time, biz: false, billId: null, source: 'alert', bank: p.bank,
+  const bizAcct = isBizAccount(S, p.accountName);
+  const base = { id, amt: p.amount, merchant: p.merchant || '', note: lateTravel ? 'Charged the next morning' : '', date, time, biz: bizAcct, billId: null, source: 'alert', bank: p.bank,
     ...(p.accountName ? { accountName: p.accountName } : {}) } as const;
+
+  // A card payment the bank or shop undid. If the payment was counted, take it back off; if not, neither counts
+  // Same amount, and the same shop or the same bank (banks often name the shop differently on the undo)
+  const undoes = (q: { amount?: number; merchant?: string; bank?: string }) => q.amount === p.amount && (!p.merchant || !q.merchant || q.bank === p.bank || sameName(q.merchant, p.merchant));
+  if (p.reverted) {
+    const since = ymd(new Date(p.time - 4 * 864e5));
+    const counted = S.tx.filter((t) => t.kind === 'out' && !t.billId && t.date >= since && t.date <= date && undoes({ amount: t.amt, merchant: t.merchant, bank: t.bank }))
+      .sort((a, b) => Number(sameName(b.merchant, p.merchant)) - Number(sameName(a.merchant, p.merchant)) || Number(b.bank === p.bank) - Number(a.bank === p.bank))[0];
+    if (counted) {
+      if (S.tx.some((t) => t.kind === 'in' && t.cat === 'refund' && t.amt === p.amount && t.date >= counted.date && sameName(t.merchant, counted.merchant)))
+        return { action: 'skip', reason: 'Already taken off' };
+      return { action: 'add', guessed: false, hint: `${p.bank} undid this payment, so it comes off your spending`,
+        tx: { ...base, kind: 'in', cat: 'refund', sub: null, merchant: counted.merchant || p.merchant || 'Refund', note: 'Payment undone', refundCat: counted.cat, biz: !!counted.biz } };
+    }
+    const waiting = others.some((q) => q.key !== p.key && q.kind === 'spent' && q.bank === p.bank && q.time <= p.time && p.time - q.time <= 4 * 864e5 && undoes(q));
+    return { action: 'skip', reason: waiting ? 'Undoes a payment that wasn\'t added, so both stay out' : 'Undoes a payment Kitty never counted' };
+  }
+  // ...and the payment itself, when the undo is already here
+  if (p.kind === 'spent' && others.some((q) => q.reverted && q.bank === p.bank && q.amount === p.amount && q.time >= p.time && q.time - p.time <= 4 * 864e5)) {
+    return { action: 'skip', reason: `${p.bank} undid this payment` };
+  }
 
   // Money from another of your own accounts (one Kitty has seen alerts from by name) is a move, not money in
   if (p.kind === 'received' && p.merchant && S.tx.some((t) => t.accountName && sameName(t.accountName, p.merchant as string))) {
@@ -142,12 +172,20 @@ export function suggest(S: State, p: ParsedAlert, id: string, others: ParsedAler
   }
   if (fromBiz) return { action: 'add', guessed: false, hint: 'From your business: paying yourself adds to your daily budget', tx: { ...base, kind: 'in', cat: 'draw', sub: null } };
 
+  // Topping up another of your own accounts by card is a move, not spending: what you buy from there is counted there.
+  // Unless it's a bill of the same name and amount (a savings app you pay into monthly)
+  if (p.kind === 'spent' && isTopUp(p.merchant)) {
+    const app = (p.merchant as string).split(/[\s*\d]/)[0];
+    if (!S.bills.some((b) => b.amt === p.amount && b.name.toLowerCase().startsWith(app.toLowerCase())))
+      return { action: 'skip', reason: `Topped up your ${app}: a move between your own accounts` };
+  }
+
   if (p.kind === 'bill' || p.kind === 'spent') {
     const win = billWindowAt(date, S.settings);
     const paidTx = (b: { id: string }) => S.tx.find((t) => t.billId === b.id && t.date >= win.start && t.date <= win.end);
     const named = (b: { name: string }) => sameName(b.name, p.merchant);
     const asBill = (b: (typeof S.bills)[number], replaces?: Tx): Suggestion =>
-      ({ action: 'pay-bill', billId: b.id, billName: b.name, replaces, tx: { ...base, kind: 'out', cat: 'bills', sub: b.sub || b.name, merchant: b.name, billId: b.id, biz: !!b.biz } });
+      ({ action: 'pay-bill', billId: b.id, billName: b.name, replaces, tx: { ...base, kind: 'out', cat: 'bills', sub: b.sub || b.name, merchant: b.name, billId: b.id, biz: !!b.biz || bizAcct } });
 
     // Not paid yet: a matching amount (Direct Debits, or a card payment for a bill like rent), or the same name for repayments
     // that differ from the usual amount (Monzo Flex £495.50 against a £500 bill)
@@ -170,7 +208,7 @@ export function suggest(S: State, p: ParsedAlert, id: string, others: ParsedAler
       // Never before the due date, and not a bill another alert already matches exactly
       const exact = (x: { amt: number }) => others.some((q) => q.key !== p.key && q.kind === 'bill' && q.amount === x.amt && Math.abs(q.time - p.time) <= 5 * 864e5);
       const near = S.bills
-        .filter((x) => { const gap = diffDays(billDue(x, win), date); return x.dd && gap >= 0 && gap <= 5 && !exact(x) && Math.abs(x.amt - (p.amount as number)) <= Math.max(200, x.amt * 0.05); })
+        .filter((x) => { const gap = diffDays(billDue(x, win), date); return x.dd && gap >= 0 && gap <= 5 && !exact(x) && Math.abs(x.amt - (p.amount as number)) <= Math.max(50, x.amt * 0.05); })
         .sort((x, y) => Math.abs(x.amt - (p.amount as number)) - Math.abs(y.amt - (p.amount as number)))[0];
       if (near) {
         const t = paidTx(near);
@@ -188,6 +226,8 @@ export function suggest(S: State, p: ParsedAlert, id: string, others: ParsedAler
   }
 
   if (p.kind === 'received') {
+    // Money into your business account is side income, whoever it's from
+    if (bizAcct && !p.refund) return { action: 'add', guessed: false, hint: `Into your ${p.accountName} account: side income`, tx: { ...base, kind: 'in', cat: 'side', sub: null, biz: true } };
     const seen = guessIncome(S, p.merchant), m = p.merchant || '';
     const work = WORK.test(m), takings = TAKINGS.test(m), sold = SELLING.test(m);
     const biz = S.settings.sideIncome && (work || takings);
