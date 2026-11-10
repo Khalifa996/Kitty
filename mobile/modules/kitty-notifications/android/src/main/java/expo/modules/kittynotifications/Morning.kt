@@ -76,7 +76,7 @@ object Morning {
     // If the listener has been quiet for a day, Android or Samsung has probably stopped it
     val heard = CaptureStore.lastHeard(ctx)
     if (heard > 0 && System.currentTimeMillis() - heard > 24L * 3600 * 1000) body = (if (body.isNotEmpty()) "$body " else "") +
-      "Crest hasn't heard any notifications for over a day. Open it to check alert access.
+      "Crest hasn't heard any notifications for over a day. Open it to check alert access."
     show(ctx, title, body)
     prefs(ctx).edit().putString("posted", day).apply()
   }

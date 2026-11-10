@@ -50,7 +50,8 @@ object Surfaces {
       ch.setShowBadge(false)
       nm.createNotificationChannel(ch)
     }
-    val amount = s.optString("amount"), label = s.optString("label")
+    val amount = s.optString("amount")
+    val label = s.optString("label")
     val b = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(ctx, CHANNEL) else @Suppress("DEPRECATION") Notification.Builder(ctx)
     b.setSmallIcon(R.drawable.crest_notify)
       .setContentTitle("$amount $label")
