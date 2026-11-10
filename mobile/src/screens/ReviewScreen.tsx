@@ -13,6 +13,8 @@ import { uid, useKitty } from '../store/KittyState';
 import { getItem, setItem } from '../store/kv';
 import { Btn, Card, CatIcon, Chip, Label, Sheet } from '../ui/kit';
 import { quietBanks } from '../engine/checks';
+import { findRecurring, type Recurring } from '../engine/recurring';
+import { billWindowAt } from '../engine/budget';
 import { Icon } from '../ui/Icon';
 import { C, money } from '../ui/theme';
 
@@ -57,7 +59,19 @@ const when = (ms: number) => {
 };
 
 export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (msg: string, undo?: () => void) => void; goSetup: () => void }) {
-  const { S, update } = useKitty();
+  const { S, update, today } = useKitty();
+  // A payment that comes round every month but isn't a bill yet
+  const recurring = useMemo(() => findRecurring(S, today)[0], [S, today]);
+  const makeBillOf = (r: Recurring) => {
+    const id = 'b' + uid(), w = billWindowAt(today, S.settings);
+    update((d) => {
+      d.bills.push({ id, name: r.name, amt: r.amt, day: Math.min(28, r.day), type: 'sub', sub: r.name, dd: false });
+      // This month's payment counts as paying it, so it isn't counted twice
+      for (const t of d.tx) if (r.ids.includes(t.id) && t.date >= w.start && t.date <= w.end) { t.billId = id; t.cat = 'bills'; t.sub = r.name; }
+    });
+    onDone(`${r.name} is a bill now. It comes off before your daily figure`);
+  };
+  const ordinal = (n: number) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
   const [picks, setPicks] = useState<Picks>(loadPicks);
   const { cats, side } = picks;
   const keep = (next: Picks) => {
@@ -264,6 +278,17 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
           </View>
         </Card>
       ))}
+
+      {recurring && (
+        <Card style={{ gap: 8 }}>
+          <Text style={s.h2}>{recurring.name}: {money(recurring.amt)} a month?</Text>
+          <Text style={s.hint}>Paid {recurring.count} months running, usually around the {ordinal(recurring.day)}. As a bill it's taken off before your daily figure, so it never catches you out.</Text>
+          <View style={[s.row, { justifyContent: 'flex-end' }]}>
+            <Btn label="Not a bill" small onPress={() => update((d) => { d.settings.dismissed = { ...(d.settings.dismissed || {}), [`rec:${recurring.key}`]: true }; })} />
+            <Btn label="Make it a bill" primary small onPress={() => makeBillOf(recurring)} />
+          </View>
+        </Card>
+      )}
 
       {askAcct && (
         <Card style={{ gap: 8 }}>

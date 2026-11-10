@@ -270,3 +270,15 @@ describe('apps Crest never reads', () => {
       expect(neverRead(pkg)).toBe(false);
   });
 });
+
+describe('shop names', () => {
+  it('drops card terminal clutter', () => {
+    expect(tidyName('SumUp **CORNER KEBAB LTD')).toBe('Corner Kebab Ltd');
+    expect(tidyName('SumUp  *CAFE NOVA L')).toBe('Cafe Nova L');
+    expect(tidyName('SUBWAY 51234-0')).toBe('Subway');
+    expect(tidyName('BOOTS,0412')).toBe('Boots');
+    expect(tidyName('Transport for London GBP')).toBe('Transport for London');
+    expect(tidyName('Corner Shop GBP')).toBe('Corner Shop');
+  });
+});
+

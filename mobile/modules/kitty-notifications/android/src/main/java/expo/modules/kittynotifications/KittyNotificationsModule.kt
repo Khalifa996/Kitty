@@ -58,6 +58,26 @@ class KittyNotificationsModule : Module() {
     Function("morningOff") { Morning.off(ctx) }
     Function("showNow") { title: String, body: String -> Morning.show(ctx, title, body) }
     Function("canNotify") { Morning.canNotify(ctx) }
+
+    // The background brain and what it shows outside the app
+    Function("notifyPayment") { json: String -> PaymentNotices.show(ctx, json) }
+    Function("takeActions") { PaymentNotices.take(ctx) }
+    Function("scheduleBrain") { at: Double -> CrestBrainService.at(ctx, at.toLong()) }
+    Function("setSurfaces") { json: String -> Surfaces.save(ctx, json) }
+    Function("widgetCount") { CrestWidget.ids(ctx).size }
+    Function("pinWidget") { CrestWidget.pin(ctx) }
+
+    // Samsung puts apps to sleep to save battery; being left out of that keeps the listener running
+    Function("ignoresBatteryLimits") {
+      val pm = ctx.getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
+      pm?.isIgnoringBatteryOptimizations(ctx.packageName) ?: true
+    }
+    Function("askBatteryLimits") {
+      val i = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + ctx.packageName)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      try { ctx.startActivity(i) } catch (e: Exception) {
+        ctx.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+      }
+    }
     Function("openNotificationSettings") {
       val i = if (android.os.Build.VERSION.SDK_INT >= 26)
         Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, ctx.packageName)

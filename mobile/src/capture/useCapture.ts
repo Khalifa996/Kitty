@@ -2,29 +2,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppState } from 'react-native';
 import { KittyNotifications } from '../../modules/kitty-notifications';
-import { neverRead, parseAll, type ParsedAlert, type RawAlert } from '../parse/bankAlerts';
-import { getItem, setItem } from '../store/kv';
-import { logAlerts, pruneLog } from '../store/storage';
+import { neverRead, parseAll, type RawAlert } from '../parse/bankAlerts';
+import { onBrainRan } from '../store/store';
+import { pruneLog } from '../store/storage';
+import { finish, keysFor, readRaw, removeRaw } from './queue';
 
-const DEMO = 'kitty.demoAlerts';
-
-function readRaw(): RawAlert[] {
-  try {
-    if (KittyNotifications) return JSON.parse(KittyNotifications.getCaptured()) as RawAlert[];
-    return JSON.parse(getItem(DEMO) || '[]') as RawAlert[];
-  } catch {
-    return [];
-  }
-}
-
-function removeRaw(keys: string[]) {
-  if (KittyNotifications) KittyNotifications.removeCaptured(keys);
-  else setItem(DEMO, JSON.stringify(readRaw().filter((r) => !keys.includes(r.key))));
-}
-
-/** The alert's own key plus any copies or other halves that should go with it. */
-export const keysFor = (p: ParsedAlert, all: ParsedAlert[]) =>
-  [p.key, ...(p.pairedWith ? [p.pairedWith] : []), ...all.filter((q) => q.duplicateOf === p.key).map((q) => q.key)];
+export { keysFor };
 
 export type OtherApp = { pkg: string; label: string };
 // Only offer to read apps that look like banks, cards or wallets (not shops, marketplaces or app stores)
@@ -66,21 +49,24 @@ export function useCapture() {
     return readRaw();
   });
   const [apps, setApps] = useState(readApps);
-  const refresh = useCallback(() => { setRaw(readRaw()); setApps(readApps()); }, []);
+  const refresh = useCallback(() => {
+    const next = readRaw();
+    setRaw((cur) => (cur.length === next.length && cur.every((r, i) => r.key === next[i].key) ? cur : next));
+    setApps(readApps());
+  }, []);
 
   useEffect(() => {
     const app = AppState.addEventListener('change', (s) => { if (s === 'active') refresh(); });
     const live = KittyNotifications?.addListener('onCapture', refresh);
-    return () => { app.remove(); live?.remove(); };
+    const brain = onBrainRan(refresh); // the background brain added or finished some
+    return () => { app.remove(); live?.remove(); brain(); };
   }, [refresh]);
 
   const parsed = useMemo(() => parseAll(raw).sort((a, b) => b.time - a.time), [raw]);
 
   /** Finished with these alerts: keep a copy in the log, then remove them from the queue. */
   const done = useCallback((keys: string[]) => {
-    const set = new Set(keys);
-    logAlerts(raw.filter((r) => set.has(r.key)).map(({ pkg, title, text, time }) => ({ pkg, title, text, time })));
-    removeRaw(keys);
+    finish(keys, raw);
     refresh();
   }, [raw, refresh]);
 

@@ -46,3 +46,24 @@ export async function sortAlerts(alerts: AiAlert[], cats: Cat[], inTypes: Cat[],
 
 /** A random id for this install, so the service can limit how often one phone asks. */
 export const newInstallId = () => Array.from({ length: 24 }, () => 'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]).join('');
+
+export type AskReply = { stop_reason: string; content: import('./ask').Block[] };
+
+/** One step of Ask Crest. The phone answers any tool calls itself (see ask.ts) and sends the results back. */
+export async function askService(messages: import('./ask').Msg[], today: string, currency: string, install: string): Promise<AskReply> {
+  if (!AI_URL) throw new Error('Ask Crest is not available in this build');
+  const ctrl = new AbortController(), timer = setTimeout(() => ctrl.abort(), 30000);
+  try {
+    const res = await fetch(`${AI_URL.replace(/\/$/, '')}/v1/ask`, {
+      method: 'POST',
+      signal: ctrl.signal,
+      headers: { 'content-type': 'application/json', 'x-kitty-key': AI_KEY, 'x-kitty-install': install },
+      body: JSON.stringify({ messages, today, currency }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || `Ask Crest failed (${res.status})`);
+    return body as AskReply;
+  } finally {
+    clearTimeout(timer);
+  }
+}

@@ -17,6 +17,14 @@ type NativeKitty = {
   showNow?(title: string, body: string): void;
   canNotify?(): boolean;
   openNotificationSettings?(): void;
+  notifyPayment?(json: string): void;
+  takeActions?(): string;
+  scheduleBrain?(at: number): void;
+  setSurfaces?(json: string): void;
+  widgetCount?(): number;
+  pinWidget?(): boolean;
+  ignoresBatteryLimits?(): boolean;
+  askBatteryLimits?(): void;
   addListener(event: 'onCapture', cb: (e: { json: string }) => void): Subscription;
 };
 

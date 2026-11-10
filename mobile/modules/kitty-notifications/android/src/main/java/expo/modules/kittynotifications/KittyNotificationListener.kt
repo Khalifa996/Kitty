@@ -65,6 +65,8 @@ class KittyNotificationListener : NotificationListenerService() {
         .put("time", n.postTime)
       CaptureStore.add(this, item)
       KittyNotificationsModule.emit(item)
+      // Count it now, even with Crest closed: the brain runs a moment later
+      CrestBrainService.soon(this, "alert")
     } catch (e: Exception) {
       // Never let a strange notification crash the listener
     }

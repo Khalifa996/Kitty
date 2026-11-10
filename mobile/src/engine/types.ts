@@ -22,6 +22,8 @@ export type Settings = {
   autoAdd?: boolean;  // add payments Crest is sure about without asking (on unless turned off)
   autoSeen?: string;  // the person has checked what Crest added up to this time (ISO)
   morning?: { on: boolean; hour: number }; // the morning message: today's figure as a notification at this hour
+  afterPay?: boolean; // a message a few seconds after each bank alert with the new figure (on unless turned off)
+  ongoing?: boolean;  // keep today's figure in the status bar as an ongoing notification
   bizAccounts?: string[];    // named bank accounts the person said are their business (money in is side income, spending is a business cost)
   notBizAccounts?: string[]; // named accounts they said aren't
   opening?: { start: string; date: string; pot: number } | null;

@@ -73,7 +73,7 @@ export function clean(s: string): string {
 }
 
 // Card terminal prefixes that hide the real shop name
-const PREFIX = /^(sumup|sq|zettle|iz|ztl|paypal|pp|sp|stripe|crv|lsp)\s*\*\s*/i;
+const PREFIX = /^(sumup|sq|zettle|iz|ztl|paypal|pp|sp|stripe|crv|lsp)\s*\*+\s*/i;
 // Payment companies that pay out on behalf of a platform people know
 const PAYERS: [RegExp, string][] = [
   [/mangopay/i, 'Vinted'],
@@ -90,7 +90,9 @@ const PAYERS: [RegExp, string][] = [
 export function tidyName(s: string): string {
   for (const [rx, name] of PAYERS) if (rx.test(s || '')) return name;
   // Card terminals often add a store number (TESCO STORES 2041)
-  const t = clean(s).replace(PREFIX, '').replace(/[.,;:]+$/, '').replace(/\s+#?\d{3,}$/, '').trim();
+  // ...or a branch code after a comma (BOOTS,0412), and Revolut can leave the currency on the end (Corner Shop GBP)
+  const t = clean(s).replace(PREFIX, '').replace(/[.,;:]+$/, '').replace(/\s+(GBP|EUR|USD)$/i, '')
+    .replace(/(\s+|,\s*)#?\d{3,}(-\d+)?$/, '').trim();
   if (!t) return t;
   if (t === t.toUpperCase() && /[A-Z]{3,}/.test(t)) {
     // Title case, but keep likely initials as they are: a short first word (ABC, BP) or a two-letter word (UK)

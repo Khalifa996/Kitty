@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 2 x 1 by default; taller shows the pay month line. Works on the Fold's cover screen too. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="110dp"
+    android:minHeight="40dp"
+    android:minResizeWidth="80dp"
+    android:minResizeHeight="40dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="1"
+    android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/crest_widget"
+    android:previewLayout="@layout/crest_widget"
+    android:description="@string/crest_widget_desc"
+    android:widgetCategory="home_screen|keyguard" />

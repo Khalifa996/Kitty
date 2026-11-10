@@ -72,7 +72,11 @@ object Morning {
     var body = if (fresh) m.optString("body") else "Open Crest to work out today's figure."
     val n = waiting(ctx, m.optLong("savedAt", 0L))
     if (n > 0 && fresh) body = (if (body.isNotEmpty()) "$body " else "") +
-      (if (n == 1) "1 bank alert since you last opened Crest isn't counted yet." else "$n bank alerts since you last opened Crest aren't counted yet.")
+      (if (n == 1) "1 bank alert isn't counted yet." else "$n bank alerts aren't counted yet.")
+    // If the listener has been quiet for a day, Android or Samsung has probably stopped it
+    val heard = CaptureStore.lastHeard(ctx)
+    if (heard > 0 && System.currentTimeMillis() - heard > 24L * 3600 * 1000) body = (if (body.isNotEmpty()) "$body " else "") +
+      "Crest hasn't heard any notifications for over a day. Open it to check alert access.
     show(ctx, title, body)
     prefs(ctx).edit().putString("posted", day).apply()
   }
@@ -102,6 +106,8 @@ object Morning {
 
 class MorningReceiver : BroadcastReceiver() {
   override fun onReceive(ctx: Context, intent: Intent) {
+    // Refresh the widget and work through anything waiting while the message goes out
+    CrestBrainService.start(ctx.applicationContext, "tick")
     try { Morning.post(ctx) } catch (e: Exception) { }
     try { Morning.schedule(ctx) } catch (e: Exception) { }
   }

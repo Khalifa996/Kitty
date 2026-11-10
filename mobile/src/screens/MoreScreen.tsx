@@ -14,7 +14,7 @@ import { morningMessage } from '../engine/morning';
 import { Btn, Card, Chip, Label } from '../ui/kit';
 import { C, moneyS } from '../ui/theme';
 
-const VERSION = '0.12';
+const VERSION = '0.13';
 // @ts-ignore process.env is provided by Expo
 const BUILD: string = (process.env.EXPO_PUBLIC_KITTY_BUILD as string | undefined) || '';
 
@@ -22,12 +22,29 @@ export function MoreScreen({ cap, onDone }: { cap: Capture; onDone: (msg: string
   const { S, replace, update, today } = useKitty();
   const morning = S.settings.morning, canMorning = !!KittyNotifications?.setMorning;
   const [notifyOk, setNotifyOk] = useState(() => KittyNotifications?.canNotify?.() ?? true);
-  const morningOn = async (on: boolean) => {
-    if (on && Platform.OS === 'android' && Number(Platform.Version) >= 33) {
+  /** Android 13+ asks before an app can post notifications. */
+  const allowNotify = async () => {
+    if (Platform.OS === 'android' && Number(Platform.Version) >= 33) {
       const r = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
-      if (r !== PermissionsAndroid.RESULTS.GRANTED) { setNotifyOk(false); onDone('Notifications are off for Crest. Turn them on in settings'); return; }
+      if (r !== PermissionsAndroid.RESULTS.GRANTED) { setNotifyOk(false); onDone('Notifications are off for Crest. Turn them on in settings'); return false; }
     }
     setNotifyOk(KittyNotifications?.canNotify?.() ?? true);
+    return true;
+  };
+  const afterPay = S.settings.afterPay !== false;
+  const [widgets, setWidgets] = useState(() => KittyNotifications?.widgetCount?.() ?? 0);
+  const [awake, setAwake] = useState(() => KittyNotifications?.ignoresBatteryLimits?.() ?? true);
+  const recheck = () => setTimeout(() => {
+    setWidgets(KittyNotifications?.widgetCount?.() ?? 0);
+    setAwake(KittyNotifications?.ignoresBatteryLimits?.() ?? true);
+    setNotifyOk(KittyNotifications?.canNotify?.() ?? true);
+  }, 5000);
+  const toggle = async (key: 'afterPay' | 'ongoing', on: boolean) => {
+    if (on && !(await allowNotify())) return;
+    update((d) => { d.settings[key] = on; });
+  };
+  const morningOn = async (on: boolean) => {
+    if (on && !(await allowNotify())) return;
     update((d) => { d.settings.morning = { on, hour: d.settings.morning?.hour ?? 8 }; });
     onDone(on ? `Morning message on, at ${morning?.hour ?? 8}am` : 'Morning message off');
   };
@@ -110,7 +127,7 @@ export function MoreScreen({ cap, onDone }: { cap: Capture; onDone: (msg: string
       {canMorning && (
         <Card style={{ gap: 10 }}>
           <Label>Morning message</Label>
-          <Text style={s.hint}>{morning?.on ? `On, at ${morning.hour}am.` : 'Off.'} A notification each morning with what's safe to spend that day, bills going out and any category running fast. It's worked out when Crest was last open; if bank alerts came in since, it says so.</Text>
+          <Text style={s.hint}>{morning?.on ? `On, at ${morning.hour}am.` : 'Off.'} A notification each morning with what's safe to spend that day, bills going out and any category running fast. It's kept up to date as payments come in, even with Crest closed.</Text>
           {morning?.on && (
             <View style={[s.row, { flexWrap: 'wrap' }]}>
               {[7, 8, 9].map((h) => <Chip key={h} label={`${h}am`} on={morning.hour === h} onPress={() => update((d) => { d.settings.morning = { on: true, hour: h }; })} />)}
@@ -126,6 +143,40 @@ export function MoreScreen({ cap, onDone }: { cap: Capture; onDone: (msg: string
             <Btn label={morning?.on ? 'Turn off' : 'Turn on'} primary={!morning?.on} onPress={() => morningOn(!morning?.on)} />
             {morning?.on && <Btn label="Show today's now" onPress={morningNow} />}
           </View>
+        </Card>
+      )}
+
+      {canMorning && (
+        <Card style={{ gap: 10 }}>
+          <Label>On your phone</Label>
+          <View style={s.setRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.name}>After each payment</Text>
+              <Text style={s.hint}>A few seconds after your bank's alert: what it was, its category and what's left today, with buttons to put it right. Works with Crest closed.</Text>
+            </View>
+            <Btn label={afterPay ? 'On' : 'Off'} primary={afterPay} small onPress={() => toggle('afterPay', !afterPay)} />
+          </View>
+          <View style={s.setRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.name}>Widget</Text>
+              <Text style={s.hint}>{widgets > 0 ? `On ${widgets === 1 ? 'a screen' : `${widgets} screens`}. ` : ''}Today's figure on your home screen, updated the moment a payment lands. For the cover screen, long-press it and add Crest from Widgets.</Text>
+            </View>
+            <Btn label="Add" small onPress={() => { if (!KittyNotifications?.pinWidget?.()) onDone('Long-press your home screen, then Widgets, then Crest'); recheck(); }} />
+          </View>
+          <View style={s.setRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.name}>In the status bar</Text>
+              <Text style={s.hint}>Keeps today's figure as a notification you can always see. On Android 16 it asks to be a Live Update; Samsung may only show it with "Live notifications for all apps" on in Developer options.</Text>
+            </View>
+            <Btn label={S.settings.ongoing ? 'On' : 'Off'} primary={!!S.settings.ongoing} small onPress={() => toggle('ongoing', !S.settings.ongoing)} />
+          </View>
+          <Text style={s.hint}>Quick Settings tile: swipe down twice, tap the pencil, and drag Crest into your tiles.</Text>
+          {!awake && (
+            <View style={{ gap: 8 }}>
+              <Text style={[s.hint, { color: C.warn }]}>Android can put Crest to sleep to save battery, and then it misses alerts. Let it run in the background, and on Samsung check Settings, Battery, Background usage limits that Crest isn't in Sleeping apps.</Text>
+              <Btn label="Let Crest run in the background" onPress={() => { KittyNotifications?.askBatteryLimits?.(); recheck(); }} />
+            </View>
+          )}
         </Card>
       )}
 
@@ -178,5 +229,7 @@ const s = StyleSheet.create({
   h1: { color: C.fg, fontSize: 26, fontWeight: '700' },
   hint: { color: C.muted, fontSize: 13.5, lineHeight: 19 },
   row: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  setRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  name: { color: C.fg, fontSize: 15, fontWeight: '700', marginBottom: 2 },
   box: { backgroundColor: C.surface2, borderRadius: 10, minHeight: 90, maxHeight: 160, padding: 10, color: C.fg, fontSize: 12, textAlignVertical: 'top' },
 });

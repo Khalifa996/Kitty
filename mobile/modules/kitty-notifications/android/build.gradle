@@ -16,3 +16,8 @@ android {
     abortOnError false
   }
 }
+
+dependencies {
+  // HeadlessJsTaskService, for the background brain
+  implementation 'com.facebook.react:react-android'
+}

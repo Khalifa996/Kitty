@@ -1,6 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-  <!-- The morning message (Android 13+ asks the person first) -->
+  <!-- The morning message and the message after each payment (Android 13+ asks the person first) -->
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <!-- Keeps the phone awake for the second or two the brain needs after a bank alert -->
+  <uses-permission android:name="android.permission.WAKE_LOCK" />
+  <!-- Lets Crest ask to be left out of battery limits, so Samsung doesn't put the listener to sleep -->
+  <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+  <!-- Android 16: today's figure can be a Live Update in the status bar, if the person turns it on -->
+  <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
   <!-- Lets Crest show the names of apps that post money alerts (launcher apps only, not every package) -->
   <queries>
     <intent>
@@ -19,5 +25,30 @@
       </intent-filter>
     </service>
     <receiver android:name="expo.modules.kittynotifications.MorningReceiver" android:exported="false" />
+    <!-- The background brain: runs the app's own TypeScript when an alert arrives, with the app closed -->
+    <service android:name="expo.modules.kittynotifications.CrestBrainService" android:exported="false" />
+    <receiver android:name="expo.modules.kittynotifications.BrainAlarmReceiver" android:exported="false" />
+    <receiver android:name="expo.modules.kittynotifications.PaymentActionReceiver" android:exported="false" />
+    <!-- Home and cover screen widget -->
+    <receiver
+      android:name="expo.modules.kittynotifications.CrestWidget"
+      android:label="Crest: safe to spend"
+      android:exported="true">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+      </intent-filter>
+      <meta-data android:name="android.appwidget.provider" android:resource="@xml/crest_widget_info" />
+    </receiver>
+    <!-- Quick Settings tile -->
+    <service
+      android:name="expo.modules.kittynotifications.CrestTile"
+      android:label="Crest"
+      android:icon="@drawable/crest_notify"
+      android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+      android:exported="true">
+      <intent-filter>
+        <action android:name="android.service.quicksettings.action.QS_TILE" />
+      </intent-filter>
+    </service>
   </application>
 </manifest>

@@ -9,6 +9,9 @@ Since 9 Nov 2026 Kitty is Mo's own app, built around how he banks. Items that on
 ## Snags
 | Pri | Found | Snag |
 |---|---|---|
+| P1 | 10 Nov | Background brain not yet seen on a real phone: check the after-payment message arrives with Crest closed, and that Samsung doesn't stop it |
+| P2 | 10 Nov | Next for complete data: Monzo's own API through the Worker (real balances, pots and payee names); Emma Pro's live Google Sheet for the other banks |
+| P3 | 10 Nov | Shop logos (logo.dev free plan needs a key), Gemini Nano on the phone as a private second opinion, mileage at HMRC rates |
 | P2 | 9 Nov | A Direct Debit the bank reverses (bounced, or claimed back) is skipped, but the bill stays ticked off as paid |
 | P2 | 9 Nov | Monzo's wording for an undone card payment isn't known yet. If it reads like "£6.40 from TfL", it comes in as money in to check, not as an undo |
 | P2 | 9 Nov | Business account: answering "It isn't" in More doesn't change entries already counted as side income (fix them in Activity) |
@@ -57,6 +60,17 @@ Since 9 Nov 2026 Kitty is Mo's own app, built around how he banks. Items that on
 | P3 | Debt and business suggestions only recognise UK lender and insurer names |
 
 ## Changelog
+**App 0.13, 10 Nov 2026: Crest works in the background**
+- Payments are counted the moment the bank's alert arrives, even with Crest closed (the app's own brain runs in the background)
+- A message a few seconds after each payment: what it was, its category and what's left today, with buttons to change the category, mark it as business or leave it out. Money in asks what it is; big one-offs ask whether to spread them
+- Home and cover screen widget with today's figure, a Quick Settings tile, and an optional status bar figure (an Android 16 Live Update where Samsung allows it)
+- The morning message is always current and warns if Crest has stopped hearing notifications
+- Ask Crest: questions in plain words ("Can I afford £80 on Friday?"), answered by Claude from figures worked out on the phone
+- Insights says where the pay month is heading at your usual pace, after the first week
+- Review spots monthly payments that aren't bills yet and makes them bills in one tap
+- Cleaner shop names (SumUp, store numbers, "GBP" on the end)
+- More: battery check so Samsung doesn't put Crest to sleep
+
 **App 0.12, 9 Nov 2026: Crest, and the best of Emma**
 - The app is called Crest now, with a navy and gold shield icon (themed icon too). Your data and updates carry on as before
 - Insights: "Where it went" shows categories or shops. Tap a category for its last four pay months, what's usual, and an optional limit ("£X left of £Y", "running fast" once a week has gone by). Tap a shop for its payments

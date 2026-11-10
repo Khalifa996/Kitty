@@ -27,7 +27,7 @@ jobs:
           node-version: 22
 
       - name: Test
-        run: node ai/worker/src/sort.test.mjs
+        run: node ai/worker/src/sort.test.mjs && node ai/worker/src/ask.test.mjs
 
       - name: Check the secrets are set
         id: check

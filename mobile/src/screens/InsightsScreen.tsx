@@ -5,6 +5,9 @@ import { cycleOf, cycleSummary, dayInfo, isSpread, sideSummary, taxYearStart } f
 import { catName, categories, inName, inTypes } from '../engine/cats';
 import { diffDays, nextDay, parse, prevDay } from '../engine/dates';
 import { byShop, catHistory, catSpent, limitInfo, suggestLimit, type Shop } from '../engine/spending';
+import { paceForecast, paceLine } from '../engine/forecast';
+import { AskSheet } from './AskSheet';
+import { aiAvailable } from '../ai/cloud';
 import type { Tx } from '../engine/types';
 import { useKitty } from '../store/KittyState';
 import { Icon } from '../ui/Icon';
@@ -45,6 +48,7 @@ export function InsightsScreen() {
   const [openCat, setOpenCat] = useState<string | null>(null);
   const [openShop, setOpenShop] = useState<Shop | null>(null);
   const [limitDraft, setLimitDraft] = useState('');
+  const [asking, setAsking] = useState(false);
   const cur = S.settings.currency;
   const cats = categories(S.settings), ins = inTypes(S.settings);
 
@@ -106,7 +110,10 @@ export function InsightsScreen() {
 
   return (
     <ScrollView contentContainerStyle={s.wrap}>
-      <Text style={s.h1}>Insights</Text>
+      <View style={[s.row, { paddingVertical: 0 }]}>
+        <Text style={[s.h1, { flex: 1 }]}>Insights</Text>
+        {aiAvailable && <Btn label="Ask Crest" small onPress={() => setAsking(true)} />}
+      </View>
       <View style={s.seg}>
         {(['day', 'month'] as const).map((v) => (
           <Pressable key={v} accessibilityRole="button" accessibilityState={{ selected: view === v }} onPress={() => setView(v)} style={[s.segB, view === v && s.segOn]}>
@@ -170,6 +177,11 @@ export function InsightsScreen() {
               <View style={s.cell}><Label>{isNow ? 'Left to spend' : m.plan - m.spent >= 0 ? 'Under plan' : 'Over plan'}</Label>
                 <Text style={[s.mid, { color: m.plan - m.spent >= 0 ? C.good : C.bad }]}>{moneyS(Math.abs(m.plan - m.spent), cur)}</Text></View>
             </View>
+            {isNow && (() => {
+              const p = paceForecast(S, today);
+              return p ? <Text style={[s.hint, { color: p.endLeft >= 0 ? C.fg : C.warn }]}>{paceLine(p, (x) => moneyS(x, cur), (d) => parse(d).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' }))}</Text>
+                : <Text style={s.meta}>After the first week of the pay month, Crest says where it's heading at your usual pace.</Text>;
+            })()}
             {m.business > 0 && <Text style={s.meta}>Side income counts towards what you have to spend, less {money(sideMonth.tax, cur)} kept back for tax.</Text>}
             {back < MONTHS_BACK && prev.days.length > 0 && (
               <Text style={s.hint}>{isNow ? `By day ${n}` : 'In total'}, that's {moneyS(Math.abs(m.spent - prevSoFar), cur)} {m.spent <= prevSoFar ? 'less' : 'more'} than the pay month before.</Text>
@@ -338,6 +350,8 @@ export function InsightsScreen() {
           );
         })()}
       </Sheet>
+
+      <AskSheet open={asking} onClose={() => setAsking(false)} />
 
       <Sheet open={!!openShop} onClose={() => setOpenShop(null)} title={openShop?.name || 'No name'}>
         {openShop && (

@@ -97,11 +97,19 @@ export type Suggestion =
   | { action: 'ask'; reason: string }
   | { action: 'skip'; reason: string };
 
+/** The alert's own key plus any copies or other halves that should go with it. */
+export const keysFor = (p: ParsedAlert, all: ParsedAlert[]) =>
+  [p.key, ...(p.pairedWith ? [p.pairedWith] : []), ...all.filter((q) => q.duplicateOf === p.key).map((q) => q.key)];
+
 /** The entry id for an alert, so the same alert can never be added twice. */
 export const alertTxId = (p: ParsedAlert) => `a-${p.key.replace(/[^a-z0-9]/gi, '').slice(-16)}`;
 
-/** Minutes to wait before adding an alert by itself, so its other half (a transfer, Google Wallet's copy) can arrive. */
-export const settleMinutes = (p: ParsedAlert) => (p.bank === 'Google Wallet' ? 65 : 20);
+/**
+ * Minutes to wait before adding an alert by itself, so its other half (a transfer, Google Wallet's copy) can arrive.
+ * A bank's own card payment at a shop has no other half (Google Wallet's copy is skipped whenever the bank's alerts
+ * are read), so it only waits a couple of minutes; money sent or received waits for its pair.
+ */
+export const settleMinutes = (p: ParsedAlert) => (p.bank === 'Google Wallet' ? 65 : p.kind === 'spent' && !p.sent && !p.cash ? 2 : 20);
 
 /**
  * Payments Crest is sure enough about to add without asking: money has clearly moved and there's nothing to decide.
