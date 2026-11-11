@@ -1,19 +1,25 @@
 // Movement and feel: springy presses, cards that rise in, numbers that count, and a little buzz under the thumb.
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Animated, Easing, Platform, Pressable, type PressableProps, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
+import { AccessibilityInfo, Animated, Easing, Platform, Pressable, type PressableProps, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { C } from './theme';
 
 /** The native driver isn't there in the browser preview. */
 export const native = Platform.OS !== 'web';
 const APressable = Animated.createAnimatedComponent(Pressable);
+// "Remove animations" in Android's accessibility settings: cards just appear
+let calm = false;
+AccessibilityInfo.isReduceMotionEnabled?.().then((v) => { calm = v; }).catch(() => {});
+
+// On Android, the phone's own touch feedback (crisp on Samsung, and off if the person has turned touch feedback off)
+const android = (h: Haptics.AndroidHaptics) => Haptics.performAndroidHapticsAsync(h).catch(() => {});
 
 /** A light tick for choices, a firmer tap for actions, a happy buzz when something is saved. */
 export const feel = {
-  tick: () => { if (native) Haptics.selectionAsync().catch(() => {}); },
-  tap: () => { if (native) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); },
-  done: () => { if (native) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {}); },
-  oops: () => { if (native) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {}); },
+  tick: () => { if (Platform.OS === 'android') android(Haptics.AndroidHaptics.Keyboard_Tap); else if (native) Haptics.selectionAsync().catch(() => {}); },
+  tap: () => { if (Platform.OS === 'android') android(Haptics.AndroidHaptics.Virtual_Key); else if (native) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); },
+  done: () => { if (Platform.OS === 'android') android(Haptics.AndroidHaptics.Confirm); else if (native) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {}); },
+  oops: () => { if (Platform.OS === 'android') android(Haptics.AndroidHaptics.Reject); else if (native) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {}); },
 };
 
 /** Pressable that squashes a little under the thumb and springs back. */
@@ -37,7 +43,7 @@ export function Pop({ children, style, onPress, scale = 0.94, haptic = 'tick', d
 
 /** Fades and floats up into place when it first appears. `delay` staggers a list. */
 export function Rise({ children, delay = 0, style }: { children: ReactNode; delay?: number; style?: StyleProp<ViewStyle> }) {
-  const v = useRef(new Animated.Value(0)).current;
+  const v = useRef(new Animated.Value(calm ? 1 : 0)).current;
   useEffect(() => {
     Animated.timing(v, { toValue: 1, duration: 420, delay, easing: Easing.out(Easing.back(1.4)), useNativeDriver: native }).start();
   }, [v, delay]);
