@@ -26,7 +26,8 @@ const errors = [];
 const browser = await chromium.launch();
 async function session(name, seed, steps) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
-  await ctx.clock.setFixedTime(NOW);
+  // Start the clock at NOW but let it run, so animations (which time themselves with Date.now) finish
+  await ctx.clock.install({ time: NOW });
   if (seed) await ctx.addInitScript(([s, a]) => { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('kitty.v1', s); localStorage.setItem('kitty.demoAlerts', a); sessionStorage.setItem('seeded', '1'); } }, [state, JSON.stringify(alerts)]);
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push(`${name}: ${e.message}`));
