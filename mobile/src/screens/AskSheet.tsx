@@ -4,8 +4,10 @@ import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-nati
 import { askLoop, type Msg } from '../ai/ask';
 import { askService, newInstallId } from '../ai/cloud';
 import { useKitty } from '../store/KittyState';
-import { Btn, Chip, Sheet } from '../ui/kit';
-import { C } from '../ui/theme';
+import { Btn, Sheet } from '../ui/kit';
+import { Icon } from '../ui/Icon';
+import { Pop } from '../ui/motion';
+import { C, R } from '../ui/theme';
 
 const IDEAS = [
   'Can I afford £80 on Friday?',
@@ -56,7 +58,12 @@ export function AskSheet({ open, onClose }: { open: boolean; onClose: () => void
         <>
           {turns.length === 0 && (
             <View style={s.ideas}>
-              {IDEAS.map((i) => <Chip key={i} label={i} onPress={() => ask(i)} />)}
+              {IDEAS.map((i) => (
+                <Pop key={i} accessibilityRole="button" accessibilityLabel={i} onPress={() => ask(i)} style={s.idea} scale={0.97}>
+                  <Icon name="sparkles" size={16} colour={C.gold} />
+                  <Text style={s.ideaT}>{i}</Text>
+                </Pop>
+              ))}
             </View>
           )}
           {turns.map((t, i) => (
@@ -82,7 +89,9 @@ export function AskSheet({ open, onClose }: { open: boolean; onClose: () => void
 const s = StyleSheet.create({
   hint: { color: C.muted, fontSize: 14, lineHeight: 20 },
   meta: { color: C.faint, fontSize: 12, lineHeight: 17 },
-  ideas: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  ideas: { gap: 8 },
+  idea: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.surface2, borderRadius: R.row, paddingHorizontal: 14, paddingVertical: 12 },
+  ideaT: { flex: 1, color: C.fg, fontSize: 14.5, lineHeight: 20 },
   q: { color: C.muted, fontSize: 13, fontWeight: '700' },
   a: { color: C.fg, fontSize: 16, lineHeight: 23 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },

@@ -12,11 +12,12 @@ import { hm, ymd } from '../engine/dates';
 import { uid, useKitty } from '../store/KittyState';
 import { getItem, setItem } from '../store/kv';
 import { Btn, Card, CatIcon, Chip, Label, Sheet } from '../ui/kit';
+import { GradientCard } from '../ui/Glow';
 import { quietBanks } from '../engine/checks';
 import { findRecurring, type Recurring } from '../engine/recurring';
 import { billWindowAt } from '../engine/budget';
 import { Icon } from '../ui/Icon';
-import { C, money } from '../ui/theme';
+import { C, G, money } from '../ui/theme';
 
 type Item = { p: ParsedAlert; sug: Suggestion; dup?: Tx };
 
@@ -362,7 +363,11 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
 
 
       {todo.length === 0 && cap.enabled !== false && (
-        <Card><Text style={s.hint}>All caught up. Pay with a card and the payment shows up here within seconds.</Text></Card>
+        <GradientCard colours={G.ok} glow={C.good} style={s.calm}>
+          <View style={s.calmBadge}><Icon name="shieldcheck" size={34} colour={C.good} /></View>
+          <Text style={s.h2}>All caught up</Text>
+          <Text style={[s.hint, { textAlign: 'center' }]}>Pay with a card and the payment shows up here within seconds.</Text>
+        </GradientCard>
       )}
 
       {todo.map((i) => {
@@ -565,6 +570,8 @@ const s = StyleSheet.create({
   head: { flexDirection: 'row', alignItems: 'flex-end', gap: 12, marginBottom: 4 },
   h1: { color: C.fg, fontSize: 26, fontWeight: '700' },
   h2: { color: C.fg, fontSize: 16, fontWeight: '700' },
+  calm: { alignItems: 'center', gap: 8, paddingVertical: 26, paddingHorizontal: 20 },
+  calmBadge: { width: 68, height: 68, borderRadius: 34, alignItems: 'center', justifyContent: 'center', backgroundColor: C.track, marginBottom: 4 },
   sub: { color: C.muted, fontSize: 13, marginTop: 3 },
   hint: { color: C.muted, fontSize: 13.5, lineHeight: 19 },
   addedRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },

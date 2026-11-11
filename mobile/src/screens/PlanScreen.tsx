@@ -9,7 +9,9 @@ import type { Bill, Overdraft, Pot, Tx } from '../engine/types';
 import { uid, useKitty } from '../store/KittyState';
 import { Icon } from '../ui/Icon';
 import { Btn, Card, CatIcon, Chip, Label, Sheet } from '../ui/kit';
-import { C, money, moneyS, symbol } from '../ui/theme';
+import { GradientCard } from '../ui/Glow';
+import { CountUp, GrowBar } from '../ui/motion';
+import { C, G, money, moneyS, symbol } from '../ui/theme';
 
 const ord = (n: number) => n + (n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th');
 const pence = (s: string) => { const v = Math.round(parseFloat((s || '').replace(/[^0-9.]/g, '')) * 100); return v > 0 ? v : 0; };
@@ -214,7 +216,7 @@ export function PlanScreen({ onDone, openMore }: { onDone: (msg: string, undo?: 
             <Card style={{ gap: 8 }}>
               <Label>Still to pay {dfmt(w.start)} to {dfmt(w.end)}</Label>
               <Text style={s.big}>{moneyS(total - paidTotal, cur)}</Text>
-              <View style={s.track}><View style={[s.fill, { width: `${total ? (paidTotal / total) * 100 : 0}%` }]} /></View>
+              <GrowBar to={total ? paidTotal / total : 0} colour={C.bill} height={8} track={C.track} />
               <Text style={s.hint}>{moneyS(paidTotal, cur)} of {moneyS(total, cur)} paid. {monthly ? 'Bills come off on payday, so they never eat into your daily budget.' : `Crest sets aside ${moneyS(fixedFor(S, c), cur)} from each pay for these, so they never eat into your daily budget.`}</Text>
             </Card>
             {items.length === 0 && <Card><Text style={s.hint}>No bills yet. Add rent, council tax and subscriptions so your daily budget is honest.</Text></Card>}
@@ -234,9 +236,9 @@ export function PlanScreen({ onDone, openMore }: { onDone: (msg: string, undo?: 
           </>
         ) : view === 'debts' ? (
           <>
-            <Card style={{ gap: 8 }}>
+            <GradientCard colours={G.owe} glow={C.warn} style={{ padding: 16, gap: 8 }}>
               <Label>You owe</Label>
-              <Text style={[s.big, owed.total > 0 && { color: C.warn }]}>{money(owed.total, cur)}</Text>
+              <CountUp value={owed.total} format={(x) => money(x, cur)} style={[s.big, owed.total > 0 && { color: C.warn }]} />
               {owedTrend.length >= 2 && (() => {
                 const first = owedTrend[0], ch = owed.total - first.total;
                 return ch === 0 ? <Text style={s.hint}>The same as on {dfmt(first.date)}.</Text>
@@ -247,7 +249,7 @@ export function PlanScreen({ onDone, openMore }: { onDone: (msg: string, undo?: 
                   : owed.by ? `Cards and loans clear by ${monthLabel(owed.by)} at these payments.` : ''}
                 {owed.missing ? ` ${owed.missing} debt${owed.missing === 1 ? " has" : 's have'} no balance yet: tap to add it.` : ''}
               </Text>
-            </Card>
+            </GradientCard>
             {owedTrend.length >= 2 && (() => {
               const top = Math.max(1, ...owedTrend.map((p) => p.total));
               return (
@@ -340,7 +342,7 @@ export function PlanScreen({ onDone, openMore }: { onDone: (msg: string, undo?: 
                   </View>
                   {p.target > 0 && (
                     <>
-                      <View style={s.track}><View style={[s.fill, { backgroundColor: C.pot, width: `${Math.min(100, Math.max(0, (bal / p.target) * 100))}%` }]} /></View>
+                      <GrowBar to={bal / p.target} colour={C.pot} height={6} track={C.track} />
                       <Text style={s.meta}>{bal >= p.target ? 'Target reached' : `${moneyS(p.target - bal, cur)} to go to ${moneyS(p.target, cur)}${p.perPay ? `, about ${Math.ceil((p.target - bal) / p.perPay)} more paydays` : ''}`}</Text>
                     </>
                   )}

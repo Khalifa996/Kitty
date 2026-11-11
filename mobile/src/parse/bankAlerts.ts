@@ -173,8 +173,9 @@ export function parseAlert(a: RawAlert): ParsedAlert {
     const body = text.replace(/^[^\w£+-]+/u, '');
     const xAt = body.match(new RegExp('^\\+?' + MONEY + '\\s+at\\s+([^\\n]+)', 'i'));
     const xFrom = body.match(new RegExp('^\\+?' + MONEY + '\\s+from\\s+([^\\n]+)', 'i'));
-    // Monzo can run a running total on after the name ("Toolstation You've spent £41.85 today")
-    const cut = (n: string) => n.split(/\s+(?:you'?ve spent|you have spent|you'?ve received|spent today|balance)\b/i)[0];
+    // Monzo can run a running total on after the name ("Toolstation You’ve spent £41.85 today", with a curly
+    // apostrophe) or a description after a full stop ("Transport for London. Travel charge for Monday")
+    const cut = (n: string) => n.split(/\.\s|\s+(?:you['’]?ve spent|you have spent|you['’]?ve received|spent today|balance)\b/i)[0];
     if (xAt) return { ...base, kind: 'spent', amount: toPennies(xAt[1]), merchant: tidyName(cut(xAt[2])) };
     if (xFrom) return { ...base, kind: 'received', amount: toPennies(xFrom[1]), merchant: tidyName(cut(xFrom[2])) };
     const xTo = body.match(new RegExp('^-?' + MONEY + '\\s+to\\s+([^\\n]+)', 'i'));
@@ -231,6 +232,10 @@ export function parseAlert(a: RawAlert): ParsedAlert {
     const card = (text.match(/with\s+(.+?)(?:\s*(?:••|\*\*)\s?\d{4})?$/i) || [])[1];
     return { ...out, kind: 'spent', merchant: tidyName(title), reason: card ? `Paid with ${clean(card)}` : undefined };
   }
+
+  // PayPal names the shop in the title: "Your purchase from Temu.com" / "Your £10.95 payment was completed"
+  const ppShop = (title.match(/^your (?:purchase|order|payment) (?:from|to|at) (.+)$/i) || [])[1];
+  if (ppShop && !/\b(refund|declined|failed)\b/i.test(all)) return { ...out, kind: 'spent', merchant: tidyName(ppShop.replace(/\.(com|co\.uk)$/i, '')) };
 
   // Spending
   if (/\b(spent|paid|payment|purchase|card used|debited|you sent|withdrew|withdrawal)\b/i.test(text) || /^\s*-?£/.test(text)) {

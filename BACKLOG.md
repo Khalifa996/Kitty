@@ -60,6 +60,15 @@ Since 9 Nov 2026 Kitty is Mo's own app, built around how he banks. Items that on
 | P3 | Debt and business suggestions only recognise UK lender and insurer names |
 
 ## Changelog
+**App 0.14, 11 Nov 2026: more colour and life**
+- Today's figure sits on a colour card that shifts green, gold or red with the day, rolls to the new amount, and fills a bar as you spend
+- Buttons, chips, keys and tabs spring under your thumb, with a light buzz; cards float in; a tick slides up when something's saved
+- Insights: a ring for how much of the day's budget is used, a donut for where the pay month went, bars that grow
+- Debts: a warm card for what you owe, rolling to the figure. Review: a calm "All caught up" card
+- Settings in More are proper on/off switches (After each payment, status bar, adding sure payments by itself)
+- Ask Crest's ideas are full rows, so none are cut off
+- Fixes: Monzo business shop names with a curly apostrophe ("You’ve spent…") and ". Travel charge" tails; PayPal's "Your purchase from Google" names the shop; older entries' names tidied ("GBP" and store numbers); one-off bills no longer show as keypad shortcuts
+
 **App 0.13, 10 Nov 2026: Crest works in the background**
 - Payments are counted the moment the bank's alert arrives, even with Crest closed (the app's own brain runs in the background)
 - A message a few seconds after each payment: what it was, its category and what's left today, with buttons to change the category, mark it as business or leave it out. Money in asks what it is; big one-offs ask whether to spread them

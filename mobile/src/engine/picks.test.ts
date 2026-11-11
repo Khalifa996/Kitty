@@ -14,11 +14,13 @@ describe('quick picks', () => {
     tx({ merchant: 'Lunch', amt: 1200, date: '2026-10-28' }), tx({ merchant: 'Lunch', amt: 1200, date: '2026-10-29' }), tx({ merchant: 'Lunch', amt: 1200, date: '2026-10-30' }),
     tx({ merchant: 'Bus', cat: 'transport', amt: 175, date: '2026-10-20', time: '08:10' }), tx({ merchant: 'Bus', cat: 'transport', amt: 200, date: '2026-10-22', time: '08:05' }),
     tx({ merchant: 'Corner shop', cat: 'groceries', amt: 340, date: '2026-10-31', time: '19:00' }),
+    tx({ merchant: 'Phone fee', cat: 'bills', amt: 900, date: '2026-10-29' }), tx({ merchant: 'Phone fee', cat: 'bills', amt: 900, date: '2026-10-30' }), // one-off bills
   );
   it('leaves out one-offs and things the bank already caught', () => {
     const names = quickPicks(S, 'out', '2026-11-01', 12).map((p) => p.name);
     expect(names.includes('Cot shop')).toBe(false);
     expect(names.includes('Amazon')).toBe(false);
+    expect(names.includes('Phone fee')).toBe(false);
     expect(names[0]).toBe('Lunch');
   });
   it('offers the usual amount when it never changes', () => {
@@ -31,6 +33,6 @@ describe('quick picks', () => {
       .toBeLessThan(quickPicks(S, 'out', '2026-11-01', 19).findIndex((p) => p.name === 'Bus'));
   });
   it('still finds everything when you type', () => {
-    expect(places(S, 'out').map((p) => p.name)).toEqual(['Lunch', 'Bus', 'Cot shop', 'Amazon', 'Corner shop']);
+    expect(places(S, 'out').map((p) => p.name)).toEqual(['Lunch', 'Bus', 'Phone fee', 'Cot shop', 'Amazon', 'Corner shop']);
   });
 });

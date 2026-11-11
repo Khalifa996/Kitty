@@ -11,7 +11,8 @@ const WINDOW = 60;     // days looked back
 
 export function quickPicks(S: State, kind: 'out' | 'in', today: string, hour: number, max = 6): Pick[] {
   const m = new Map<string, { name: string; cat: string; score: number; n: number; last: number; amts: number[] }>();
-  const list = S.tx.filter((t) => t.kind === kind && t.merchant && !t.billId && !t.checkin && !t.potIn && t.source !== 'alert' && t.date <= today)
+  // One-off bills (a phone fee, a fine) aren't things you log again
+  const list = S.tx.filter((t) => t.kind === kind && t.merchant && !t.billId && t.cat !== 'bills' && !t.checkin && !t.potIn && t.source !== 'alert' && t.date <= today)
     .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
   for (const t of list) {
     const age = diffDays(t.date, today);

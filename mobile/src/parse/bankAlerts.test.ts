@@ -271,6 +271,12 @@ describe('apps Crest never reads', () => {
   });
 });
 
+it('reads the shop from PayPal and tidies Monzo business account names', () => {
+  expect(parseAlert(a('com.paypal.android.p2pmobile', 'Your purchase from Shopco.com', 'Your £10.95 payment was completed. You have 1 PayPal+ point pending.'))).toMatchObject({ kind: 'spent', amount: 1095, merchant: 'Shopco' });
+  expect(parseAlert(a('co.uk.getmondo', 'Acme Fixes & Co', '💳 £30 at Revolut\nYou’ve spent £34.80 on your card today.'))).toMatchObject({ kind: 'spent', amount: 3000, merchant: 'Revolut', accountName: 'Acme Fixes & Co' });
+  expect(parseAlert(a('co.uk.getmondo', 'Acme Fixes & Co', '🚆 £4.80 at Transport for London. Travel charge for Monday'))).toMatchObject({ merchant: 'Transport for London' });
+});
+
 describe('shop names', () => {
   it('drops card terminal clutter', () => {
     expect(tidyName('SumUp **CORNER KEBAB LTD')).toBe('Corner Kebab Ltd');

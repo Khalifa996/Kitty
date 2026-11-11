@@ -12,7 +12,9 @@ import type { Tx } from '../engine/types';
 import { useKitty } from '../store/KittyState';
 import { Icon } from '../ui/Icon';
 import { Btn, Card, CatIcon, Chip, Label, Sheet } from '../ui/kit';
-import { C, money, moneyS } from '../ui/theme';
+import { Donut, GradientCard, Ring } from '../ui/Glow';
+import { CountUp, GrowBar } from '../ui/motion';
+import { C, G, money, moneyS } from '../ui/theme';
 
 const DAYS_BACK = 60;
 const MONTHS_BACK = 12;
@@ -128,8 +130,16 @@ export function InsightsScreen() {
             onPrev={diffDays(day, today) < DAYS_BACK ? () => setDay(prevDay(day)) : undefined}
             onNext={day < today ? () => setDay(nextDay(day)) : undefined} />
           <Card style={{ gap: 6 }}>
-            <Label>{isToday ? 'So far today' : 'How it went'}</Label>
-            <Text style={[s.big, { color: diff >= 0 ? C.good : C.bad }]}>{moneyS(Math.abs(diff), cur)} {diff >= 0 ? (isToday ? 'left' : 'under') : 'over'}</Text>
+            <View style={[s.row, { paddingVertical: 0, gap: 14 }]}>
+              <Ring to={di.allowance > 0 ? di.todaySpent / di.allowance : di.todaySpent > 0 ? 1 : 0} colour={diff >= 0 ? (di.todaySpent > di.allowance * 0.75 ? C.gold : C.good) : C.bad} track={C.track}>
+                <Text style={s.ringT}>{di.allowance > 0 ? `${Math.min(999, Math.round((di.todaySpent / di.allowance) * 100))}%` : '–'}</Text>
+                <Text style={s.ringS}>used</Text>
+              </Ring>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Label>{isToday ? 'So far today' : 'How it went'}</Label>
+                <CountUp value={Math.abs(diff)} format={(x) => `${moneyS(x, cur)} ${diff >= 0 ? (isToday ? 'left' : 'under') : 'over'}`} style={[s.big, { color: diff >= 0 ? C.good : C.bad }]} />
+              </View>
+            </View>
             <Text style={s.hint}>Spent {money(di.todaySpent, cur)} of {money(Math.max(0, di.allowance), cur)} budget for the day.{!isToday && di.tomorrow !== null ? ` Next day's budget became ${money(Math.max(0, di.tomorrow), cur)}.` : ''}</Text>
             {spreadTx.map((t) => (
               <Text key={t.id} style={s.hint}>{t.merchant || catName(S.settings, t.cat)} ({money(t.amt, cur)}) is spread over the {di.daysLeft} {di.daysLeft === 1 ? 'day' : 'days'} left in the pay month, about {money(Math.round(t.amt / di.daysLeft), cur)} a day.</Text>
@@ -167,7 +177,7 @@ export function InsightsScreen() {
           <Stepper label={`${short(cycle.start)} to ${short(cycle.end)}`}
             onPrev={back < MONTHS_BACK ? () => setBack(back + 1) : undefined}
             onNext={back > 0 ? () => setBack(back - 1) : undefined} />
-          <Card style={{ gap: 12 }}>
+          <GradientCard colours={G.navy} glow={C.sky} style={{ padding: 16, gap: 12 }}>
             <View style={s.grid}>
               <View style={s.cell}><Label>Money in</Label><Text style={[s.mid, { color: C.good }]}>{moneyS(m.pay + m.extra + m.business, cur)}</Text>
                 <Text style={s.meta}>{[m.pay ? `Pay ${moneyS(m.pay, cur)}` : '', m.business ? `side income ${moneyS(m.business, cur)}` : '', m.extra ? `other ${moneyS(m.extra, cur)}` : ''].filter(Boolean).join(', ') || 'Nothing yet'}</Text></View>
@@ -186,7 +196,7 @@ export function InsightsScreen() {
             {back < MONTHS_BACK && prev.days.length > 0 && (
               <Text style={s.hint}>{isNow ? `By day ${n}` : 'In total'}, that's {moneyS(Math.abs(m.spent - prevSoFar), cur)} {m.spent <= prevSoFar ? 'less' : 'more'} than the pay month before.</Text>
             )}
-          </Card>
+          </GradientCard>
 
           {sideOn && (
             <Card style={{ gap: 10 }}>
@@ -236,6 +246,14 @@ export function InsightsScreen() {
                   ))}
                 </View>
               </View>
+              {whereBy === 'cat' && catRows.some((x) => x.amt > 0) && (
+                <View style={{ alignItems: 'center', paddingVertical: 4 }}>
+                  <Donut parts={catRows.map((x) => ({ value: x.amt, colour: cats.find((k) => k.id === x.cat)?.c || C.muted }))} track={C.track}>
+                    <Text style={s.donutT}>{moneyS(catRows.reduce((a, x) => a + x.amt, 0), cur)}</Text>
+                    <Text style={s.ringS}>day to day</Text>
+                  </Donut>
+                </View>
+              )}
               {whereBy === 'cat' ? catRows.map((x) => {
                 const c = cats.find((k) => k.id === x.cat), lim = limits[x.cat];
                 const pace = lim && isNow ? limitInfo(S, x.cat, today)?.pace : lim && x.amt > lim ? 'over' : 'ok';
@@ -254,7 +272,7 @@ export function InsightsScreen() {
                       </View>
                       <Text style={[s.amt, { fontSize: 14 }]}>{money(x.amt, cur)}</Text>
                     </View>
-                    <View style={s.track}><View style={[s.fill, { width: `${Math.min(100, (x.amt / (lim || topCat)) * 100)}%`, backgroundColor: barC }]} /></View>
+                    <GrowBar to={x.amt / (lim || topCat)} colour={barC} height={6} track={C.track} />
                   </Pressable>
                 );
               }) : (
@@ -271,7 +289,7 @@ export function InsightsScreen() {
                           </View>
                           <Text style={[s.amt, { fontSize: 14 }]}>{money(x.amt, cur)}</Text>
                         </View>
-                        <View style={s.track}><View style={[s.fill, { width: `${(x.amt / topShop) * 100}%`, backgroundColor: c?.c || C.muted }]} /></View>
+                        <GrowBar to={x.amt / topShop} colour={c?.c || C.muted} height={6} track={C.track} />
                       </Pressable>
                     );
                   })}
@@ -386,7 +404,10 @@ const s = StyleSheet.create({
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   arrow: { width: 40, height: 40, borderRadius: 20, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
   stepT: { flex: 1, textAlign: 'center', color: C.fg, fontSize: 16, fontWeight: '700' },
-  big: { fontSize: 28, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  big: { fontSize: 28, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  ringT: { color: C.fg, fontSize: 16, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  ringS: { color: C.muted, fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 },
+  donutT: { color: C.fg, fontSize: 18, fontWeight: '800', fontVariant: ['tabular-nums'] },
   mid: { color: C.fg, fontSize: 20, fontWeight: '700', marginTop: 3, fontVariant: ['tabular-nums'] },
   grid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 14 },
   cell: { width: '50%', paddingRight: 8 },

@@ -3,28 +3,30 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Keyboard, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from './Icon';
+import { Pop, Rise } from './motion';
 import { C, R } from './theme';
 
 export function Btn({ label, onPress, primary, danger, small, style, disabled }: {
   label: string; onPress: () => void; primary?: boolean; danger?: boolean; small?: boolean; style?: StyleProp<ViewStyle>; disabled?: boolean;
 }) {
   return (
-    <Pressable
+    <Pop
       accessibilityRole="button"
       accessibilityLabel={label}
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [
-        k.btn, small && k.btnSmall, primary && { backgroundColor: C.gold }, disabled && { opacity: 0.4 },
-        pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }, style,
-      ]}>
+      haptic={primary ? 'tap' : 'tick'}
+      scale={0.95}
+      style={[k.btn, small && k.btnSmall, primary && { backgroundColor: C.gold }, disabled && { opacity: 0.4 }, style]}>
       <Text style={[k.btnT, small && { fontSize: 13 }, primary && { color: C.goldInk }, danger && { color: C.bad }]}>{label}</Text>
-    </Pressable>
+    </Pop>
   );
 }
 
-export function Card({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
-  return <View style={[k.card, style]}>{children}</View>;
+/** A panel. Rises gently into place the first time it appears; `delay` staggers a screen's cards. */
+export function Card({ children, style, delay = 0, still }: { children: ReactNode; style?: StyleProp<ViewStyle>; delay?: number; still?: boolean }) {
+  if (still) return <View style={[k.card, style]}>{children}</View>;
+  return <Rise delay={delay} style={[k.card, style]}>{children}</Rise>;
 }
 
 export function Label({ children }: { children: ReactNode }) {
@@ -46,11 +48,11 @@ export function CatIcon({ icon, colour, size = 36, on }: { icon: string; colour:
 
 export function Chip({ label, on, colour, icon, onPress }: { label: string; on?: boolean; colour?: string; icon?: string; onPress: () => void }) {
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress}
-      style={({ pressed }) => [k.chip, on && { backgroundColor: C.fg }, pressed && { opacity: 0.7 }]}>
+    <Pop accessibilityRole="button" accessibilityLabel={label} onPress={onPress} scale={0.9}
+      style={[k.chip, on && { backgroundColor: colour || C.fg }, !on && colour ? { backgroundColor: colour + '1F' } : null]}>
       {icon && colour ? <Icon name={icon} size={15} colour={on ? C.bg : colour} /> : colour ? <Dot colour={colour} /> : null}
       <Text style={[k.chipT, on && { color: C.bg }]} numberOfLines={1}>{label}</Text>
-    </Pressable>
+    </Pop>
   );
 }
 

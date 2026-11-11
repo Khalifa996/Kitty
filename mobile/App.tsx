@@ -1,6 +1,6 @@
 // Crest: safe to spend today. Tabs: Log, Review (bank alerts), Activity, Insights, More.
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { suggest } from './src/capture/toEntry';
@@ -20,6 +20,7 @@ import { SetupScreen } from './src/screens/SetupScreen';
 import { KittyProvider, useKitty } from './src/store/KittyState';
 import { useUpdate } from './src/update/useUpdate';
 import { Icon } from './src/ui/Icon';
+import { feel, native, Pop } from './src/ui/motion';
 import { C, money } from './src/ui/theme';
 
 type Tab = 'log' | 'review' | 'activity' | 'plan' | 'insights';
@@ -91,6 +92,7 @@ function Shell() {
 
   const show = (msg: string, undo?: () => void) => {
     if (timer.current) clearTimeout(timer.current);
+    feel.done();
     setToast({ msg, undo });
     timer.current = setTimeout(() => setToast(null), undo ? 5000 : 2600);
   };
@@ -140,28 +142,52 @@ function Shell() {
       </View>
 
       {toast && (
-        <View style={s.toast} accessibilityLiveRegion="polite">
-          <Text style={s.toastT} numberOfLines={2}>{toast.msg}</Text>
-          {toast.undo && (
-            <Pressable accessibilityRole="button" accessibilityLabel="Undo" onPress={() => { toast.undo?.(); setToast(null); }}>
-              <Text style={s.undo}>Undo</Text>
-            </Pressable>
-          )}
-        </View>
+        <Toast key={toast.msg} msg={toast.msg} undo={toast.undo && (() => { toast.undo?.(); setToast(null); })} />
       )}
 
       <SafeAreaView edges={['bottom']} style={s.tabs}>
         {TABS.map((t) => (
-          <Pressable key={t.id} accessibilityRole="tab" accessibilityLabel={`${t.label} tab`} accessibilityState={{ selected: tab === t.id }} onPress={() => { setMore(false); setTab(t.id); }} style={s.tab}>
-            <View style={s.tabTop}>
-              <Icon name={t.icon} size={22} colour={tab === t.id ? C.gold : C.faint} />
-              {t.id === 'review' && pending > 0 && <Text style={s.badge}>{pending > 99 ? '99+' : pending}</Text>}
-            </View>
-            <Text style={[s.tabT, tab === t.id && { color: C.fg }]}>{t.label}</Text>
-          </Pressable>
+          <TabButton key={t.id} label={t.label} icon={t.icon} on={tab === t.id && !more} badge={t.id === 'review' ? pending : 0}
+            onPress={() => { setMore(false); setTab(t.id); }} />
         ))}
       </SafeAreaView>
     </SafeAreaView>
+  );
+}
+
+/** A tab with a gold pill that springs in behind the icon when it's the one showing. */
+function TabButton({ label, icon, on, badge, onPress }: { label: string; icon: string; on: boolean; badge: number; onPress: () => void }) {
+  const v = useRef(new Animated.Value(on ? 1 : 0)).current;
+  useEffect(() => { Animated.spring(v, { toValue: on ? 1 : 0, useNativeDriver: native, bounciness: 14, speed: 16 }).start(); }, [on, v]);
+  return (
+    <Pop accessibilityRole="tab" accessibilityLabel={`${label} tab`} accessibilityState={{ selected: on }} onPress={onPress} style={s.tab} scale={0.88}>
+      <View style={s.tabTop}>
+        <Animated.View style={[s.pill, { opacity: v, transform: [{ scaleX: v.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) }] }]} />
+        <Animated.View style={{ transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [0, -1] }) }, { scale: v.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] }) }] }}>
+          <Icon name={icon} size={22} colour={on ? C.gold : C.faint} />
+        </Animated.View>
+        {badge > 0 && <Text style={s.badge}>{badge > 99 ? '99+' : badge}</Text>}
+      </View>
+      <Text style={[s.tabT, on && { color: C.fg }]}>{label}</Text>
+    </Pop>
+  );
+}
+
+/** The message after a save, sliding up with a little bounce. */
+function Toast({ msg, undo }: { msg: string; undo?: () => void }) {
+  const v = useRef(new Animated.Value(0)).current;
+  useEffect(() => { Animated.spring(v, { toValue: 1, useNativeDriver: native, bounciness: 10, speed: 14 }).start(); }, [v]);
+  return (
+    <Animated.View accessibilityLiveRegion="polite" style={[s.toast, { opacity: v.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 1, 1] }),
+      transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }, { scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }) }] }]}>
+      <View style={s.toastTick}><Icon name="check" size={14} colour={C.goldInk} /></View>
+      <Text style={s.toastT} numberOfLines={2}>{msg}</Text>
+      {undo && (
+        <Pressable accessibilityRole="button" accessibilityLabel="Undo" onPress={undo} hitSlop={8}>
+          <Text style={s.undo}>Undo</Text>
+        </Pressable>
+      )}
+    </Animated.View>
   );
 }
 
@@ -173,10 +199,13 @@ const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.bg },
   tabs: { flexDirection: 'row', backgroundColor: C.surface, borderTopWidth: 1, borderTopColor: C.line, paddingTop: 6 },
   tab: { flex: 1, alignItems: 'center', gap: 3, paddingVertical: 4 },
-  tabTop: { height: 24, width: 24, alignItems: 'center', justifyContent: 'center' },
-  badge: { position: 'absolute', top: -6, left: 14, color: C.goldInk, backgroundColor: C.gold, borderRadius: 9, minWidth: 18, height: 18, lineHeight: 18, textAlign: 'center', fontSize: 11, fontWeight: '800', paddingHorizontal: 5, overflow: 'hidden' },
+  tabTop: { height: 30, width: 56, alignItems: 'center', justifyContent: 'center' },
+  pill: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, borderRadius: 15, backgroundColor: C.goldSoft },
+  badge: { position: 'absolute', top: -4, left: 32, color: C.goldInk, backgroundColor: C.gold, borderRadius: 9, minWidth: 18, height: 18, lineHeight: 18, textAlign: 'center', fontSize: 11, fontWeight: '800', paddingHorizontal: 5, overflow: 'hidden' },
   tabT: { color: C.faint, fontSize: 12, fontWeight: '700' },
-  toast: { position: 'absolute', left: 16, right: 16, bottom: 86, backgroundColor: C.fg, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  toast: { position: 'absolute', left: 16, right: 16, bottom: 92, backgroundColor: C.fg, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 10,
+    shadowColor: C.shadow, shadowOpacity: 0.4, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
+  toastTick: { width: 22, height: 22, borderRadius: 11, backgroundColor: C.gold, alignItems: 'center', justifyContent: 'center' },
   link: { color: C.gold, fontWeight: '700', fontSize: 14 },
   toastT: { flex: 1, color: C.bg, fontWeight: '700', fontSize: 14 },
   undo: { color: C.bg, fontWeight: '800', fontSize: 14, textDecorationLine: 'underline' },

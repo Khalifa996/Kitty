@@ -12,9 +12,10 @@ import { useKitty } from '../store/KittyState';
 import { alertLog, parseBackup } from '../store/storage';
 import { morningMessage } from '../engine/morning';
 import { Btn, Card, Chip, Label } from '../ui/kit';
+import { Toggle } from '../ui/motion';
 import { C, moneyS } from '../ui/theme';
 
-const VERSION = '0.13';
+const VERSION = '0.14';
 // @ts-ignore process.env is provided by Expo
 const BUILD: string = (process.env.EXPO_PUBLIC_KITTY_BUILD as string | undefined) || '';
 
@@ -86,9 +87,12 @@ export function MoreScreen({ cap, onDone }: { cap: Capture; onDone: (msg: string
         ) : cap.enabled ? (
           <>
             <Text style={s.hint}>On. Crest reads payment alerts from the main UK banks and card apps, and from Google Wallet. They never leave your phone. It never reads chats, texts, email or social apps.</Text>
-            <View style={[s.row, { alignItems: 'center' }]}>
-              <Text style={[s.hint, { flex: 1, color: C.fg }]}>{S.settings.autoAdd !== false ? 'Adds the payments it\'s sure about by itself. You can check or change them in Review' : 'Waits for you to add every payment in Review'}</Text>
-              <Btn label={S.settings.autoAdd !== false ? 'Ask me first' : 'Add by itself'} small onPress={() => update((d) => { d.settings.autoAdd = d.settings.autoAdd === false; })} />
+            <View style={s.setRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.name}>Add sure payments by itself</Text>
+                <Text style={s.hint}>{S.settings.autoAdd !== false ? 'You can check or change them in Review.' : 'Off: every payment waits for you in Review.'}</Text>
+              </View>
+              <Toggle label="Add sure payments by itself" on={S.settings.autoAdd !== false} colour={C.good} onChange={(on) => update((d) => { d.settings.autoAdd = on; })} />
             </View>
             {(S.settings.bizAccounts || []).map((n) => (
               <View key={n} style={[s.row, { alignItems: 'center' }]}>
@@ -154,7 +158,7 @@ export function MoreScreen({ cap, onDone }: { cap: Capture; onDone: (msg: string
               <Text style={s.name}>After each payment</Text>
               <Text style={s.hint}>A few seconds after your bank's alert: what it was, its category and what's left today, with buttons to put it right. Works with Crest closed.</Text>
             </View>
-            <Btn label={afterPay ? 'On' : 'Off'} primary={afterPay} small onPress={() => toggle('afterPay', !afterPay)} />
+            <Toggle label="After each payment" on={afterPay} colour={C.good} onChange={(on) => toggle('afterPay', on)} />
           </View>
           <View style={s.setRow}>
             <View style={{ flex: 1 }}>
@@ -168,7 +172,7 @@ export function MoreScreen({ cap, onDone }: { cap: Capture; onDone: (msg: string
               <Text style={s.name}>In the status bar</Text>
               <Text style={s.hint}>Keeps today's figure as a notification you can always see. On Android 16 it asks to be a Live Update; Samsung may only show it with "Live notifications for all apps" on in Developer options.</Text>
             </View>
-            <Btn label={S.settings.ongoing ? 'On' : 'Off'} primary={!!S.settings.ongoing} small onPress={() => toggle('ongoing', !S.settings.ongoing)} />
+            <Toggle label="In the status bar" on={!!S.settings.ongoing} colour={C.good} onChange={(on) => toggle('ongoing', on)} />
           </View>
           <Text style={s.hint}>Quick Settings tile: swipe down twice, tap the pencil, and drag Crest into your tiles.</Text>
           {!awake && (

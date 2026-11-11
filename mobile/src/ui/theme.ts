@@ -14,9 +14,27 @@ export const C = {
   bad: '#FF5C6C',
   pot: '#3DD6B0',
   bill: '#A78BFA',
+  sky: '#5AB8FF',
+  pink: '#FF7AB6',
+  track: 'rgba(255,255,255,0.10)',
+  knob: '#FFFFFF',
+  off: '#2A2F38',
+  goldSoft: 'rgba(242,193,78,0.16)',
+  shadow: '#000000',
 } as const;
 
-export const R = { card: 18, row: 14, btn: 12, pill: 999 } as const;
+/** Two-colour fills for the hero cards, top left to bottom right. The tone follows how the day is going. */
+export const G = {
+  ok: ['#123B30', '#13203A'],
+  low: ['#3B2E12', '#1B1B26'],
+  over: ['#401826', '#1B1424'],
+  navy: ['#1D2D52', '#101A33'],
+  owe: ['#3F2611', '#1E1520'],
+  sky: ['#14324A', '#161B33'],
+} as const;
+
+/** Rounder corners: softer, friendlier cards and buttons. */
+export const R = { card: 22, row: 16, btn: 16, pill: 999 } as const;
 
 export const T = {
   h1: { color: C.fg, fontSize: 28, fontWeight: '700' as const },

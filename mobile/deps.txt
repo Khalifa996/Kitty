@@ -4,3 +4,4 @@ react-dom
 react-native-web
 @expo/metro-runtime
 react-native-svg
+expo-haptics

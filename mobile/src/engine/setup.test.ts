@@ -43,3 +43,13 @@ describe('first-run setup', () => {
     expect(applySetup(newDraft('2026-10-28'), '2026-10-28', '09:00', id).settings.sideIncome).toBe(false);
   });
 });
+
+import { tidyOld } from './migrate';
+it('tidies shop names saved by older versions', () => {
+  expect(tidyOld('Revolut You’ve spent £34.80 on your card today')).toBe('Revolut');
+  expect(tidyOld('Transport for London GBP')).toBe('Transport for London');
+  expect(tidyOld('Subway 51234-0')).toBe('Subway');
+  expect(tidyOld('Your purchase from Google')).toBe('Google');
+  expect(tidyOld('Transport for London. Travel charge for Monday')).toBe('Transport for London');
+  expect(tidyOld('Tesco')).toBe('Tesco');
+});

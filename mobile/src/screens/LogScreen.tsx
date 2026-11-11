@@ -9,6 +9,7 @@ import { addDays, hm, ymd } from '../engine/dates';
 import type { Tx } from '../engine/types';
 import { uid, useKitty } from '../store/KittyState';
 import { Btn, CatIcon, Chip, Sheet } from '../ui/kit';
+import { Bump, Pop } from '../ui/motion';
 import { Icon } from '../ui/Icon';
 import { SafeStrip } from '../ui/SafeStrip';
 import { C, moneyS, money, symbol } from '../ui/theme';
@@ -101,10 +102,12 @@ export function LogScreen({ onSaved }: { onSaved: (msg: string, undo: () => void
           <Text style={[s.segT, { color: date ? C.goldInk : C.fg }]}>{dayLabel(date || today)}</Text>
         </Pressable>
       </View>
-      <Text style={[s.amount, mode === 'in' && { color: C.good }]} accessibilityLiveRegion="polite" numberOfLines={1} adjustsFontSizeToFit>
-        <Text style={s.cur}>{symbol(cur).trim()} </Text>
-        {amt ? `${Number(ip || 0).toLocaleString('en-GB')}${dp !== undefined ? '.' + dp : ''}` : <Text style={{ color: C.faint }}>0</Text>}
-      </Text>
+      <Bump on={amt}>
+        <Text style={[s.amount, mode === 'in' && { color: C.good }]} accessibilityLiveRegion="polite" numberOfLines={1} adjustsFontSizeToFit>
+          <Text style={s.cur}>{symbol(cur).trim()} </Text>
+          {amt ? `${Number(ip || 0).toLocaleString('en-GB')}${dp !== undefined ? '.' + dp : ''}` : <Text style={{ color: C.faint }}>0</Text>}
+        </Text>
+      </Bump>
       <TextInput value={merchant} onChangeText={typed} placeholder={mode === 'out' ? 'Where? e.g. Lidl' : 'From? e.g. Salary'} placeholderTextColor={C.faint}
         style={s.field} accessibilityLabel="Where" returnKeyType="done" />
       {tracked ? (
@@ -116,20 +119,21 @@ export function LogScreen({ onSaved }: { onSaved: (msg: string, undo: () => void
       )}
       <View style={s.cats}>
         {cats.slice(0, 10).map((c) => (
-          <Pressable key={c.id} accessibilityRole="button" accessibilityLabel={c.n} accessibilityState={{ selected: c.id === chosen }} onPress={() => setCat(c.id)} style={[s.cat, c.id === chosen && s.catOn]}>
+          <Pop key={c.id} accessibilityRole="button" accessibilityLabel={c.n} accessibilityState={{ selected: c.id === chosen }} onPress={() => setCat(c.id)} scale={0.86}
+            style={[s.cat, c.id === chosen && { backgroundColor: c.c + '24' }]}>
             <CatIcon icon={c.i} colour={c.c} size={34} on={c.id === chosen} />
             <Text style={[s.catT, c.id === chosen && { color: C.fg }]} numberOfLines={1}>{c.n}</Text>
-          </Pressable>
+          </Pop>
         ))}
       </View>
       <View style={s.keys}>
         {rows.map((r, i) => (
           <View key={i} style={s.keyRow}>
             {r.map((v) => (
-              <Pressable key={v} accessibilityRole="button" accessibilityLabel={v === 'del' ? 'Delete digit' : v === '.' ? 'Decimal point' : v} onPress={() => key(v)}
-                style={({ pressed }) => [s.key, pressed && { backgroundColor: C.surface2 }]}>
+              <Pop key={v} accessibilityRole="button" accessibilityLabel={v === 'del' ? 'Delete digit' : v === '.' ? 'Decimal point' : v} onPress={() => key(v)}
+                scale={0.9} style={s.key}>
                 {v === 'del' ? <Icon name="back" size={24} colour={C.fg} /> : <Text style={s.keyT}>{v}</Text>}
-              </Pressable>
+              </Pop>
             ))}
           </View>
         ))}
@@ -162,6 +166,6 @@ const s = StyleSheet.create({
   catT: { color: C.muted, fontSize: 11, fontWeight: '700', paddingHorizontal: 2 },
   keys: { flex: 1, minHeight: 176, gap: 6, justifyContent: 'flex-end' },
   keyRow: { flex: 1, maxHeight: 64, flexDirection: 'row', gap: 6 },
-  key: { flex: 1, minHeight: 40, borderRadius: 14, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
+  key: { flex: 1, minHeight: 40, borderRadius: 18, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
   keyT: { color: C.fg, fontSize: 24, fontWeight: '500' },
 });

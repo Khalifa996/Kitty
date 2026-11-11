@@ -34,7 +34,7 @@ async function session(name, seed, steps) {
   await page.goto('http://localhost:8099/');
   await page.waitForTimeout(2500);
   for (const [shot, act] of steps) {
-    try { if (act) await act(page); await page.waitForTimeout(600); } catch (e) { errors.push(`${name}/${shot}: ${e.message.split('\n')[0]}`); }
+    try { if (act) await act(page); await page.waitForTimeout(1200); } catch (e) { errors.push(`${name}/${shot}: ${e.message.split('\n')[0]}`); }
     await page.screenshot({ path: join(outDir, `${shot}.png`) });
   }
   await ctx.close();
