@@ -222,6 +222,24 @@ export function PlanScreen({ onDone, openMore }: { onDone: (msg: string, undo?: 
             {items.length === 0 && <Card><Text style={s.hint}>No bills yet. Add rent, council tax and subscriptions so your daily budget is honest.</Text></Card>}
             <Section title="Due now" list={dueNow} extra={dueNow.length > 1 ? <Pressable accessibilityRole="button" onPress={() => pay(dueNow.map((i) => i.b))}><Text style={s.link}>Mark all {dueNow.length} paid</Text></Pressable> : undefined} />
             <Section title="Coming up" list={later} />
+            {dueNow.length === 0 && later.length === 0 && items.length > 0 && (() => {
+              // Everything's paid: show what comes off on payday, so it's no surprise
+              const nx = billItems(S, nextDay(w.end)), first = nx.items.slice(0, 6);
+              return (
+                <Card style={{ gap: 8 }}>
+                  <Label>After payday</Label>
+                  <Text style={s.hint}>All paid for this {monthly ? 'pay month' : 'month'}. From {dfmt(nx.w.start)}, <Text style={{ color: C.fg, fontWeight: '700' }}>{moneyS(nx.total, cur)}</Text> of bills come round again.</Text>
+                  {first.map((i) => (
+                    <View key={i.b.id} style={[s.ghd, { paddingVertical: 2 }]}>
+                      <Text style={[s.meta, { flex: 1, color: C.fg, marginTop: 0 }]} numberOfLines={1}>{i.b.name}</Text>
+                      <Text style={[s.meta, { marginTop: 0, width: 56, textAlign: 'right' }]}>{dfmt(i.due)}</Text>
+                      <Text style={[s.meta, { marginTop: 0, width: 84, textAlign: 'right', color: C.fg, fontWeight: '700' }]}>{money(i.b.amt, cur)}</Text>
+                    </View>
+                  ))}
+                  {nx.items.length > first.length && <Text style={s.meta}>and {nx.items.length - first.length} more</Text>}
+                </Card>
+              );
+            })()}
             {(debts.length > 0 || ods.length > 0) && (
               <Pressable accessibilityRole="button" onPress={() => setView('debts')}>
                 <Card style={{ gap: 4 }}>

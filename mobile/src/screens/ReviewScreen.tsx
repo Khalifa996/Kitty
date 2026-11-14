@@ -242,7 +242,8 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
   const clearSkipped = () => { cap.done(skipped.flatMap((i) => keysFor(i.p, cap.parsed))); setShowSkipped(false); };
   // Things that need you: not sure what they are, or cash. Everything else can be added in one go
   const easy = todo.filter((i) => !i.dup && i.sug.action !== 'ask' && !(i.sug.action === 'add' && (i.sug.cash || i.sug.newBill || i.sug.big || (i.sug.ai && i.sug.guessed))));
-  const notices = skipped.filter((i) => i.p.kind === 'ignore' && !i.p.amount);
+  // Nothing to count: notices, adverts, and anything else without an amount
+  const notices = skipped.filter((i) => !i.p.amount);
   const skippedPay = skipped.filter((i) => !notices.includes(i));
   const dupText = (t: Tx) => `${t.merchant || (t.kind === 'in' ? inName(t.cat) : catName(S.settings, t.cat))}, ${money(t.amt, cur)}, ${when(new Date(t.date + 'T' + (t.time || '12:00')).getTime())}`;
 
@@ -366,7 +367,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
         <GradientCard colours={G.ok} glow={C.good} style={s.calm}>
           <View style={s.calmBadge}><Icon name="shieldcheck" size={34} colour={C.good} /></View>
           <Text style={s.h2}>All caught up</Text>
-          <Text style={[s.hint, { textAlign: 'center' }]}>Pay with a card and the payment shows up here within seconds.</Text>
+          <Text style={[s.hint, { textAlign: 'center' }]}>{S.settings.autoAdd !== false ? 'Payments Crest is sure about go straight into your figure. Anything it isn\'t sure about waits here.' : 'Pay with a card and the payment shows up here within seconds.'}</Text>
         </GradientCard>
       )}
 

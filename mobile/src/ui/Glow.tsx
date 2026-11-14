@@ -66,7 +66,7 @@ export function Donut({ parts, size = 132, width = 18, track, children }: { part
     Animated.timing(v, { toValue: 1, duration: 900, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
     return () => v.removeListener(id);
   }, [total, v]);
-  const c = size / 2, r = (size - width) / 2, gap = parts.length > 1 ? 0.012 : 0;
+  const c = size / 2, r = (size - width) / 2, gap = parts.length > 1 ? 0.018 : 0;
   let start = 0;
   const arcs = total > 0 ? parts.filter((p) => p.value > 0).map((p) => {
     const frac = (p.value / total) * t, a0 = start + gap / 2, a1 = start + frac - gap / 2;

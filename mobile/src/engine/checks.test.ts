@@ -1,4 +1,4 @@
-import { likelyDuplicates, quietBanks } from './checks';
+import { alertTwins, likelyDuplicates, quietBanks, topUpsCounted } from './checks';
 import { blankState } from './migrate';
 import type { Tx } from './types';
 
@@ -23,4 +23,25 @@ it('notices a bank that usually sends alerts going quiet', () => {
   expect(quietBanks(S, '2026-10-27')).toEqual([{ bank: 'Barclays', last: '2026-10-24' }]);
   // An alert waiting in Review means it isn't quiet
   expect(quietBanks(S, '2026-10-27', ['Barclays'])).toEqual([]);
+});
+
+it('spots one payment told twice by the same bank', () => {
+  const S = blankState();
+  const a = tx({ amt: 480, cat: 'transport', merchant: 'Transport for London', date: '2026-11-13', time: '10:54', source: 'alert', bank: 'Monzo' });
+  const b = tx({ amt: 480, cat: 'transport', merchant: 'Transport for London', date: '2026-11-13', time: '10:55', source: 'alert', bank: 'Monzo' });
+  const later = tx({ amt: 480, cat: 'transport', merchant: 'Transport for London', date: '2026-11-13', time: '18:20', source: 'alert', bank: 'Monzo' });
+  const other = tx({ amt: 480, cat: 'transport', merchant: 'Transport for London', date: '2026-11-13', time: '10:54', source: 'alert', bank: 'Barclays' });
+  S.tx.push(a, b, later, other);
+  expect(alertTwins(S, '2026-11-14')).toEqual([[a, b]]);
+  S.settings.dismissed = { [`twin:${a.id}:${b.id}`]: true };
+  expect(alertTwins(S, '2026-11-14')).toEqual([]);
+});
+
+it('spots a top-up of your own account counted as spending', () => {
+  const S = blankState();
+  const move = tx({ amt: 3000, cat: 'other', merchant: 'Revolut', source: 'alert', bank: 'Monzo' });
+  S.tx.push(move, tx({ amt: 900, merchant: 'Revolution Cafe', source: 'alert', bank: 'Monzo' }), tx({ amt: 3000, merchant: 'Revolut', source: 'hand' as Tx['source'] }));
+  expect(topUpsCounted(S, '2026-11-14')).toEqual([move]);
+  S.settings.dismissed = { [`move:${move.id}`]: true };
+  expect(topUpsCounted(S, '2026-11-14')).toEqual([]);
 });

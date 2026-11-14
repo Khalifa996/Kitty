@@ -2,7 +2,7 @@
 import { useMemo, useState } from 'react';
 import { Pressable, SectionList, StyleSheet, Text, TextInput, View } from 'react-native';
 import { billWindowAt } from '../engine/budget';
-import { likelyDuplicates } from '../engine/checks';
+import { alertTwins, likelyDuplicates, topUpsCounted } from '../engine/checks';
 import { ymd } from '../engine/dates';
 import { categories, catName, inName, inTypes } from '../engine/cats';
 import type { Tx } from '../engine/types';
@@ -25,6 +25,10 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
   const [form, setForm] = useState({ name: '', amt: '', cat: '', all: true, side: false, pot: '', spread: false, debt: '', outside: false, biz: false });
   // Something added by hand that a bank alert added too
   const dups = useMemo(() => likelyDuplicates(S, ymd(new Date())), [S]);
+  const twins = useMemo(() => alertTwins(S, ymd(new Date())), [S]);
+  const moves = useMemo(() => topUpsCounted(S, ymd(new Date())), [S]);
+  const dismiss = (key: string) => update((x) => { x.settings.dismissed = { ...(x.settings.dismissed || {}), [key]: true }; });
+  const dm = (t: Tx) => `${t.date.slice(8)}/${t.date.slice(5, 7)}`;
   const cur = S.settings.currency;
   const openTx = (t: Tx) => { setOpen(t); setForm({ name: t.merchant, amt: (t.amt / 100).toFixed(2), cat: t.cat, all: true, side: !!t.fromSide, pot: t.potId || '', spread: !!t.spread, debt: t.debtId || '', outside: !!t.outside, biz: t.kind === 'out' && !!t.biz }); };
 
@@ -120,6 +124,32 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
                 <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'flex-end' }}>
                   <Btn label="Keep both" small onPress={() => update((x) => { x.settings.dismissed = { ...(x.settings.dismissed || {}), [`dup:${mine.id}:${bank.id}`]: true }; })} />
                   <Btn label="Remove mine" small primary onPress={() => del(mine)} />
+                </View>
+              </View>
+            );
+          })()}
+          {dups.length === 0 && twins.length > 0 && (() => {
+            const [a, b] = twins[0];
+            return (
+              <View style={s.dup}>
+                <Text style={s.dupH}>Charged twice?{twins.length > 1 ? ` (1 of ${twins.length})` : ''}</Text>
+                <Text style={s.hint}>{a.bank || 'Your bank'} sent two alerts for {a.merchant || 'a payment'}, {money(a.amt, cur)} at {a.time} on {dm(a)}. If your bank's app shows only one, take one out.</Text>
+                <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'flex-end' }}>
+                  <Btn label="It was twice" small onPress={() => dismiss(`twin:${a.id}:${b.id}`)} />
+                  <Btn label="Take one out" small primary onPress={() => del(b)} />
+                </View>
+              </View>
+            );
+          })()}
+          {dups.length === 0 && twins.length === 0 && moves.length > 0 && (() => {
+            const t = moves[0];
+            return (
+              <View style={s.dup}>
+                <Text style={s.dupH}>A move, not spending?{moves.length > 1 ? ` (1 of ${moves.length})` : ''}</Text>
+                <Text style={s.hint}>{money(t.amt, cur)} to {t.merchant} on {dm(t)}{t.bank ? ` from ${t.bank}` : ''} looks like topping up your own account. Moving your own money isn't spending, so it shouldn't come off your budget.</Text>
+                <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'flex-end' }}>
+                  <Btn label="It was spending" small onPress={() => dismiss(`move:${t.id}`)} />
+                  <Btn label="Take it out" small primary onPress={() => del(t)} />
                 </View>
               </View>
             );

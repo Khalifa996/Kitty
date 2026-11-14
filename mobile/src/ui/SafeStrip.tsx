@@ -2,6 +2,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { dayInfo, safeInfo } from '../engine/budget';
 import { parse } from '../engine/dates';
+import { paceForecast } from '../engine/forecast';
 import { useKitty } from '../store/KittyState';
 import { GradientCard } from './Glow';
 import { CountUp, GrowBar } from './motion';
@@ -10,8 +11,8 @@ import { C, G, moneyS } from './theme';
 type Tone = 'ok' | 'low' | 'over';
 const ink: Record<Tone, string> = { ok: C.good, low: C.gold, over: C.bad };
 
-function Hero({ tone, label, value, suffix = '', cur, pill, line, lineBad, bar, a11y }: {
-  tone: Tone; label: string; value: number; suffix?: string; cur: string; pill: string; line: string; lineBad?: boolean; bar: number | null; a11y: string;
+function Hero({ tone, label, value, suffix = '', cur, pill, line, lineBad, lineWarn, bar, a11y }: {
+  tone: Tone; label: string; value: number; suffix?: string; cur: string; pill: string; line: string; lineBad?: boolean; lineWarn?: boolean; bar: number | null; a11y: string;
 }) {
   return (
     <GradientCard colours={G[tone]} glow={ink[tone]} style={s.strip}>
@@ -23,7 +24,7 @@ function Hero({ tone, label, value, suffix = '', cur, pill, line, lineBad, bar, 
           </View>
           <View style={{ alignItems: 'flex-end', flexShrink: 1, gap: 5 }}>
             <View style={s.pill}><Text style={s.pillT}>{pill}</Text></View>
-            <Text style={[s.after, lineBad && { color: C.bad }]}>{line}</Text>
+            <Text style={[s.after, lineWarn && { color: C.warn }, lineBad && { color: C.bad }]}>{line}</Text>
           </View>
         </View>
         {bar !== null && <GrowBar to={bar} colour={bar >= 1 ? C.bad : bar >= 0.75 ? C.gold : C.good} height={6} track={C.track} />}
@@ -53,12 +54,19 @@ export function SafeStrip({ extraLine, day }: { extraLine?: string; day?: string
       line={extraLine ?? `Payday in ${days} ${days === 1 ? 'day' : 'days'}. Money in before then comes off this first`} bar={null}
       a11y={`${moneyS(-si.left, cur)} over for this pay month`} />;
   }
+  // After a week, if your usual spending would run out before payday, say so here rather than only in Insights
+  const pace = !over && !extraLine ? paceForecast(S, today) : null;
+  const short = pace && pace.endLeft < 0 ? pace : null;
+  const pounds = (p: number) => moneyS(Math.round(p / 100) * 100, cur);
   const right = extraLine
     ?? (over ? (si.tomorrow === null ? 'Last day of the cycle' : si.tomorrow < 0 ? 'Cycle budget used up' : `${moneyS(si.tomorrow, cur)}/day from tomorrow`)
+      : short ? (short.runOut
+        ? `At your usual ${pounds(short.perDay)} a day, it runs out ${parse(short.runOut).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}`
+        : `At your usual ${pounds(short.perDay)} a day, ${pounds(-short.endLeft)} short by payday`)
       : `${moneyS(si.allowance, cur)} daily budget`);
   const tone: Tone = over ? 'over' : si.safe < si.allowance * 0.25 ? 'low' : 'ok';
   return <Hero tone={tone} label={over ? 'Over budget today' : 'Safe to spend today'} value={Math.abs(si.safe)} cur={cur}
-    pill={`Day ${si.dayN} of ${si.c.days}`} line={right} lineBad={over && si.tomorrow !== null && si.tomorrow < 0}
+    pill={`Day ${si.dayN} of ${si.c.days}`} line={right} lineBad={over && si.tomorrow !== null && si.tomorrow < 0} lineWarn={!!short}
     bar={si.allowance > 0 ? si.todaySpent / si.allowance : si.todaySpent > 0 ? 1 : 0}
     a11y={`${over ? 'Over budget today' : 'Safe to spend today'} ${moneyS(Math.abs(si.safe), cur)}`} />;
 }

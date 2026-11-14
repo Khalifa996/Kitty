@@ -11,7 +11,7 @@ export const BASE_CATS: Cat[] = [
   { id: 'fun', n: 'Going out', c: '#FF6F91', i: 'ticket' },
   { id: 'health', n: 'Health', c: '#3DD6B0', i: 'heart' },
   { id: 'home', n: 'Home', c: '#E0B98C', i: 'home' },
-  { id: 'personal', n: 'Personal', c: '#9DB4FF', i: 'user' },
+  { id: 'personal', n: 'Personal', c: '#5E8BFF', i: 'user' },
   { id: 'bills', n: 'One-off bill', c: '#A78BFA', i: 'receipt' },
   { id: 'other', n: 'Other', c: '#A0A7B4', i: 'more' },
 ];

@@ -84,6 +84,8 @@ const PAYERS: [RegExp, string][] = [
   [/checkatrade/i, 'Checkatrade'],
   [/hmrc/i, 'HMRC'],
   [/\bdwp\b|universal credit/i, 'DWP'],
+  // Barclays says "TFL", Monzo "Transport for London": one name, so Shops adds them up together
+  [/^tfl\b|^transport for london\b/i, 'Transport for London'],
 ];
 
 /** "GOOGLE PLAY APPS" → "Google Play Apps". Leaves mixed case alone. */
@@ -132,7 +134,7 @@ const IGNORE: [RegExp, string][] = [
   [/declined|couldn'?t use (their|your) card|doesn'?t have enough balance/i, 'Declined payment'],
   [/new device|log-?in\b|logged in(to)?\b|added (their|your) card to/i, 'Account notice'],
   [/contactless limit|approaching (your|the)? ?limit/i, 'Card limit notice'],
-  [/t&cs apply|terms apply|save over|open an? \w+ account|refer a friend|cashback offer|exclusive offer|virtual card number|shop more securely/i, 'Advert'],
+  [/t&cs apply|terms apply|save over|open an? \w+ account|refer a friend|cashback offer|exclusive offer|virtual card number|shop more securely|unlock fee|hop on|free rides?|promo code|% off|off your next/i, 'Advert'],
 ];
 
 /** The first amount in a piece of text, in pennies. */

@@ -118,6 +118,11 @@ export function noticeFor(P: State, it: Item, today: string, fmt: Fmt): Notice |
 
   if (t.kind === 'in') {
     if (it.sure) return { id, title: `${amt} in · ${inName(t.cat)}`, body: `${capital(leftLine(P, today, fmt))}.`, actions: [] };
+    if (t.cat === 'refund') {
+      const from = t.merchant && t.merchant !== 'Refund' ? ` from ${t.merchant}` : '';
+      return { id, title: `${amt} refund${from}`, body: 'A big one. Is it really a refund? Crest counts it once you say.',
+        actions: [act('Refund', id, k, 'in:refund'), act('Extra income', id, k, 'in:extra'), act('My own account', id, k, 'drop')] };
+    }
     const asks = [
       ...(bizOn ? [act('Business income', id, k, 'in:side')] : []),
       act('Extra income', id, k, 'in:extra'),

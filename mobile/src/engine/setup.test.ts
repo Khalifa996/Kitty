@@ -46,7 +46,8 @@ describe('first-run setup', () => {
 
 import { tidyOld } from './migrate';
 it('tidies shop names saved by older versions', () => {
-  expect(tidyOld('Revolut You’ve spent £34.80 on your card today')).toBe('Revolut');
+  expect(tidyOld('Revolut You’ve spent £12.30 on your card today')).toBe('Revolut');
+  expect(tidyOld('TFL')).toBe('Transport for London');
   expect(tidyOld('Transport for London GBP')).toBe('Transport for London');
   expect(tidyOld('Subway 51234-0')).toBe('Subway');
   expect(tidyOld('Your purchase from Google')).toBe('Google');

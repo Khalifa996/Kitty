@@ -4,7 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import { cycleOf, cycleSummary, dayInfo, isSpread, sideSummary, taxYearStart } from '../engine/budget';
 import { catName, categories, inName, inTypes } from '../engine/cats';
 import { diffDays, nextDay, parse, prevDay } from '../engine/dates';
-import { byShop, catHistory, catSpent, limitInfo, suggestLimit, type Shop } from '../engine/spending';
+import { byShop, catHistory, catSpent, firstDay, limitInfo, suggestLimit, type Shop } from '../engine/spending';
 import { paceForecast, paceLine } from '../engine/forecast';
 import { AskSheet } from './AskSheet';
 import { aiAvailable } from '../ai/cloud';
@@ -100,7 +100,11 @@ export function InsightsScreen() {
   });
   const draftP = Math.round(parseFloat(limitDraft.replace(/[^0-9.]/g, '')) * 100);
   const catLabel = (cat: string) => cats.find((k) => k.id === cat)?.n || catName(S.settings, cat);
+  // Compare with the pay month before only when Crest has all of it, day for day, the same way
   const n = m.days.length, prevSoFar = prev.days.slice(0, n).reduce((a, d) => a + d.spent, 0);
+  const soFar = m.days.reduce((a, d) => a + d.spent, 0);
+  const prevFull = prev.days.length > 0 && prev.c.start >= firstDay(S);
+  const catTotal = catRows.reduce((a, x) => a + x.amt, 0);
   const isNow = back === 0;
   const sideOn = S.settings.sideIncome;
   const sideMonth = useMemo(() => sideSummary(S, cycle.start, cycle.end), [S, cycle]);
@@ -193,8 +197,8 @@ export function InsightsScreen() {
                 : <Text style={s.meta}>After the first week of the pay month, Crest says where it's heading at your usual pace.</Text>;
             })()}
             {m.business > 0 && <Text style={s.meta}>Side income counts towards what you have to spend, less {money(sideMonth.tax, cur)} kept back for tax.</Text>}
-            {back < MONTHS_BACK && prev.days.length > 0 && (
-              <Text style={s.hint}>{isNow ? `By day ${n}` : 'In total'}, that's {moneyS(Math.abs(m.spent - prevSoFar), cur)} {m.spent <= prevSoFar ? 'less' : 'more'} than the pay month before.</Text>
+            {back < MONTHS_BACK && prevFull && (
+              <Text style={s.hint}>{isNow ? `By day ${n}` : 'In total'}, that's {moneyS(Math.abs(soFar - prevSoFar), cur)} {soFar <= prevSoFar ? 'less' : 'more'} than the pay month before.</Text>
             )}
           </GradientCard>
 
@@ -225,12 +229,13 @@ export function InsightsScreen() {
               <Label>Each day</Label>
               <View style={s.bars}>
                 {m.days.map((d) => (
-                  <Pressable key={d.date} style={s.barCol} accessibilityLabel={`${short(d.date)}: spent ${money(d.spent, cur)}`} onPress={() => { setDay(d.date); setView('day'); }}>
+                  <Pressable key={d.date} style={s.barCol} accessibilityLabel={`${short(d.date)}: spent ${money(d.spent, cur)} of ${money(Math.max(0, d.allowance), cur)}`} onPress={() => { setDay(d.date); setView('day'); }}>
                     <View style={[s.bar, { height: `${Math.max(2, (d.spent / maxDay) * 100)}%`, backgroundColor: d.spent <= Math.max(0, d.allowance) ? C.good : C.bad }]} />
+                    {d.allowance > 0 && <View style={[s.tick, { bottom: `${(d.allowance / maxDay) * 100}%` }]} />}
                   </Pressable>
                 ))}
               </View>
-              <Text style={s.hint}>{inPlan} of {n} day{n === 1 ? '' : 's'} within budget. Tap a day to see it.</Text>
+              <Text style={s.hint}>{inPlan} of {n} day{n === 1 ? '' : 's'} within budget. The white marks are each day's budget. Tap a day to see it.</Text>
             </Card>
           )}
 
@@ -249,8 +254,8 @@ export function InsightsScreen() {
               {whereBy === 'cat' && catRows.some((x) => x.amt > 0) && (
                 <View style={{ alignItems: 'center', paddingVertical: 4 }}>
                   <Donut parts={catRows.map((x) => ({ value: x.amt, colour: cats.find((k) => k.id === x.cat)?.c || C.muted }))} track={C.track}>
-                    <Text style={s.donutT}>{moneyS(catRows.reduce((a, x) => a + x.amt, 0), cur)}</Text>
-                    <Text style={s.ringS}>day to day</Text>
+                    <Text style={s.donutT}>{moneyS(catTotal, cur)}</Text>
+                    <Text style={s.ringS}>{catTotal === m.spent ? 'day to day' : 'less refunds'}</Text>
                   </Donut>
                 </View>
               )}
@@ -419,6 +424,7 @@ const s = StyleSheet.create({
   amt: { color: C.fg, fontSize: 15, fontWeight: '700', fontVariant: ['tabular-nums'] },
   bars: { flexDirection: 'row', alignItems: 'flex-end', height: 90, gap: 2 },
   barCol: { flex: 1, height: '100%', justifyContent: 'flex-end' },
+  tick: { position: 'absolute', left: 0, right: 0, height: 2, borderRadius: 1, backgroundColor: C.fg, opacity: 0.55 },
   bar: { borderRadius: 2, minHeight: 2 },
   track: { height: 6, borderRadius: 3, backgroundColor: C.surface2, overflow: 'hidden' },
   hBars: { flexDirection: 'row', alignItems: 'flex-end', height: 110, gap: 12, position: 'relative' },

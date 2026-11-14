@@ -71,6 +71,18 @@ it('asks what money in is, and one tap counts it', () => {
   expect(drop.keys).toEqual(['b1']);
 });
 
+it('asks about a big refund instead of counting it straight away', () => {
+  const S = state([...seen]);
+  const parsed = parseAll([raw('r1', BAR, 'Barclays', 'You have received a refund of £250.00', NOW - 5000)]);
+  const items = assess(S, parsed, NOW);
+  expect(items[0].sure).toBe(false);
+  const n = noticeFor(projected(S, items), items[0], '2026-11-10', fmt)!;
+  expect(n.title).toBe('£250.00 refund');
+  expect(n.actions.map((a) => a.label)).toEqual(['Refund', 'Extra income', 'My own account']);
+  const r = applyAct(S, parsed, JSON.parse(n.actions[0].key), '2026-11-10', fmt, NOW);
+  expect(r.S.tx[r.S.tx.length - 1]).toMatchObject({ kind: 'in', amt: 25000, cat: 'refund' });
+});
+
 it('moves an entry that is already in to another category', () => {
   const S = state([...seen, { id: 'a-x1', kind: 'out', amt: 450, cat: 'food', merchant: 'Greggs', note: '', date: '2026-11-10', time: '12:00', biz: false, billId: null, catGuess: true }]);
   const r = applyAct(S, [], { t: 'a-x1', k: 'gone', op: 'cat:groceries' }, '2026-11-10', fmt, NOW);

@@ -191,6 +191,7 @@ it('tidies Uber card descriptions', () => {
 
 it('skips card limit notices and wallet tips', () => {
   expect(parseAlert({ key: 'c', pkg: 'com.revolut.revolut', title: 'Contactless limit ⚠️', text: 'Approaching limit. Tap to reset it now, or use Chip & PIN to reset it on your next payment', time: 1 })).toMatchObject({ kind: 'ignore', reason: 'Card limit notice' });
+  expect(parseAlert({ key: 'v', pkg: 'com.google.android.apps.walletnfcrel', title: 'Go again?', text: '£0 unlock fee on all rides, just hop on and roll.', time: 1 })).toMatchObject({ kind: 'ignore', reason: 'Advert' });
   expect(parseAlert({ key: 'w', pkg: 'com.google.android.apps.walletnfcrel', title: 'Shop more securely', text: 'Create a virtual card number for Mastercard ••1111 in a few steps', time: 1 })).toMatchObject({ kind: 'ignore', reason: 'Advert' });
 });
 
@@ -288,3 +289,10 @@ describe('shop names', () => {
   });
 });
 
+
+it('gives TfL one name whichever bank reports it', () => {
+  expect(tidyName('TFL')).toBe('Transport for London');
+  expect(tidyName('TFL TRAVEL CH')).toBe('Transport for London');
+  expect(tidyName('Transport for London')).toBe('Transport for London');
+  expect(tidyName('Tflex Gym')).toBe('Tflex Gym');
+});

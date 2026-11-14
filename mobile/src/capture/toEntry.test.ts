@@ -347,3 +347,13 @@ it("doesn't learn a shop's category from one Crest guessed", () => {
   S.tx.push({ id: 'g', kind: 'out', amt: 500, cat: 'other', merchant: 'Corner Kebab', note: '', date: '2026-10-26', time: '09:00', biz: false, billId: null, catGuess: true });
   expect(guessCategory(S, 'Corner Kebab')).toBeNull();
 });
+
+it('asks before counting a big refund', () => {
+  const S = withHistory();
+  const small = alert({ key: 'r1', kind: 'received', refund: true, amount: 2000, merchant: 'Amazon', bank: 'Barclays' });
+  expect(isSure(small, suggest(S, small, 'n201'))).toBe(true);
+  const big = alert({ key: 'r2', kind: 'received', refund: true, amount: 25000, merchant: 'Refund', bank: 'Barclays' });
+  const s = suggest(S, big, 'n202');
+  expect(s).toMatchObject({ action: 'add', guessed: true, tx: { kind: 'in', cat: 'refund', amt: 25000 } });
+  expect(isSure(big, s)).toBe(false);
+});

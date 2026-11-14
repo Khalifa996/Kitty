@@ -21,6 +21,7 @@ export function tidyOld(name: string): string {
     .replace(/\s+(GBP|EUR|USD)$/, '')
     .replace(/(\s+|,\s*)#?\d{3,}(-\d+)?$/, '')
     .trim();
+  if (/^tfl\b/i.test(t)) return 'Transport for London';
   return t || name;
 }
 

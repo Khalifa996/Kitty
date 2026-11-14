@@ -60,6 +60,15 @@ Since 9 Nov 2026 Kitty is Mo's own app, built around how he banks. Items that on
 | P3 | Debt and business suggestions only recognise UK lender and insurer names |
 
 ## Changelog
+**App 0.15, 14 Nov 2026: fixes from Mo's 14 Nov screenshots**
+- Home card: once a week of the pay month has gone, if your usual pace would run out before payday it says so, in amber, instead of only in Insights
+- Insights: "more than the pay month before" only when Crest has all of the month before (it was comparing with an empty month); the daily chart shows each day's budget as a mark; the donut says "less refunds" when refunds come off; Personal is a clearer blue
+- Activity: "Charged twice?" when one bank sends two alerts for the same shop and amount minutes apart; "A move, not spending?" for card top-ups of your own Revolut or Monzo that went in as spending
+- A refund of £100 or more is asked about (Refund, Extra income, My own account) instead of counted straight away, since it lifts every day left
+- Plan: when every bill is paid, "After payday" lists what comes round next
+- Review: anything without an amount goes with the notices; scooter adverts are adverts; copy fits adding by itself
+- TfL has one name whichever bank reports it, so Shops adds it up together
+
 **App 0.14, 11 Nov 2026: more colour and life**
 - Today's figure sits on a colour card that shifts green, gold or red with the day, rolls to the new amount, and fills a bar as you spend
 - Buttons, chips, keys and tabs spring under your thumb, with a light buzz; cards float in; a tick slides up when something's saved

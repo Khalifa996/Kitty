@@ -244,7 +244,11 @@ export function suggest(S: State, p: ParsedAlert, id: string, others: ParsedAler
       : biz ? 'side'
       : work || sold ? 'extra'
       : S.settings.income && Math.abs(p.amount - S.settings.income) <= S.settings.income * 0.2 ? 'salary' : 'extra';
-    return { action: 'add', guessed: !seen && !work && !sold && (cat === 'extra' || takings), tx: { ...base, kind: 'in', cat, sub: work ? 'Job' : sold ? 'Sold something' : null, biz: cat === 'side' } };
+    // A big refund lifts every day left in the pay month, so Crest asks first: it might be money moved from your own account
+    const bigRefund = cat === 'refund' && p.amount >= 10000;
+    return { action: 'add', guessed: (!seen && !work && !sold && (cat === 'extra' || takings)) || bigRefund,
+      hint: bigRefund ? 'A big refund adds to what you have left this pay month. If it was money moved from another of your accounts, change it to Between my accounts' : undefined,
+      tx: { ...base, kind: 'in', cat, sub: work ? 'Job' : sold ? 'Sold something' : null, biz: cat === 'side' } };
   }
 
   if (p.reason === 'Bank charge') {
