@@ -15,7 +15,7 @@ import { Btn, Card, Chip, Label } from '../ui/kit';
 import { Toggle } from '../ui/motion';
 import { C, moneyS } from '../ui/theme';
 
-const VERSION = '0.15';
+const VERSION = '0.15.1';
 // @ts-ignore process.env is provided by Expo
 const BUILD: string = (process.env.EXPO_PUBLIC_KITTY_BUILD as string | undefined) || '';
 

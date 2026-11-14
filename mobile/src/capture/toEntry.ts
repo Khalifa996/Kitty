@@ -1,6 +1,7 @@
 // Turns a parsed bank alert into a Crest entry, using what the person has logged before.
 import { billDue, billWindowAt, cycleOf, planDays, pot } from '../engine/budget';
 import { diffDays, hm, ymd } from '../engine/dates';
+import { refundedPayment } from '../engine/spending';
 import type { State, Tx } from '../engine/types';
 import { cardBankOf, type ParsedAlert } from '../parse/bankAlerts';
 
@@ -244,11 +245,16 @@ export function suggest(S: State, p: ParsedAlert, id: string, others: ParsedAler
       : biz ? 'side'
       : work || sold ? 'extra'
       : S.settings.income && Math.abs(p.amount - S.settings.income) <= S.settings.income * 0.2 ? 'salary' : 'extra';
-    // A big refund lifts every day left in the pay month, so Crest asks first: it might be money moved from your own account
-    const bigRefund = cat === 'refund' && p.amount >= 10000;
+    // A refund gives back an earlier payment: count it against that payment's category, and name it if the bank didn't
+    const back = cat === 'refund' ? refundedPayment(S, { amt: p.amount, date: base.date, merchant: p.merchant }) : null;
+    const named = !p.merchant || p.merchant === 'Refund' ? back?.merchant : undefined;
+    // A big refund lifts every day left in the pay month, so unless it matches a payment exactly, Crest asks first
+    const bigRefund = cat === 'refund' && p.amount >= 10000 && !(back && back.amt === p.amount);
     return { action: 'add', guessed: (!seen && !work && !sold && (cat === 'extra' || takings)) || bigRefund,
-      hint: bigRefund ? 'A big refund adds to what you have left this pay month. If it was money moved from another of your accounts, change it to Between my accounts' : undefined,
-      tx: { ...base, kind: 'in', cat, sub: work ? 'Job' : sold ? 'Sold something' : null, biz: cat === 'side' } };
+      hint: bigRefund ? 'A big refund adds to what you have left this pay month. If it was money moved from another of your accounts, change it to Between my accounts'
+        : back ? `Gives back ${back.merchant || 'a payment'} from ${back.date.slice(8)}/${back.date.slice(5, 7)}` : undefined,
+      tx: { ...base, kind: 'in', cat, sub: work ? 'Job' : sold ? 'Sold something' : null, biz: cat === 'side',
+        ...(named ? { merchant: named } : {}), ...(back ? { refundCat: back.cat } : {}) } };
   }
 
   if (p.reason === 'Bank charge') {

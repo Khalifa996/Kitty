@@ -22,7 +22,7 @@ const dayLabel = (d: string) => {
 export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => void) => void }) {
   const { S, update } = useKitty();
   const [open, setOpen] = useState<Tx | null>(null);
-  const [form, setForm] = useState({ name: '', amt: '', cat: '', all: true, side: false, pot: '', spread: false, debt: '', outside: false, biz: false });
+  const [form, setForm] = useState({ name: '', amt: '', cat: '', all: true, side: false, pot: '', spread: false, debt: '', outside: false, biz: false, back: '' });
   // Something added by hand that a bank alert added too
   const dups = useMemo(() => likelyDuplicates(S, ymd(new Date())), [S]);
   const twins = useMemo(() => alertTwins(S, ymd(new Date())), [S]);
@@ -30,7 +30,7 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
   const dismiss = (key: string) => update((x) => { x.settings.dismissed = { ...(x.settings.dismissed || {}), [key]: true }; });
   const dm = (t: Tx) => `${t.date.slice(8)}/${t.date.slice(5, 7)}`;
   const cur = S.settings.currency;
-  const openTx = (t: Tx) => { setOpen(t); setForm({ name: t.merchant, amt: (t.amt / 100).toFixed(2), cat: t.cat, all: true, side: !!t.fromSide, pot: t.potId || '', spread: !!t.spread, debt: t.debtId || '', outside: !!t.outside, biz: t.kind === 'out' && !!t.biz }); };
+  const openTx = (t: Tx) => { setOpen(t); setForm({ name: t.merchant, amt: (t.amt / 100).toFixed(2), cat: t.cat, all: true, side: !!t.fromSide, pot: t.potId || '', spread: !!t.spread, debt: t.debtId || '', outside: !!t.outside, biz: t.kind === 'out' && !!t.biz, back: t.refundCat || '' }); };
 
   const sections = useMemo(() => {
     const list = [...S.tx].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).slice(0, 400);
@@ -98,6 +98,7 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
         t.biz = !!S.settings.sideIncome && form.biz;
       }
       if (t.kind === 'in') { if (t.cat === 'borrowed' && form.debt) t.debtId = form.debt; else delete t.debtId; }
+      if (t.kind === 'in') { if (t.cat === 'refund' && form.back) t.refundCat = form.back; else delete t.refundCat; }
     });
     setOpen(null);
     onDone(others.length ? `Saved, and ${others.length} more from ${was.merchant}` : 'Saved', () => update((d) => {
@@ -203,6 +204,14 @@ export function ActivityScreen({ onDone }: { onDone: (msg: string, undo?: () => 
           {form.outside && <Text style={s.hint}>For something you saved up for or paid with money put aside. It won't touch this month's daily budget.</Text>}
           {S.settings.sideIncome && <Chip label="Business cost" on={form.biz} onPress={() => setForm({ ...form, biz: !form.biz })} />}
           {S.settings.sideIncome && form.biz && <Text style={s.hint}>Counts as a cost against your side income, so less is kept back for tax. It's still money spent, so it stays in your daily budget.</Text>}
+        </>}
+        {open && open.kind === 'in' && form.cat === 'refund' && <>
+          <Label>Money back for</Label>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            <Chip label="Not sure" on={!form.back} onPress={() => setForm({ ...form, back: '' })} />
+            {categories(S.settings).map((c) => <Chip key={c.id} label={c.n} colour={c.c} icon={c.i} on={form.back === c.id} onPress={() => setForm({ ...form, back: c.id })} />)}
+          </View>
+          <Text style={s.hint}>It comes off that category's spending in Insights. Your daily figure is the same either way.</Text>
         </>}
         {open && open.kind === 'in' && form.cat === 'borrowed' && S.bills.some((b) => b.type === 'debt') && <>
           <Label>Added to which debt?</Label>

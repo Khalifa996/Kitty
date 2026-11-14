@@ -60,6 +60,10 @@ Since 9 Nov 2026 Kitty is Mo's own app, built around how he banks. Items that on
 | P3 | Debt and business suggestions only recognise UK lender and insurer names |
 
 ## Changelog
+**App 0.15.1, 14 Nov 2026: refunds give back what they refund**
+- A refund is linked to the payment it gives back (same shop if named, otherwise the exact amount, within 90 days), so it comes off that category in Insights and gets that payment's name. Refunds already in are linked when the app opens. An exact match is counted straight away, even if it's big
+- Activity: "Money back for" on a refund to link it by hand
+
 **App 0.15, 14 Nov 2026: fixes from Mo's 14 Nov screenshots**
 - Home card: once a week of the pay month has gone, if your usual pace would run out before payday it says so, in amber, instead of only in Insights
 - Insights: "more than the pay month before" only when Crest has all of the month before (it was comparing with an empty month); the daily chart shows each day's budget as a mark; the donut says "less refunds" when refunds come off; Personal is a clearer blue

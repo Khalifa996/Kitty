@@ -357,3 +357,12 @@ it('asks before counting a big refund', () => {
   expect(s).toMatchObject({ action: 'add', guessed: true, tx: { kind: 'in', cat: 'refund', amt: 25000 } });
   expect(isSure(big, s)).toBe(false);
 });
+
+it('links a refund to the payment it gives back, and counts an exact match straight away', () => {
+  const S = withHistory();
+  S.tx.push({ id: 'fee', kind: 'out', amt: 25000, cat: 'bills', merchant: 'Phone fee', note: '', date: '2026-10-20', time: '09:00', biz: false, billId: null });
+  const r = alert({ key: 'r3', kind: 'received', refund: true, amount: 25000, merchant: 'Refund', bank: 'Barclays' });
+  const s = suggest(S, r, 'n203');
+  expect(s).toMatchObject({ action: 'add', guessed: false, tx: { kind: 'in', cat: 'refund', refundCat: 'bills', merchant: 'Phone fee' } });
+  expect(isSure(r, s)).toBe(true);
+});

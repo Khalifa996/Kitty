@@ -1,4 +1,5 @@
 // Brings any saved or imported state up to date, the same way the web prototype's migrate() does.
+import { refundedPayment } from './spending';
 import type { State } from './types';
 
 export const DEFAULT_LIMITS: Record<string, number> = { food: 14000, groceries: 26000, transport: 22000, shopping: 15000, fun: 8000, health: 4000, home: 8000, personal: 6000, bills: 3000, other: 5000 };
@@ -42,5 +43,7 @@ export function migrate(input: unknown): State {
   S.tx.forEach((t) => { if (t.kind === 'in' && t.cat === 'side') t.biz = true; });
   // Shop names saved before Crest's name cleaning got better: running totals, currency and store numbers on the end
   S.tx.forEach((t) => { if (t.merchant && t.source === 'alert') t.merchant = tidyOld(t.merchant); });
+  // A refund counts against the category of the payment it gives back, so Insights shows what that category really cost
+  S.tx.forEach((t) => { if (t.kind === 'in' && t.cat === 'refund' && !t.refundCat) { const o = refundedPayment(S, t); if (o) t.refundCat = o.cat; } });
   return S;
 }

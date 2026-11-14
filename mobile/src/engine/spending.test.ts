@@ -1,5 +1,6 @@
 /// <reference types="jest" />
-import { byShop, catHistory, limitInfo, limitsNow, shopKey, suggestLimit } from './spending';
+import { byShop, catHistory, limitInfo, limitsNow, refundedPayment, shopKey, suggestLimit } from './spending';
+import { blankState } from './migrate';
 import { cycleOf } from './budget';
 import type { Settings, State, Tx } from './types';
 
@@ -52,4 +53,18 @@ it('says a category is running fast only once a week has gone by', () => {
   expect(now.length).toBe(1);
   expect(now[0]).toMatchObject({ cat: 'food', pace: 'over', left: -1000 });
   expect(limitInfo(S, 'fun', '2026-11-20')).toBeNull();
+});
+
+it('finds the payment a refund gives back', () => {
+  const S = blankState();
+  const fee = { id: 'f', kind: 'out' as const, amt: 25000, cat: 'bills', merchant: 'Phone fee', note: '', date: '2026-11-02', time: '09:00', biz: false, billId: null };
+  const shoes = { id: 's', kind: 'out' as const, amt: 6000, cat: 'shopping', merchant: 'Shoe Shop', note: '', date: '2026-11-05', time: '12:00', biz: false, billId: null };
+  S.tx.push(fee, shoes);
+  // No name: the same amount
+  expect(refundedPayment(S, { amt: 25000, date: '2026-11-14', merchant: 'Refund' })).toBe(fee);
+  // Named: the same shop, even for part of it
+  expect(refundedPayment(S, { amt: 2000, date: '2026-11-14', merchant: 'SHOE SHOP LTD' })).toBe(shoes);
+  expect(refundedPayment(S, { amt: 1234, date: '2026-11-14' })).toBeNull();
+  // Nothing from after the refund, or long before it
+  expect(refundedPayment(S, { amt: 25000, date: '2026-11-01' })).toBeNull();
 });
