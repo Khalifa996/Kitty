@@ -144,6 +144,25 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
     onDone(`Took out ${money(was.amt, cur)}`, () => update((d) => { d.tx.push(was); }));
   };
   const skipped = items.filter((i) => i.sug.action === 'skip' && !i.p.duplicateOf && !i.p.warning);
+  // "Your loan payment of £120.00 is due Saturday": if a bill with that name is set at a different amount, offer to change it
+  const reminder = (() => {
+    for (const p of [...cap.parsed].sort((a, b) => b.time - a.time)) {
+      if (p.reason !== 'Payment reminder' || !p.due || !p.merchant || S.settings.dismissed?.[`due:${p.key}`]) continue;
+      const w = p.merchant.toLowerCase(), b = S.bills.find((x) => x.name.toLowerCase().includes(w));
+      if (b) return b.amt !== p.due ? { p, b, due: p.due } : null;
+    }
+    return null;
+  })();
+  const changeBill = () => {
+    if (!reminder) return;
+    const { p, b, due } = reminder, was = b.amt;
+    update((d) => {
+      const x = d.bills.find((y) => y.id === b.id);
+      if (x) x.amt = due;
+      d.settings.dismissed = { ...(d.settings.dismissed || {}), [`due:${p.key}`]: true };
+    });
+    onDone(`${b.name} is now ${money(due)}`, () => update((d) => { const x = d.bills.find((y) => y.id === b.id); if (x) x.amt = was; }));
+  };
   // What your banks are warning you about (overdraft, low balance): newest of each kind per bank, last three days
   const warnings = cap.parsed.filter((p) => p.warning && Date.now() - p.time < 3 * 864e5)
     .filter((p, k, all) => all.findIndex((q) => q.bank === p.bank && q.warning === p.warning) === k);
@@ -288,6 +307,17 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
           <View style={[s.row, { justifyContent: 'flex-end' }]}>
             <Btn label="Not a bill" small onPress={() => update((d) => { d.settings.dismissed = { ...(d.settings.dismissed || {}), [`rec:${recurring.key}`]: true }; })} />
             <Btn label="Make it a bill" primary small onPress={() => makeBillOf(recurring)} />
+          </View>
+        </Card>
+      )}
+
+      {reminder && (
+        <Card style={{ gap: 8 }}>
+          <Text style={s.h2}>{reminder.b.name}: {money(reminder.due)} this time?</Text>
+          <Text style={s.hint}>{reminder.p.bank} says {money(reminder.due)} is coming up. Crest has this bill at {money(reminder.b.amt)}, so the next pay month's figure would be {money(Math.abs(reminder.b.amt - reminder.due))} {reminder.b.amt > reminder.due ? 'too low' : 'too high'}.</Text>
+          <View style={[s.row, { justifyContent: 'flex-end' }]}>
+            <Btn label="Leave it" small onPress={() => update((d) => { d.settings.dismissed = { ...(d.settings.dismissed || {}), [`due:${reminder.p.key}`]: true }; })} />
+            <Btn label={`Make it ${money(reminder.due)}`} primary small onPress={changeBill} />
           </View>
         </Card>
       )}

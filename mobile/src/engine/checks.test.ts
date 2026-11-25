@@ -45,3 +45,12 @@ it('spots a top-up of your own account counted as spending', () => {
   S.settings.dismissed = { [`move:${move.id}`]: true };
   expect(topUpsCounted(S, '2026-11-14')).toEqual([]);
 });
+
+it('spots Google Wallet\'s copy of a payment the bank told about too', () => {
+  const S = blankState();
+  const bank = tx({ amt: 900, cat: 'food', merchant: 'Bagel Shop', date: '2026-11-12', time: '19:00', source: 'alert', bank: 'Barclays' });
+  const wallet = tx({ amt: 900, cat: 'food', merchant: 'BAGEL SHOP', date: '2026-11-12', time: '19:00', source: 'alert', bank: 'Google Wallet' });
+  const small = tx({ amt: 280, cat: 'food', merchant: 'Bagel Shop', date: '2026-11-12', time: '19:03', source: 'alert', bank: 'Barclays' });
+  S.tx.push(bank, wallet, small);
+  expect(alertTwins(S, '2026-11-13')).toEqual([[bank, wallet]]);
+});

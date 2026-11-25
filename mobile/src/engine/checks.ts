@@ -24,7 +24,8 @@ export function likelyDuplicates(S: State, today: string, days = 60): [Tx, Tx][]
 }
 
 /**
- * Two entries from bank alerts that look like one payment told twice: same bank, name and amount, a few minutes apart.
+ * Two entries from bank alerts that look like one payment told twice: same bank, name and amount, a few minutes apart,
+ * or Google Wallet's copy of a payment the bank also told about (same amount, within ten minutes).
  * Sometimes it really was charged twice, so Crest asks rather than removing one.
  */
 export function alertTwins(S: State, today: string, days = 30): [Tx, Tx][] {
@@ -34,10 +35,10 @@ export function alertTwins(S: State, today: string, days = 30): [Tx, Tx][] {
   for (let i = 0; i < L.length; i++) {
     const a = L[i];
     if (used.has(a.id)) continue;
-    for (let j = i + 1; j < L.length && L[j].date === a.date && mins(L[j]) - mins(a) <= 3; j++) {
-      const b = L[j];
-      if (used.has(b.id) || b.kind !== a.kind || b.amt !== a.amt || (b.bank || '') !== (a.bank || '') ||
-        (b.merchant || '').toLowerCase() !== (a.merchant || '').toLowerCase() || S.settings.dismissed?.[`twin:${a.id}:${b.id}`]) continue;
+    for (let j = i + 1; j < L.length && L[j].date === a.date && mins(L[j]) - mins(a) <= 10; j++) {
+      const b = L[j], wallet = (a.bank === 'Google Wallet') !== (b.bank === 'Google Wallet');
+      if (used.has(b.id) || b.kind !== a.kind || b.amt !== a.amt || S.settings.dismissed?.[`twin:${a.id}:${b.id}`]) continue;
+      if (!wallet && ((b.bank || '') !== (a.bank || '') || mins(b) - mins(a) > 3 || (b.merchant || '').toLowerCase() !== (a.merchant || '').toLowerCase())) continue;
       used.add(a.id); used.add(b.id); pairs.push([a, b]);
       break;
     }

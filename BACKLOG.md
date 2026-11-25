@@ -60,6 +60,16 @@ Since 9 Nov 2026 Kitty is Mo's own app, built around how he banks. Items that on
 | P3 | Debt and business suggestions only recognise UK lender and insurer names |
 
 ## Changelog
+**App 0.16, 25 Nov 2026: fixes from Mo's latest alerts**
+- Monzo's own alerts with the payment in the title and the day's running total in the text ("£15 at Shop" / "You've spent £40 on your card today") took the running total. Now the payment
+- Monzo card payments starting with a card symbol were mistaken for Revolut's child card and dropped once the day had a running total
+- Payment reminders ("Your loan payment is due Saturday") are reminders, not spending. Review offers to change the bill to the new amount
+- "£X sent to <name>: ref" from Monzo counts as money sent, so a move to your own account in another bank pairs up as a move
+- Google Wallet posting the same payment twice (often with a tidier name) counts once; Activity also asks when Google Wallet's copy and the bank's both went in
+- Money sent with no name ("Payment sent") is asked about, and never takes a category from an earlier one
+- TfL "Travel charge for <day and date>" goes on that day
+- Revolut "Sent you £X" with the person as the title is money in from them
+
 **App 0.15.1, 14 Nov 2026: refunds give back what they refund**
 - A refund is linked to the payment it gives back (same shop if named, otherwise the exact amount, within 90 days), so it comes off that category in Insights and gets that payment's name. Refunds already in are linked when the app opens. An exact match is counted straight away, even if it's big
 - Activity: "Money back for" on a refund to link it by hand

@@ -25,6 +25,8 @@ export type ParsedAlert = {
   cash?: boolean;       // a cash withdrawal
   warning?: string;     // something the person should know about (overdraft, low balance): shown as a heads-up
   emoji?: string;       // the bank's own category symbol (Revolut and Monzo start alerts with one)
+  due?: number;         // a reminder of a payment coming up (pennies), not a payment
+  travelDay?: string;   // TfL says which day a travel charge is for ("Travel charge for Sunday 22 November")
 };
 
 // Apps Crest never reads, even if someone turns them on: chats, email, texts and social apps carry private messages,
@@ -137,6 +139,20 @@ const IGNORE: [RegExp, string][] = [
   [/t&cs apply|terms apply|save over|open an? \w+ account|refer a friend|cashback offer|exclusive offer|virtual card number|shop more securely|unlock fee|hop on|free rides?|promo code|% off|off your next/i, 'Advert'],
 ];
 
+// Reminders of payments coming up. A payment that was made says "paid", "taken" or "made", not "due"
+const REMINDER = /\b(?:is|are) due (?:on|in|tomorrow|today|this|next|mon|tue|wed|thu|fri|sat|sun)|\bdue (?:on|tomorrow) |will be (?:taken|collected|paid) on|still time to change|upcoming payment|payment reminder/i;
+// Monzo's running total for the day, after the payment itself
+const RUNNING_TOTAL = /you['’]?ve spent\s+£[\d,]+(?:\.\d{1,2})?\s+(?:on your card\s+)?today\.?|want to split this with someone\??/gi;
+const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+/** "Travel charge for Sunday 22 November" → 2026-11-22 (the year of the alert, or the one before in early January). */
+export function travelDayOf(text: string, time: number): string | undefined {
+  const m = text.match(/travel charge for \w+day (\d{1,2}) (january|february|march|april|may|june|july|august|september|october|november|december)/i);
+  if (!m) return undefined;
+  const at = new Date(time), mon = MONTHS.indexOf(m[2].toLowerCase());
+  const year = mon > at.getMonth() + 1 ? at.getFullYear() - 1 : at.getFullYear();
+  return `${year}-${String(mon + 1).padStart(2, '0')}-${String(Number(m[1])).padStart(2, '0')}`;
+}
+
 /** The first amount in a piece of text, in pennies. */
 export const amountIn = (s: string) => { const m = (s || '').match(AMOUNT); return m ? toPennies(m[1]) : undefined; };
 
@@ -159,11 +175,17 @@ export function parseAlert(a: RawAlert): ParsedAlert {
   }
   const charge = BANK_CHARGE.test(all) && (text.match(AMOUNT) || title.match(AMOUNT));
   if (charge) return { ...base, kind: 'spent', amount: toPennies(charge[1]), merchant: `${bank} charges`, reason: 'Bank charge' };
+  // "Your loan payment is due Saturday / Your payment of £120.00 is due on Saturday": a reminder, not a payment
+  if (REMINDER.test(all)) {
+    const what = (title.match(/^your (.+?) (?:payment|bill|direct debit|repayment) (?:is )?due\b/i) || all.match(/\byour (.+?) (?:payment|bill|direct debit|repayment) (?:is )?due\b/i) || [])[1];
+    return { ...base, reason: 'Payment reminder', due: amountIn(all), merchant: what ? tidyName(what) : undefined };
+  }
   for (const [rx, why] of WARNINGS) if (rx.test(all)) return { ...base, reason: `${why} warning`, warning: why };
   for (const [rx, why] of IGNORE) if (rx.test(all)) return { ...base, reason: why };
 
-  // Revolut shows a family member's card as "<Name> 💳" with "Spent £x at Shop"
-  if (/💳/.test(a.title) && /\bspent\b/i.test(text)) {
+  // Revolut shows a family member's card as "<Name> 💳" with "Spent £x at Shop". Monzo starts its own card payments with
+  // 💳 too ("💳 £11.80 at Cafe"), so only a Revolut title that ends with the card counts
+  if (bank === 'Revolut' && /💳\s*$/u.test(a.title || '') && /\bspent\b/i.test(text)) {
     return { ...base, reason: `${title}'s card, not yours`, merchant: tidyName((text.match(/\bat\s+(.+?)(?:\s+balance|$)/i) || [])[1] || '') };
   }
 
@@ -178,17 +200,19 @@ export function parseAlert(a: RawAlert): ParsedAlert {
     // Monzo can run a running total on after the name ("Toolstation You’ve spent £41.85 today", with a curly
     // apostrophe) or a description after a full stop ("Transport for London. Travel charge for Monday")
     const cut = (n: string) => n.split(/\.\s|\s+(?:you['’]?ve spent|you have spent|you['’]?ve received|spent today|balance)\b/i)[0];
-    if (xAt) return { ...base, kind: 'spent', amount: toPennies(xAt[1]), merchant: tidyName(cut(xAt[2])) };
+    if (xAt) return { ...base, kind: 'spent', amount: toPennies(xAt[1]), merchant: tidyName(cut(xAt[2])), travelDay: travelDayOf(text, a.time) };
     if (xFrom) return { ...base, kind: 'received', amount: toPennies(xFrom[1]), merchant: tidyName(cut(xFrom[2])) };
     const xTo = body.match(new RegExp('^-?' + MONEY + '\\s+to\\s+([^\\n]+)', 'i'));
     if (xTo) return { ...base, kind: 'spent', sent: true, amount: toPennies(xTo[1]), merchant: tidyName(xTo[2]) };
   }
 
-  // Monzo puts the whole alert in the title: "£1 at Co-op", "£20 from Sam", "£495.50 Monzo Flex payment made"
+  // Monzo puts the whole alert in the title: "£1 at Co-op", "£20 from Sam", "£495.50 Monzo Flex payment made".
+  // The text can add the day's running total ("You’ve spent £40.10 on your card today"): that's not this payment
   const tAt = title.match(new RegExp('^' + MONEY + '\\s+at\\s+(.+)$', 'i'));
   const tFrom = title.match(new RegExp('^' + MONEY + '\\s+from\\s+(.+)$', 'i'));
-  if (tAt && !text.match(AMOUNT)) return { ...base, kind: 'spent', amount: toPennies(tAt[1]), merchant: tidyName(tAt[2]) };
-  if (tFrom && !text.match(AMOUNT)) return { ...base, kind: 'received', amount: toPennies(tFrom[1]), merchant: tidyName(tFrom[2]) };
+  const extra = text.replace(RUNNING_TOTAL, '').trim();
+  if (tAt && !extra.match(AMOUNT)) return { ...base, kind: 'spent', amount: toPennies(tAt[1]), merchant: tidyName(tAt[2]) };
+  if (tFrom && !extra.match(AMOUNT)) return { ...base, kind: 'received', amount: toPennies(tFrom[1]), merchant: tidyName(tFrom[2]) };
 
   const am = text.match(AMOUNT) || title.match(AMOUNT);
   if (!am) return { ...base, reason: 'Not a payment' };
@@ -213,7 +237,8 @@ export function parseAlert(a: RawAlert): ParsedAlert {
 
   // Money in
   const fromName = (text.match(/\bfrom\s+(.+?)(?:\s+(?:to|into)\s+your|\.\s|\.$|\s+balance|$)/i) || [])[1];
-  const sentYou = text.match(/^(.+?)\s+(?:sent|paid) you\b/i);
+  // "Sam sent you £20", or Revolut's "Sent you £20" with the person's name as the title
+  const sentYou = text.match(/^(.+?)\s+(?:sent|paid) you\b/i) || (/^(?:sent|paid) you\b/i.test(text) && title && !GENERIC_TITLES.test(title) ? [text, title] : null);
   // A card payment undone by the bank or the shop ("Card payment reverted"): it only matters if the payment was counted
   if (/\b(revert(ed)?|reversed|reversal)\b/i.test(all)) {
     const to = (text.match(/\b(?:to|at|from)\s+(.+?)(?:\s+(?:has|have|was|were|is)\b|\.\s|\.$|\s+balance|$)/i) || [])[1];
@@ -244,8 +269,9 @@ export function parseAlert(a: RawAlert): ParsedAlert {
     let merchant: string | undefined = (text.match(/\b(?:at|with|to)\s+(.+?)(?:\s+(?:from|on|using|with)\s+(?:your|a|card)\b|\s+card ending\b|\s+balance\b|\.\s|\.$|$)/i) || [])[1];
     if (merchant && /your account|another account/i.test(merchant)) merchant = undefined;
     if (!merchant && !named && !GENERIC_TITLES.test(title) && !AMOUNT.test(title)) merchant = title;
-    const sent = /\byou sent\b|transfer sent/i.test(all);
-    if (merchant && sent) merchant = merchant.replace(/\.\s.*$/, '');
+    const sent = /\byou sent\b|transfer sent|\bsent to\b/i.test(all);
+    // "£200 sent to Sam Jones: rent" names who, then the reference
+    if (merchant && sent) merchant = merchant.replace(/\.\s.*$/, '').replace(/:\s.*$/, '');
     if (!merchant && sent) merchant = 'Payment sent';
     const cash = /withdr|cash ?machine|cashpoint|\batm\b/i.test(all) || /[\u{1F3E7}\u{1F4B5}]/u.test(a.text + a.title);
     if (!merchant && cash) merchant = 'Cash';
@@ -272,12 +298,20 @@ export function markDuplicates(list: ParsedAlert[], windowMs = 10 * 60 * 1000, e
   const out = list.map((p) => ({ ...p }));
   const spent = out.filter((p) => p.kind === 'spent' && p.bank !== 'Google Wallet');
   const used = new Set<string>();
-  for (const p of out) {
-    if (p.kind !== 'spent' || p.bank !== 'Google Wallet' || !p.amount) continue;
+  // Google Wallet often posts the same payment twice, the second time with a tidier name ("CORNER CAFE", then "Corner Cafe")
+  const wallet = out.filter((p) => p.kind === 'spent' && p.bank === 'Google Wallet' && p.amount).sort((a, b) => a.time - b.time);
+  const nm = (s?: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  wallet.forEach((p, i) => {
+    const first = wallet.slice(0, i).find((q) => q.kind === 'spent' && q.amount === p.amount && q.reason === p.reason && p.time - q.time <= windowMs &&
+      (nm(q.merchant) === nm(p.merchant) || nm(q.merchant).startsWith(nm(p.merchant).slice(0, 5)) || nm(p.merchant).startsWith(nm(q.merchant).slice(0, 5))));
+    if (first) Object.assign(p, { kind: 'ignore', duplicateOf: first.key, reason: 'Google Wallet sent this one twice' });
+  });
+  for (const p of wallet) {
+    if (p.kind !== 'spent') continue;
     // Google Wallet names the card ("with Barclays Debit"), so the twin comes from that bank. Apps that take a hold and then
     // the real amount (scooters, taxis) make the two differ by a few pence, and the bank can be a while behind
     const bank = cardBankOf(p)?.toLowerCase();
-    const amt = p.amount, near = (q: ParsedAlert) => Math.abs((q.amount || 0) - amt) <= Math.max(10, Math.round(amt * 0.03));
+    const amt = p.amount || 0, near = (q: ParsedAlert) => Math.abs((q.amount || 0) - amt) <= Math.max(10, Math.round(amt * 0.03));
     const twin = spent
       .filter((q) => !used.has(q.key) && (!bank || q.bank.toLowerCase() === bank) &&
         ((q.amount === amt && Math.abs(q.time - p.time) <= exactMs) || (near(q) && Math.abs(q.time - p.time) <= windowMs)))

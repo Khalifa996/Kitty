@@ -8,8 +8,11 @@ import { cardBankOf, type ParsedAlert } from '../parse/bankAlerts';
 const norm = (s: string) => (s || '').toLowerCase().replace(/\b(bill|payment|repayment|ltd|limited|stores?|plc)\b/g, '').replace(/[^a-z0-9]/g, '');
 
 /** The category last used for this shop, or a match on the first word ("Tesco Stores" → "Tesco"). */
+const PLACEHOLDER = /^(money in|payment sent|refund|cash|shop not named)$/i;
+
 export function guessCategory(S: State, merchant?: string): string | null {
-  if (!merchant) return null;
+  // "Payment sent" or "Money in" isn't a shop: what one was for says nothing about the next
+  if (!merchant || PLACEHOLDER.test(merchant.trim())) return null;
   const m = norm(merchant), first = norm(merchant.split(/\s+/)[0] || '');
   let best: string | null = null;
   for (const t of S.tx) {
@@ -61,7 +64,7 @@ export const wordCategory = (merchant?: string) => (merchant ? WORDS.find(([rx])
 
 /** What this payer was logged as last time (money in). */
 // Names Crest fills in when the alert doesn't say who: never learn a category from these
-const PLACEHOLDER = /^(money in|payment sent|refund|cash|shop not named)$/i;
+
 function guessIncome(S: State, merchant?: string): string | null {
   if (!merchant || PLACEHOLDER.test(merchant.trim())) return null;
   const m = norm(merchant); let best: string | null = null;
@@ -123,6 +126,8 @@ export function isSure(p: ParsedAlert, sug: Suggestion, dup?: Tx | null): boolea
   if (sug.action === 'pay-bill') return !sug.replaces;
   if (sug.action !== 'add' || sug.cash || sug.newBill || sug.big) return false;
   if (sug.tx.kind === 'in') return !sug.guessed && sug.tx.cat !== 'transfer' && sug.tx.cat !== 'borrowed';
+  // Money sent with no name could be rent, a friend or one of your own accounts: ask
+  if (p.sent && (!p.merchant || PLACEHOLDER.test(p.merchant))) return false;
   return true;
 }
 
@@ -148,10 +153,11 @@ export function suggest(S: State, p: ParsedAlert, id: string, others: ParsedAler
   if (p.kind === 'transfer' && !fromBiz) return { action: 'skip', reason: p.reason || 'Moved between your accounts' };
   if (!p.amount) return { action: 'skip', reason: 'No amount' };
   // TfL adds up a day's travel and charges it overnight, so an early-morning charge belongs to the day before
-  const d = new Date(p.time), lateTravel = p.kind === 'spent' && /transport for london|\btfl\b/i.test(p.merchant || '') && d.getHours() < 7;
-  const date = ymd(lateTravel ? new Date(p.time - 864e5) : d), time = hm(d);
+  // TfL says which day a charge is for; without that, an early-morning charge is the day before's travel
+  const d = new Date(p.time), lateTravel = p.kind === 'spent' && /transport for london|\btfl\b/i.test(p.merchant || '') && (!!p.travelDay || d.getHours() < 7);
+  const date = p.travelDay && p.travelDay <= ymd(d) ? p.travelDay : ymd(lateTravel ? new Date(p.time - 864e5) : d), time = hm(d);
   const bizAcct = isBizAccount(S, p.accountName);
-  const base = { id, amt: p.amount, merchant: p.merchant || '', note: lateTravel ? 'Charged the next morning' : '', date, time, biz: bizAcct, billId: null, source: 'alert', bank: p.bank,
+  const base = { id, amt: p.amount, merchant: p.merchant || '', note: date !== ymd(d) ? (p.travelDay ? 'Charged the next day' : 'Charged the next morning') : '', date, time, biz: bizAcct, billId: null, source: 'alert', bank: p.bank,
     ...(p.accountName ? { accountName: p.accountName } : {}) } as const;
 
   // A card payment the bank or shop undid. If the payment was counted, take it back off; if not, neither counts

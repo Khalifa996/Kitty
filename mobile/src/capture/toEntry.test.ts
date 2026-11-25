@@ -366,3 +366,18 @@ it('links a refund to the payment it gives back, and counts an exact match strai
   expect(s).toMatchObject({ action: 'add', guessed: false, tx: { kind: 'in', cat: 'refund', refundCat: 'bills', merchant: 'Phone fee' } });
   expect(isSure(r, s)).toBe(true);
 });
+
+it('dates a TfL charge to the day it was for', () => {
+  const S = withHistory();
+  const p = alert({ key: 't9', kind: 'spent', amount: 420, merchant: 'Transport for London', bank: 'Monzo', travelDay: '2026-11-08', time: new Date('2026-11-09T07:29:00').getTime() });
+  expect(suggest(S, p, 'n301')).toMatchObject({ action: 'add', tx: { date: '2026-11-08', note: 'Charged the next day' } });
+});
+
+it('asks about money sent with no name instead of guessing what it was for', () => {
+  const S = withHistory();
+  S.tx.push({ id: 'old', kind: 'out', amt: 5000, cat: 'health', merchant: 'Payment sent', note: '', date: '2026-11-01', time: '10:00', biz: false, billId: null, source: 'alert', bank: 'Barclays' });
+  const p = alert({ key: 's9', kind: 'spent', sent: true, amount: 9500, merchant: 'Payment sent', bank: 'Barclays' });
+  const s = suggest(S, p, 'n302');
+  expect(s).toMatchObject({ action: 'add', tx: { cat: 'other' } });
+  expect(isSure(p, s)).toBe(false);
+});

@@ -296,3 +296,48 @@ it('gives TfL one name whichever bank reports it', () => {
   expect(tidyName('Transport for London')).toBe('Transport for London');
   expect(tidyName('Tflex Gym')).toBe('Tflex Gym');
 });
+
+describe('Monzo and Google Wallet, Nov 2026', () => {
+  const MON = 'co.uk.getmondo';
+  const at = (d: string) => new Date(d).getTime();
+  it('takes the payment from the title, not the running total for the day', () => {
+    expect(parseAlert(a(MON, '🛍️ £14.20 at Shopco', 'You’ve spent £71.35 on your card today.'))).toMatchObject({ kind: 'spent', amount: 1420, merchant: 'Shopco' });
+    expect(parseAlert(a(MON, '⛽️ £28.40 at Fuelco', 'You’ve spent £52.10 on your card today.'))).toMatchObject({ kind: 'spent', amount: 2840, merchant: 'Fuelco' });
+    expect(parseAlert(a(MON, '🍏  £12.19 at Grocer', 'Want to split this with someone?'))).toMatchObject({ kind: 'spent', amount: 1219, merchant: 'Grocer' });
+  });
+  it('treats a payment coming up as a reminder, not a payment', () => {
+    const p = parseAlert(a(MON, 'Your Flex payment is due Saturday', "Your payment of £312.40 is due on Saturday. There's still time to change your monthly payment in the app."));
+    expect(p).toMatchObject({ kind: 'ignore', reason: 'Payment reminder', due: 31240, merchant: 'Flex' });
+    expect(p.amount).toBeUndefined();
+  });
+  it('pairs money sent to yourself from another bank as a move', () => {
+    const t = at('2026-11-12T10:15:00');
+    const out = parseAll([
+      a(MON, '', '💸 £150 sent to Sam Jones: Pay', t),
+      a(BAR, 'Barclays', "Pers acct - You've been paid £150.00 to your account ending 1111. This credit may take up to 24 hours to show.", t + 27000),
+    ]);
+    expect(out[0]).toMatchObject({ kind: 'transfer', amount: 15000, merchant: 'Sam Jones' });
+    expect(out[1]).toMatchObject({ kind: 'transfer' });
+  });
+  it('counts Google Wallet once when it posts the same payment twice', () => {
+    const t = at('2026-11-12T19:00:00');
+    const out = parseAll([
+      a(GW, 'Bagel Shop', '£9.00 with Barclays Debit ••1111', t + 222000),
+      a(GW, 'BAGEL SHOP', '£9.00 with Barclays Debit ••1111', t),
+      a(BAR, 'Barclays', "Pers acct - You've spent £9.00 with BAGEL SHOP from your account ending 1111.", t + 5000),
+      a(BAR, 'Barclays', "Pers acct - You've spent £2.80 with BAGEL SHOP from your account ending 1111.", t + 225000),
+    ]);
+    expect(out.filter((p) => p.kind === 'spent').map((p) => p.amount)).toEqual([900, 280]);
+  });
+  it("reads Monzo's own card payments that start with a card symbol", () => {
+    expect(parseAlert(a(MON, '💳 £10.60 at Cafe Nova', 'You’ve spent £14.70 on your card today.'))).toMatchObject({ kind: 'spent', amount: 1060, merchant: 'Cafe Nova' });
+    expect(parseAlert(a(REV, 'Alex 💳 ', 'Spent £2.75 at Corner Shop\nBalance: £2.05')).kind).toBe('ignore');
+  });
+  it('reads money a person sent you on Revolut', () => {
+    expect(parseAlert(a(REV, 'Sam Jones', 'Sent you £15. Tap to say thank you 💰'))).toMatchObject({ kind: 'received', amount: 1500, merchant: 'Sam Jones' });
+  });
+  it('knows which day a TfL travel charge is for', () => {
+    const p = parseAlert(a(MON, 'Acme Ltd', '🚆 £4.20 at Transport for London. Travel charge for Sunday 8 November', at('2026-11-09T07:30:00')));
+    expect(p).toMatchObject({ kind: 'spent', amount: 420, merchant: 'Transport for London', travelDay: '2026-11-08' });
+  });
+});
