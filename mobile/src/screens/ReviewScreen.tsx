@@ -88,6 +88,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
   const [making, setMaking] = useState<{ i: Item; name: string; type: Bill['type'] } | null>(null);
   const [showSkipped, setShowSkipped] = useState(false);
   const [showNotices, setShowNotices] = useState(false);
+  const [showMoves, setShowMoves] = useState(false);
   // What Crest added by itself since the person last looked
   const [showAdded, setShowAdded] = useState(false);
   const [fixing, setFixing] = useState<Tx | null>(null);
@@ -263,7 +264,10 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
   const easy = todo.filter((i) => !i.dup && i.sug.action !== 'ask' && !(i.sug.action === 'add' && (i.sug.cash || i.sug.newBill || i.sug.big || (i.sug.ai && i.sug.guessed))));
   // Nothing to count: notices, adverts, and anything else without an amount
   const notices = skipped.filter((i) => !i.p.amount);
-  const skippedPay = skipped.filter((i) => !notices.includes(i));
+  // Money moved between your own accounts: nothing to add, so it gets its own quiet group
+  const isMove = (i: (typeof skipped)[number]) => i.p.kind === 'transfer' || (i.sug.action === 'skip' && /^(Moved |Topped up )/.test(i.sug.reason));
+  const moves = skipped.filter((i) => !notices.includes(i) && isMove(i));
+  const skippedPay = skipped.filter((i) => !notices.includes(i) && !moves.includes(i));
   const dupText = (t: Tx) => `${t.merchant || (t.kind === 'in' ? inName(t.cat) : catName(S.settings, t.cat))}, ${money(t.amt, cur)}, ${when(new Date(t.date + 'T' + (t.time || '12:00')).getTime())}`;
 
   if (!S.settings.setupDone) {
@@ -464,7 +468,7 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
               <View style={[s.row, { justifyContent: 'flex-end' }]}>
                 <Btn label="Skip" small onPress={() => skip(i)} />
                 <Btn label="From savings" small onPress={() => add([i], { outside: true })} />
-                <Btn label="This month" small primary onPress={() => add([i], { spread: true })} />
+                <Btn label="Spread it" small primary onPress={() => add([i], { spread: true })} />
               </View>
             )}
             {newBill && !i.dup && (
@@ -537,6 +541,24 @@ export function ReviewScreen({ cap, onDone, goSetup }: { cap: Capture; onDone: (
               </View>
             );
           })}
+          {showSkipped && moves.length > 0 && (
+            <Pressable style={s.skipRow} accessibilityRole="button" accessibilityLabel={showMoves ? 'Hide moves' : 'Show moves'} onPress={() => setShowMoves(!showMoves)}>
+              <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+                <Text style={[s.name, { fontSize: 14, color: C.muted }]}>{moves.length} move{moves.length === 1 ? '' : 's'} between your accounts · {showMoves ? 'hide' : 'see them'}</Text>
+                <Text style={s.meta}>Moving your own money doesn't change what you have, so there's nothing to add. Bills paid from the other account are counted as bills.</Text>
+              </View>
+              <Btn label="Clear" small onPress={() => cap.done(moves.flatMap((i) => keysFor(i.p, cap.parsed)))} />
+            </Pressable>
+          )}
+          {showSkipped && showMoves && moves.map((i) => (
+            <View key={i.p.key} style={[s.skipRow, { marginLeft: 14 }]}>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={[s.name, { fontSize: 14, color: C.muted }]} numberOfLines={1}>{i.p.amount ? money(i.p.amount, cur) : ''} · {i.p.bank} · {when(i.p.time)}</Text>
+                <Text style={s.meta} numberOfLines={2}>{i.sug.action === 'skip' ? i.sug.reason : ''}</Text>
+              </View>
+              {i.p.amount ? <Btn label="Not a move" small onPress={() => addAs(i.p, i.p.kind === 'received' || (i.p.kind === 'transfer' && !i.p.sent) ? 'in' : 'out', i.p.amount as number)} /> : null}
+            </View>
+          ))}
           {showSkipped && skippedPay.map((i) => (
             <View key={i.p.key} style={s.skipRow}>
               <View style={{ flex: 1, minWidth: 0 }}>

@@ -206,6 +206,13 @@ export function parseAlert(a: RawAlert): ParsedAlert {
     if (xTo) return { ...base, kind: 'spent', sent: true, amount: toPennies(xTo[1]), merchant: tidyName(xTo[2]) };
   }
 
+  // Monzo with no title puts it all in the text: "💸 £260 from Sam Jones: MONZO" is money in, not money out
+  if (bank === 'Monzo' && !named && (!title || GENERIC_TITLES.test(title))) {
+    const body = text.replace(/^[^\w£+-]+/u, '');
+    const bFrom = body.match(new RegExp('^\\+?' + MONEY + '\\s+from\\s+([^\\n]+)', 'i'));
+    if (bFrom) return { ...base, kind: 'received', amount: toPennies(bFrom[1]), merchant: tidyName(bFrom[2].replace(/:\s.*$/, '').split(/\.\s/)[0]) };
+  }
+
   // Monzo puts the whole alert in the title: "£1 at Co-op", "£20 from Sam", "£495.50 Monzo Flex payment made".
   // The text can add the day's running total ("You’ve spent £40.10 on your card today"): that's not this payment
   const tAt = title.match(new RegExp('^' + MONEY + '\\s+at\\s+(.+)$', 'i'));

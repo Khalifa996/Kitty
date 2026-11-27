@@ -319,6 +319,15 @@ describe('Monzo and Google Wallet, Nov 2026', () => {
     expect(out[0]).toMatchObject({ kind: 'transfer', amount: 15000, merchant: 'Sam Jones' });
     expect(out[1]).toMatchObject({ kind: 'transfer' });
   });
+  it('reads money in from a Monzo alert with no title, and pairs it with the bank it came from', () => {
+    expect(parseAlert(a(MON, '', '💸 £35 from Sam Jones: Dinner'))).toMatchObject({ kind: 'received', amount: 3500, merchant: 'Sam Jones' });
+    const t = at('2026-11-12T08:00:00');
+    const out = parseAll([
+      a(MON, '', '💸 £260 from Sam Jones: MONZO', t),
+      a(BAR, 'Barclays', 'Pers acct - You sent £260.00 from your account ending 1111.', t + 49000),
+    ]);
+    expect(out.map((p) => p.kind)).toEqual(['transfer', 'transfer']);
+  });
   it('counts Google Wallet once when it posts the same payment twice', () => {
     const t = at('2026-11-12T19:00:00');
     const out = parseAll([

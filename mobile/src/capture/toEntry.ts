@@ -190,8 +190,9 @@ export function suggest(S: State, p: ParsedAlert, id: string, others: ParsedAler
   // Topping up another of your own accounts by card is a move, not spending: what you buy from there is counted there.
   // Unless it's a bill of the same name and amount (a savings app you pay into monthly)
   if (p.kind === 'spent' && isTopUp(p.merchant)) {
-    const app = (p.merchant as string).split(/[\s*\d]/)[0];
-    if (!S.bills.some((b) => b.amt === p.amount && b.name.toLowerCase().startsWith(app.toLowerCase())))
+    const app = (p.merchant as string).split(/[\s*\d]/)[0], w = billWindowAt(date, S.settings);
+    const unpaid = (b: { id: string }) => !S.tx.some((t) => t.billId === b.id && t.date >= w.start && t.date <= w.end);
+    if (!S.bills.some((b) => b.amt === p.amount && b.name.toLowerCase().startsWith(app.toLowerCase()) && unpaid(b)))
       return { action: 'skip', reason: `Topped up your ${app}: a move between your own accounts` };
   }
 
@@ -276,7 +277,9 @@ export function suggest(S: State, p: ParsedAlert, id: string, others: ParsedAler
   const cat = mine || known || emojiCategory(p.emoji) || wordCategory(p.merchant);
   const big = isBigOneOff(S, p.amount, p.merchant, date);
   return { action: 'add', guessed: !mine && !known, big: big || undefined,
-    hint: big ? 'Bigger than your usual spending here. If it came from savings or money you put aside, it can stay out of this month' : undefined,
+    hint: big ? (p.sent && (!p.merchant || PLACEHOLDER.test(p.merchant))
+      ? 'A big transfer. Spread it over the pay month so one day doesn\'t take the whole hit, or leave it out if it came from savings'
+      : 'Bigger than your usual spending here. Spread it over the pay month, or leave it out if it came from savings or money you put aside') : undefined,
     tx: { ...base, kind: 'out', cat: cat || 'other', sub: null } };
 }
 
@@ -289,7 +292,8 @@ export function isBigOneOff(S: State, amt: number, name: string | undefined, dat
   const daily = Math.max(0, pot(S, c)) / days;
   if (amt < Math.max(7500, daily * 3)) return false;
   const since = ymd(new Date(new Date(date + 'T12:00:00').getTime() - 120 * 864e5));
-  return !S.tx.some((t) => t.kind === 'out' && t.date >= since && t.amt >= amt * 0.6 && !!name && sameName(t.merchant, name));
+  // "Payment sent" to one person says nothing about the next, so a big unnamed transfer is always asked about
+  return !S.tx.some((t) => t.kind === 'out' && t.date >= since && t.amt >= amt * 0.6 && !!name && !PLACEHOLDER.test(name.trim()) && sameName(t.merchant, name));
 }
 
 /** Something close to this amount was already logged by hand around the same day (a round £230 for £231.40, say). */

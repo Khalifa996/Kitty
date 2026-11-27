@@ -381,3 +381,18 @@ it('asks about money sent with no name instead of guessing what it was for', () 
   expect(s).toMatchObject({ action: 'add', tx: { cat: 'other' } });
   expect(isSure(p, s)).toBe(false);
 });
+
+it('treats topping up your own Revolut as a move, even when a fee bill of that amount was paid already', () => {
+  const S = withHistory();
+  S.bills.push({ id: 'fee', name: 'Revolut fees', amt: 2000, day: 3, type: 'sub', dd: true } as any);
+  S.tx.push({ id: 'paidfee', kind: 'out', amt: 2000, cat: 'bills', merchant: 'Revolut fees', note: '', date: '2026-11-03', time: '09:00', biz: false, billId: 'fee' });
+  const p = alert({ key: 'u1', kind: 'spent', amount: 2000, merchant: 'Revolut', bank: 'Monzo' });
+  expect(suggest(S, p, 'n401')).toMatchObject({ action: 'skip' });
+});
+
+it('asks about a big unnamed transfer even after smaller ones', () => {
+  const S = withHistory();
+  S.tx.push({ id: 'o1', kind: 'out', amt: 15000, cat: 'personal', merchant: 'Payment sent', note: '', date: '2026-11-01', time: '10:00', biz: false, billId: null, source: 'alert', bank: 'Barclays' });
+  const p = alert({ key: 'u2', kind: 'spent', sent: true, amount: 26000, merchant: 'Payment sent', bank: 'Barclays' });
+  expect(suggest(S, p, 'n402')).toMatchObject({ action: 'add', big: true });
+});

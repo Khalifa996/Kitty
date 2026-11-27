@@ -60,6 +60,13 @@ Since 9 Nov 2026 Kitty is Mo's own app, built around how he banks. Items that on
 | P3 | Debt and business suggestions only recognise UK lender and insurer names |
 
 ## Changelog
+**App 0.17, 27 Nov 2026: payday fixes**
+- Monzo money in with no title ("£X from <name>: ref") was read as money out, so moving money from Barclays to Monzo counted twice as spending. Now it's money in, and pairs up as a move
+- Topping up your own Revolut by card is a move even when a Revolut fee bill of the same amount was already paid this month
+- A big transfer with no name is always asked about (earlier "Payment sent" amounts no longer make it look usual), with Spread it or From savings
+- Home card: when one big payment puts today over, a button spreads it over the pay month
+- Review: moves between your own accounts sit in their own group with a plain explanation, and "Not a move" if Crest got one wrong
+
 **App 0.16, 25 Nov 2026: fixes from Mo's latest alerts**
 - Monzo's own alerts with the payment in the title and the day's running total in the text ("£15 at Shop" / "You've spent £40 on your card today") took the running total. Now the payment
 - Monzo card payments starting with a card symbol were mistaken for Revolut's child card and dropped once the day had a running total
