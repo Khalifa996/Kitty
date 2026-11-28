@@ -60,6 +60,9 @@ Since 9 Nov 2026 Kitty is Mo's own app, built around how he banks. Items that on
 | P3 | Debt and business suggestions only recognise UK lender and insurer names |
 
 ## Changelog
+**App 0.17.1, 28 Nov 2026**
+- A payment of exactly a bill's amount to a name Crest doesn't know (the landlord for Rent), within three days of Crest ticking that bill off itself, is that bill, not new spending
+
 **App 0.17, 27 Nov 2026: payday fixes**
 - Monzo money in with no title ("£X from <name>: ref") was read as money out, so moving money from Barclays to Monzo counted twice as spending. Now it's money in, and pairs up as a move
 - Topping up your own Revolut by card is a move even when a Revolut fee bill of the same amount was already paid this month

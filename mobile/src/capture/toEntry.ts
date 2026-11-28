@@ -211,7 +211,11 @@ export function suggest(S: State, p: ParsedAlert, id: string, others: ParsedAler
     if (b) return asBill(b);
 
     // Already ticked off. If Crest ticked it off itself (Direct Debit day), the bank's figure is the real one
-    const done = S.bills.find((x) => paidTx(x) && named(x)) || (p.kind === 'bill' ? S.bills.find((x) => paidTx(x) && x.amt === p.amount) : undefined);
+    // A payment of exactly a bill's amount to a name Crest doesn't know (the landlord, for "Rent"), within a few days of
+    // Crest ticking that bill off itself, is that bill: it's already counted, so it mustn't count again as spending
+    const ticked = (x: (typeof S.bills)[number]) => { const t = paidTx(x); return !!t && !!t.auto && x.amt === p.amount && Math.abs(diffDays(t.date, date)) <= 3; };
+    const done = S.bills.find((x) => paidTx(x) && named(x)) || (p.kind === 'bill' ? S.bills.find((x) => paidTx(x) && x.amt === p.amount) : undefined)
+      || ((p.amount || 0) >= 2000 ? S.bills.find(ticked) : undefined);
     if (done) {
       const t = paidTx(done) as Tx;
       if (p.kind === 'bill' && t.auto && t.amt !== p.amount) return asBill(done, t);

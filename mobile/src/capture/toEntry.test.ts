@@ -396,3 +396,14 @@ it('asks about a big unnamed transfer even after smaller ones', () => {
   const p = alert({ key: 'u2', kind: 'spent', sent: true, amount: 26000, merchant: 'Payment sent', bank: 'Barclays' });
   expect(suggest(S, p, 'n402')).toMatchObject({ action: 'add', big: true });
 });
+
+it('knows a payment to the landlord is the rent Crest already ticked off', () => {
+  const S = withHistory();
+  S.bills.push({ id: 'rent', name: 'Rent', amt: 124000, day: 9, type: 'bill', dd: true } as any);
+  S.tx.push({ id: 'rentpaid', kind: 'out', amt: 124000, cat: 'bills', merchant: 'Rent', note: '', date: '2026-11-09', time: '00:00', biz: false, billId: 'rent', auto: true } as any);
+  const p = alert({ key: 'l1', kind: 'spent', amount: 124000, merchant: 'Landlord Lettings Ltd', bank: 'Barclays', time: new Date('2026-11-09T06:03:00').getTime() });
+  expect(suggest(S, p, 'n501')).toMatchObject({ action: 'skip', reason: 'Rent is already ticked off as paid' });
+  // A different amount is still spending
+  const q = alert({ key: 'l2', kind: 'spent', amount: 9000, merchant: 'Landlord Lettings Ltd', bank: 'Barclays', time: new Date('2026-11-09T06:03:00').getTime() });
+  expect(suggest(S, q, 'n502').action).toBe('add');
+});
