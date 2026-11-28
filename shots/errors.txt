@@ -1,0 +1,2 @@
+fresh console: Failed to load resource: the server responded with a status of 403 ()
+sample console: Failed to load resource: the server responded with a status of 403 ()
